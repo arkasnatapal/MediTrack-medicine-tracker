@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { Plus, AlertTriangle, Package, Calendar, ArrowRight, Activity, TrendingUp, Zap, Search, ScanLine } from 'lucide-react';
 import { getDaysUntilExpiry } from '../utils/formatDate';
 import PendingRemindersWidget from '../components/PendingRemindersWidget';
+import QuickFamilyWidget from '../components/QuickFamilyWidget';
 import EditMedicineModal from '../components/EditMedicineModal';
 import HealthTipWidget from '../components/HealthTipWidget';
 
@@ -22,6 +23,7 @@ const Dashboard = () => {
   const handleEditSave = () => {
     window.location.reload();
   };
+
 
   // Calculate stats
   const totalMedicines = medicines.length;
@@ -135,17 +137,9 @@ const Dashboard = () => {
             </div>
           </motion.div>
 
-          {/* Pending Reminders Widget */}
-          <motion.div variants={itemVariants}>
-            <PendingRemindersWidget />
-          </motion.div>
 
-          {/* Health Tip Widget */}
-          <motion.div variants={itemVariants}>
-            <HealthTipWidget />
-          </motion.div>
 
-          {/* Stats Grid - Optimized for Mobile (2 columns) */}
+          {/* Stats Grid */}
           <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
             <div className="col-span-2 md:col-span-1">
                 <StatCard 
@@ -181,8 +175,26 @@ const Dashboard = () => {
             </Link>
           </motion.div>
 
-          {/* Charts Section - Reduced height on mobile */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+          {/* Health Tip Widget */}
+          <motion.div variants={itemVariants}>
+            <HealthTipWidget />
+          </motion.div>
+
+          {/* Action Center Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            {/* Pending Reminders Widget */}
+            <motion.div variants={itemVariants}>
+              <PendingRemindersWidget />
+            </motion.div>
+
+            {/* Quick Family Widget */}
+            <motion.div variants={itemVariants}>
+              <QuickFamilyWidget />
+            </motion.div>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
             <motion.div 
               variants={itemVariants} 
               className="h-72 md:h-96 p-4 md:p-8 rounded-3xl bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-lg"

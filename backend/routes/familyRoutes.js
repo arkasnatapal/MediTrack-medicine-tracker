@@ -99,6 +99,90 @@ router.post("/invite", auth, async (req, res) => {
   }
 });
 
+// GET /api/family/quick-overview - Get quick overview of family members
+router.get("/quick-overview", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`Fetching family overview for user: ${userId}`);
+
+    // 1. Fetch active and pending connections
+    const connections = await FamilyConnection.find({
+      $or: [{ inviter: userId }, { invitee: userId }],
+      status: { $in: ["active", "invited", "pending_acceptance"] },
+    })
+      .populate("inviter", "name email profilePictureUrl lastActive")
+      .populate("invitee", "name email profilePictureUrl lastActive");
+
+    console.log(`Found ${connections.length} connections`);
+
+    // 2. Process each connection to get member details
+    const members = await Promise.all(
+      connections.map(async (conn) => {
+        const isInviter = conn.inviter._id.toString() === userId;
+        // If I am inviter, member is invitee. If I am invitee, member is inviter.
+        let member = isInviter ? conn.invitee : conn.inviter;
+        
+        // Handle case where member is null (populated user not found or invited by email)
+        if (!member) {
+            // If I am the inviter, I can use the inviteeEmail from the connection
+            if (isInviter && conn.inviteeEmail) {
+                return {
+                    id: conn._id, // Use connection ID as temporary ID
+                    name: conn.inviteeEmail.split('@')[0], // Guess name from email
+                    email: conn.inviteeEmail,
+                    avatar: null,
+                    lastActive: null,
+                    unreadMessages: 0,
+                    nextReminder: null,
+                    relationship: conn.relationshipFromInviter,
+                    status: conn.status // Pass status to frontend
+                };
+            }
+            // If I am the invitee, and inviter is missing, that's a bigger issue (orphan connection)
+            // But we can try to handle it if needed. For now, let's log it.
+            console.log("Member (inviter/invitee) not found for connection:", conn._id);
+            return null;
+        }
+
+        // 3. Get unread messages count
+        const unreadCount = await Message.countDocuments({
+          from: member._id,
+          to: userId,
+          read: false,
+        });
+
+        // 4. Get next upcoming reminder
+        const Reminder = require("../models/Reminder");
+        const nextReminder = await Reminder.findOne({
+          targetUser: member._id,
+          active: true,
+        }).select("medicineName times daysOfWeek");
+
+        return {
+          id: member._id,
+          name: member.name,
+          email: member.email,
+          avatar: member.profilePictureUrl,
+          lastActive: member.lastActive,
+          unreadMessages: unreadCount,
+          nextReminder: nextReminder,
+          relationship: isInviter ? conn.relationshipFromInviter : conn.relationshipFromInvitee,
+          status: conn.status
+        };
+      })
+    );
+
+    // Filter out nulls
+    const validMembers = members.filter(m => m !== null);
+    console.log(`Returning ${validMembers.length} valid members`);
+
+    res.json({ success: true, members: validMembers });
+  } catch (err) {
+    console.error("Error fetching family overview:", err);
+    res.status(500).json({ success: false, message: "Failed to load family overview" });
+  }
+});
+
 // GET /api/family/invitations - invitations for me (invitee)
 router.get("/invitations", auth, async (req, res) => {
   try {
@@ -364,5 +448,7 @@ router.delete("/invitations/:id", auth, async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to cancel invitation" });
   }
 });
+
+
 
 module.exports = router;
