@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-gray-900 dark:text-slate-700 bg-gray-50 dark:bg-slate-900 transition-colors duration-300;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-gray-900 dark:text-white;
+  }
+  p {
+    @apply text-gray-700 dark:text-slate-300;
+  }
+   span{
+    @apply text-gray-700 dark:text-slate-300;
+  }
+}
+
+.btn-primary {
+  @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm hover:shadow-md active:transform active:scale-95;
+}
+
+.btn-secondary {
+  @apply bg-white dark:bg-slate-800 text-primary-600 dark:text-white border border-primary-600 dark:border-slate-600 px-4 py-2 rounded-lg hover:bg-primary-50 dark:hover:bg-slate-700 transition-colors duration-200 font-medium;
+}
+
+.input-field {
+  @apply w-full pl-12 pr-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-transparent outline-none transition-all duration-200 bg-white dark:bg-slate-900 text-gray-900 dark:text-white;
+}
+
+.card {
+  @apply bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-slate-900;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-slate-600 rounded-full hover:bg-gray-400 dark:hover:bg-slate-500;
+}
+
+/* Custom Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  @apply bg-white/10 backdrop-blur-lg border border-white/10;
+}
+
+.glass-panel-dark {
+  @apply bg-slate-900/50 backdrop-blur-xl border border-slate-800/50;
+}

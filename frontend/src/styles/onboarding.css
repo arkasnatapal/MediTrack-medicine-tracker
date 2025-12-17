@@ -1,0 +1,31 @@
+/* Onboarding Modal Custom Styles */
+
+/* Subtle background animation */
+@keyframes subtle-drift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.onboarding-bg-animate {
+  background-size: 200% 200%;
+  animation: subtle-drift 15s ease infinite;
+}
+
+/* Glassmorphism utilities */
+.glass-panel-premium {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

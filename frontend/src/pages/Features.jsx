@@ -1,0 +1,96 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import PublicPageLayout from '../components/PublicPageLayout';
+import { Pill, Bell, Users, Shield, Brain, Calendar, Heart, Smartphone } from 'lucide-react';
+
+const Features = () => {
+  const features = [
+    {
+      icon: Pill,
+      title: 'Medicine Management',
+      description: 'Track all your medications in one place with expiry alerts and dosage reminders.',
+      color: 'from-emerald-500 to-teal-500',
+    },
+    {
+      icon: Bell,
+      title: 'Smart Reminders',
+      description: 'Never miss a dose with intelligent notifications and customizable schedules.',
+      color: 'from-blue-500 to-cyan-500',
+    },
+    {
+      icon: Users,
+      title: 'Family Care',
+      description: 'Manage health records for your entire family from a single dashboard.',
+      color: 'from-purple-500 to-pink-500',
+    },
+    {
+      icon: Shield,
+      title: 'Secure & Private',
+      description: 'Your health data is encrypted and protected with industry-standard security.',
+      color: 'from-amber-500 to-orange-500',
+    },
+    {
+      icon: Brain,
+      title: 'AI Health Assistant',
+      description: 'Get instant answers to health questions with our intelligent AI chatbot.',
+      color: 'from-indigo-500 to-purple-500',
+    },
+    {
+      icon: Calendar,
+      title: 'Appointment Tracking',
+      description: 'Keep track of doctor appointments and medical checkups effortlessly.',
+      color: 'from-rose-500 to-red-500',
+    },
+    {
+      icon: Heart,
+      title: 'Health Insights',
+      description: 'Monitor your health trends and get personalized recommendations.',
+      color: 'from-pink-500 to-rose-500',
+    },
+    {
+      icon: Smartphone,
+      title: 'Mobile Friendly',
+      description: 'Access your health information anytime, anywhere on any device.',
+      color: 'from-teal-500 to-emerald-500',
+    },
+  ];
+
+  return (
+    <PublicPageLayout
+      title="Powerful Features"
+      subtitle="Everything you need to manage your health and medications effectively"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {features.map((feature, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              whileHover={{ y: -5 }}
+              className="group relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl blur-xl" 
+                   style={{ background: `linear-gradient(to bottom right, var(--tw-gradient-stops))` }} />
+              <div className="relative h-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl p-6 border border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-2xl transition-all">
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 shadow-lg`}>
+                  <feature.icon className="text-white" size={28} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </PublicPageLayout>
+  );
+};
+
+export default Features;
