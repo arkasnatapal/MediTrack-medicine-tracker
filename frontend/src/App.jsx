@@ -34,6 +34,7 @@ import FAQ from './pages/FAQ'
 import Careers from './pages/Careers'
 import Cookies from './pages/Cookies'
 import FoodRoutine from './pages/FoodRoutine'
+import HealthReview from './pages/HealthReview'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 
@@ -138,6 +139,7 @@ function AppContent() {
               <Route path="/terms" element={<TermsAndConditions />} />
               <Route path="/features" element={<Features />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/health-review" element={<HealthReview />} />
               <Route path="/about" element={<About />} />
               <Route path="/faq" element={<FAQ />} />
               <Route path="/careers" element={<Careers />} />

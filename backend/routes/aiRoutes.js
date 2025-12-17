@@ -8,6 +8,7 @@ const Reminder = require("../models/Reminder");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const AuditLog = require("../models/AuditLog");
+const HealthReport = require("../models/HealthReport");
 const {
   createCalendarEvent,
   updateCalendarEvent,
@@ -967,6 +968,180 @@ If the user asks "Show me my food chart":
       message: "AI service error",
       error: error.message,
     });
+  }
+});
+
+// --- Health Review Endpoint ---
+router.post("/health-review", auth, async (req, res) => {
+  try {
+    if (!genAI) {
+      return res.status(500).json({ success: false, message: "AI service not configured." });
+    }
+
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    // 1. Fetch User Data
+    const medicines = await Medicine.find({ userId });
+    const reminders = await Reminder.find({ targetUser: userId, active: true });
+    
+    // Fetch recent food logs (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const FoodItem = require("../models/FoodItem");
+    const foodLogs = await FoodItem.find({ 
+      user: userId,
+      createdAt: { $gte: sevenDaysAgo }
+    }).sort({ createdAt: -1 });
+
+    // 2. Prepare Data Context
+    const medicineList = medicines.map(m => 
+      `- ${m.name} (${m.dosage || 'N/A'}, ${m.form || 'Tablet'}): ${m.quantity} remaining. Expiry: ${m.expiryDate ? m.expiryDate.toISOString().split('T')[0] : 'Unknown'}`
+    ).join("\n");
+
+    const reminderList = reminders.map(r => 
+      `- ${r.medicineName}: ${r.times.join(", ")} on ${r.daysOfWeek.length ? r.daysOfWeek.join(", ") : "Daily"}`
+    ).join("\n");
+
+    const foodContext = foodLogs.length > 0 
+      ? foodLogs.map(f => `- ${f.mealType}: ${f.name} (${f.time || 'N/A'})`).join("\n")
+      : "No recent food logs.";
+
+    // 3. Construct Prompt
+    const prompt = `
+      Analyze the following health data for a user named ${user.name}.
+      
+      ### MEDICINES
+      ${medicineList || "No medicines found."}
+
+      ### REMINDERS (Routine)
+      ${reminderList || "No active reminders."}
+
+      ### RECENT FOOD LOGS
+      ${foodContext}
+
+      ### TASK
+      Generate a detailed "Health Thesis" and "Medicine Review" in strict JSON format.
+      The analysis should be comprehensive, professional, and data-driven.
+      For "nutritionTrends", estimate daily intake values (Protein, Carbs, Fats, Vitamins score) for the last 7 days based on the food logs provided. If logs are missing, infer reasonable estimates based on a standard diet or provide a baseline.
+
+      ### REQUIRED JSON STRUCTURE
+      {
+        "healthScore": <number 0-100 based on adherence and medicine management>,
+        "summary": "<Short executive summary of their health status>",
+        "medicineAnalysis": [
+          {
+            "category": "<e.g., Pain Management, Cardiovascular, Vitamin>",
+            "count": <number of meds in this category>,
+            "medicines": ["<med name 1>", "<med name 2>"]
+          }
+        ],
+        "symptomsAnalysis": {
+          "probableSymptoms": ["<symptom 1>", "<symptom 2>"],
+          "explanation": "<Why these symptoms might occur based on medicines/side effects>"
+        },
+        "diseaseRisk": {
+          "ongoing": ["<Likely condition treated by current meds>"],
+          "prevention": ["<What they are likely preventing>"]
+        },
+        "dietaryAdvice": [
+          "<Specific food advice based on their medicines>",
+          "<Nutritional gap analysis>"
+        ],
+        "nutritionTrends": [
+          { "day": "Mon", "protein": 50, "carbs": 200, "fats": 60, "vitamins": 80 },
+          { "day": "Tue", "protein": 55, "carbs": 180, "fats": 65, "vitamins": 85 },
+          { "day": "Wed", "protein": 60, "carbs": 190, "fats": 55, "vitamins": 90 },
+          { "day": "Thu", "protein": 52, "carbs": 210, "fats": 70, "vitamins": 75 },
+          { "day": "Fri", "protein": 58, "carbs": 185, "fats": 60, "vitamins": 88 },
+          { "day": "Sat", "protein": 65, "carbs": 220, "fats": 80, "vitamins": 95 },
+          { "day": "Sun", "protein": 62, "carbs": 200, "fats": 75, "vitamins": 92 }
+        ],
+        "monthlyReport": {
+          "month": "${new Date().toLocaleString('default', { month: 'long' })}",
+          "insights": ["<Key insight 1>", "<Key insight 2>"],
+          "actionItems": ["<Action 1>", "<Action 2>"]
+        }
+      }
+
+      IMPORTANT: Return ONLY the JSON. Do not add markdown formatting like \`\`\`json.
+    `;
+
+    // 4. Call Gemini
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Use flash for speed/cost
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // 5. Parse JSON
+    let analysisData;
+    try {
+      // Clean potential markdown code blocks
+      const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      analysisData = JSON.parse(cleanText);
+      
+      // Save to DB
+      const report = new HealthReport({
+        user: userId,
+        healthScore: analysisData.healthScore || 0,
+        summary: analysisData.summary || "No summary generated",
+        data: analysisData
+      });
+      await report.save();
+
+      // Return the saved report structure (including ID)
+      res.json({ success: true, data: analysisData, reportId: report._id });
+
+    } catch (e) {
+      console.error("Failed to parse AI response", text);
+      return res.status(500).json({ success: false, message: "Failed to generate analysis." });
+    }
+
+
+  } catch (error) {
+    console.error("Error in health review:", error);
+    res.status(500).json({ success: false, message: "Server error during health review." });
+  }
+});
+
+// --- Get Health Reports History ---
+router.get("/health-reports", auth, async (req, res) => {
+  try {
+    const reports = await HealthReport.find({ user: req.user.id })
+      .select("healthScore summary createdAt")
+      .sort({ createdAt: -1 });
+    res.json({ success: true, reports });
+  } catch (err) {
+    console.error("Error fetching reports:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch reports." });
+  }
+});
+
+// --- Get Specific Health Report ---
+router.get("/health-reports/:id", auth, async (req, res) => {
+  try {
+    const report = await HealthReport.findOne({ _id: req.params.id, user: req.user.id });
+    if (!report) {
+      return res.status(404).json({ success: false, message: "Report not found." });
+    }
+    res.json({ success: true, data: report.data });
+  } catch (error) {
+    console.error("Error fetching report:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch report." });
+  }
+});
+
+// Delete a health report
+router.delete('/health-reports/:id', auth, async (req, res) => {
+  try {
+    const report = await HealthReport.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    if (!report) {
+      return res.status(404).json({ success: false, message: "Report not found or unauthorized." });
+    }
+    res.json({ success: true, message: "Report deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting report:", error);
+    res.status(500).json({ success: false, message: "Failed to delete report." });
   }
 });
 
