@@ -25,7 +25,11 @@ const app = express();
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
+  try {
+    fs.mkdirSync(uploadsDir);
+  } catch (err) {
+    console.log('Could not create uploads directory (likely read-only filesystem), skipping.');
+  }
 }
 
 // Middleware

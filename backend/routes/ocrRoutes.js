@@ -9,7 +9,7 @@ const http = require("http");
 const router = express.Router();
 
 // Multer upload setup – store files in "uploads/" temp folder
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Gemini client setup with fetch configuration
 const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -138,17 +138,13 @@ router.post("/", upload.single("image"), async (req, res) => {
       });
     }
 
-    const filePath = req.file.path;
-    const mimeType = req.file.mimetype || "image/jpeg";
-
     // Read image as buffer
-    const imageBuffer = fs.readFileSync(filePath);
+    const imageBuffer = req.file.buffer;
 
     // Call Gemini Vision
     const ai = await analyzeMedicineImage(imageBuffer, mimeType);
 
-    // Clean up temp file
-    fs.unlink(filePath, () => {});
+    // No need to clean up temp file as we are using memory storage
 
     return res.json({
       success: true,
