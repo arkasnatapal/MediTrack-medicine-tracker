@@ -67,8 +67,30 @@ const features = [
     border: "border-blue-500/20",
     glow: "group-hover:shadow-blue-500/20",
     gradient: "from-blue-500/20 to-cyan-600/20",
-    colSpan: "md:col-span-2 lg:col-span-1",
+    colSpan: "md:col-span-1",
   },
+  // {
+  //   icon: <Sparkles className="w-6 h-6" />,
+  //   title: "Body Thesis Engine",
+  //   description: "Our AI generates a living 'thesis' of your health by analyzing your daily habits and vitals.",
+  //   color: "text-teal-400",
+  //   bg: "bg-teal-500/10",
+  //   border: "border-teal-500/20",
+  //   glow: "group-hover:shadow-teal-500/20",
+  //   gradient: "from-teal-500/20 to-emerald-600/20",
+  //   colSpan: "md:col-span-1",
+  // },
+  // {
+  //   icon: <FolderOpen className="w-6 h-6" />,
+  //   title: "Report Decoder",
+  //   description: "Upload complex lab reports and get instant, plain-English summaries and actionable insights.",
+  //   color: "text-indigo-400",
+  //   bg: "bg-indigo-500/10",
+  //   border: "border-indigo-500/20",
+  //   glow: "group-hover:shadow-indigo-500/20",
+  //   gradient: "from-indigo-500/20 to-purple-600/20",
+  //   colSpan: "md:col-span-1",
+  // },
 ];
 
 const FeaturesSection = () => {

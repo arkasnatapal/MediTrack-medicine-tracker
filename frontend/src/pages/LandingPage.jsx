@@ -13,6 +13,8 @@ import AIShowcaseSection from "../components/landing/AIShowcaseSection";
 import StatsSection from "../components/landing/StatsSection";
 import TestimonialsSection from "../components/landing/TestimonialsSection";
 import CTASection from "../components/landing/CTASection";
+import HealthAnalysisSection from "../components/landing/HealthAnalysisSection";
+import ReportThesisSection from "../components/landing/ReportThesisSection";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -22,10 +24,10 @@ const LandingPage = () => {
 
   const navLinks = [
     { name: "Features", href: "#features" },
+    { name: "Body Thesis", href: "#body-thesis" },
+    { name: "Report Decoder", href: "#report-decoder" },
     { name: "Family", href: "#family" },
-    { name: "How It Works", href: "#how-it-works" },
     { name: "AI Assistant", href: "#ai-showcase" },
-    { name: "Testimonials", href: "#testimonials" },
   ];
 
   useEffect(() => {
@@ -218,6 +220,12 @@ const LandingPage = () => {
           </div>
           <div id="ai-showcase">
             <AIShowcaseSection />
+          </div>
+          <div id="body-thesis">
+            <HealthAnalysisSection />
+          </div>
+          <div id="report-decoder">
+            <ReportThesisSection />
           </div>
           <StatsSection />
           <div id="testimonials">
