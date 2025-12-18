@@ -38,11 +38,11 @@ const Sidebar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Add Medicine', path: '/add-medicine', icon: PlusCircle },
     { name: 'My Medicines', path: '/medicines', icon: List },
-    { name: 'Health Review', path: '/health-review', icon: Network },
     { name: 'Folders', path: '/medicine-folders', icon: FolderOpen },
     { name: 'Reminders', path: '/reminders', icon: Bell },
     { name: 'Food Routine', path: '/food', icon: Utensils },
     { name: 'Family', path: '/family', icon: Users, badge: unreadCount },
+    { name: 'Health Review', path: '/health-review', icon: Network },
     { name: 'Settings', path: '/settings', icon: Settings },
     { name: 'Help & Support', path: '/contact', icon: HelpCircle },
   ];

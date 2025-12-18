@@ -87,7 +87,7 @@ const QuickFamilyWidget = () => {
                 animate={{ opacity: 1, scale: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ delay: index * 0.1, type: "spring", stiffness: 300, damping: 25 }}
-                className="relative flex-shrink-0 w-40 snap-center"
+                className="relative flex-shrink-0  snap-center"
               >
                 <div className="relative bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-[1.5rem] p-4 border border-white/40 dark:border-white/5 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all duration-300 group/card hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10">
                   

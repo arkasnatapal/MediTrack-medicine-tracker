@@ -12,11 +12,13 @@ import PendingRemindersWidget from '../components/PendingRemindersWidget';
 import QuickFamilyWidget from '../components/QuickFamilyWidget';
 import EditMedicineModal from '../components/EditMedicineModal';
 import HealthTipWidget from '../components/HealthTipWidget';
+import SearchModal from '../components/SearchModal';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { medicines, loading, getMedicines } = useMedicine();
   const [editingMedicine, setEditingMedicine] = useState(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
 
@@ -131,7 +133,10 @@ const Dashboard = () => {
                 <Plus className="h-5 w-5 md:h-6 md:w-6 relative z-10" />
                 <span className="relative z-10 text-sm md:text-base">Add Med</span>
               </Link>
-              <button className="md:hidden p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-sm">
+              <button 
+                onClick={() => setIsSearchOpen(true)}
+                className="md:hidden p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-sm"
+              >
                  <Search className="h-5 w-5" />
               </button>
             </div>
@@ -266,6 +271,13 @@ const Dashboard = () => {
             onSave={handleEditSave}
           />
         )}
+
+        {/* Search Modal */}
+        <SearchModal 
+            isOpen={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+            medicines={medicines}
+        />
       </div>
     </div>
   );
