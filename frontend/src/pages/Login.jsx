@@ -5,6 +5,7 @@ import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import AuthLayout from "../components/AuthLayout";
 import InfoDialog from "../components/InfoDialog";
+import api from "../api/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -69,12 +70,8 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      const res = await fetch("/api/auth/google/url?mode=login", {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await res.json();
+      const res = await api.get("/auth/google/url?mode=login");
+      const data = res.data;
       if (data.success && data.url) {
         window.location.href = data.url;
       } else {

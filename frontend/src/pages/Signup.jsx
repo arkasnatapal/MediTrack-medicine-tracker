@@ -5,6 +5,7 @@ import { User, Mail, Lock, Loader2, Eye, EyeOff, Sparkles, Check, X } from 'luci
 import { motion } from 'framer-motion';
 import AuthLayout from '../components/AuthLayout';
 import InfoDialog from "../components/InfoDialog";
+import api from "../api/api";
 
 const Signup = () => {
   const [name, setName] = useState('');
@@ -77,12 +78,8 @@ const Signup = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      const res = await fetch("/api/auth/google/url?mode=signup", {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await res.json();
+      const res = await api.get("/auth/google/url?mode=signup");
+      const data = res.data;
       if (data.success && data.url) {
         window.location.href = data.url;
       } else {
