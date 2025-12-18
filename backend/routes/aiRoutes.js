@@ -962,11 +962,15 @@ If the user asks "Show me my food chart":
 
     res.json({ success: true, reply: response.text() });
   } catch (error) {
-    console.error("AI Chat Error:", error);
+    console.error("AI Chat Error (Full Stack):", error);
+    if (error.response) {
+      console.error("AI Chat Error Response Data:", error.response.data);
+    }
     res.status(500).json({
       success: false,
       message: "AI service error",
       error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
