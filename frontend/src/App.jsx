@@ -35,6 +35,7 @@ import Careers from './pages/Careers'
 import Cookies from './pages/Cookies'
 import FoodRoutine from './pages/FoodRoutine'
 import HealthReview from './pages/HealthReview'
+import MedicalReports from './pages/MedicalReports'
 import NotFound from './pages/NotFound'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -223,6 +224,12 @@ function AppContent() {
               <Route path="/reminders" element={
                 <PrivateRoute>
                   <Reminders />
+                </PrivateRoute>
+              } />
+
+              <Route path="/reports" element={
+                <PrivateRoute>
+                  <MedicalReports />
                 </PrivateRoute>
               } />
 

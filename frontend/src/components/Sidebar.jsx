@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, List, Settings, HelpCircle, ChevronLeft, ChevronRight, Users, Bell, Sparkles, Sun, Moon, Utensils, FolderOpen, Network } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, List, Settings, HelpCircle, ChevronLeft, ChevronRight, Users, Bell, Sparkles, Sun, Moon, Utensils, FolderOpen, Network, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../context/SidebarContext';
 import { useTheme } from '../context/ThemeContext';
@@ -43,6 +43,7 @@ const Sidebar = () => {
     { name: 'Food Routine', path: '/food', icon: Utensils },
     { name: 'Family', path: '/family', icon: Users, badge: unreadCount },
     { name: 'Health Review', path: '/health-review', icon: Network },
+    { name: 'Medical Reports', path: '/reports', icon: FileText },
     { name: 'Settings', path: '/settings', icon: Settings },
     { name: 'Help & Support', path: '/contact', icon: HelpCircle },
   ];
