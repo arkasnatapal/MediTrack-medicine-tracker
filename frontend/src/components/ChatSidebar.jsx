@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmDialog from "./ConfirmDialog";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const ChatSidebar = ({ activeSessionId, onSelectSession, onNewChat, onDeleteSession }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [sessions, setSessions] = useState([]);
@@ -12,7 +14,7 @@ const ChatSidebar = ({ activeSessionId, onSelectSession, onNewChat, onDeleteSess
   const fetchSessions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch("http://localhost:5000/api/chat-sessions", { 
+      const res = await fetch(`${API_URL}/chat-sessions`, { 
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -46,7 +48,7 @@ const ChatSidebar = ({ activeSessionId, onSelectSession, onNewChat, onDeleteSess
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat-sessions/${deleteId}`, {
+      const res = await fetch(`${API_URL}/chat-sessions/${deleteId}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });

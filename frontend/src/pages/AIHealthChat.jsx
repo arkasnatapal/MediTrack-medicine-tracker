@@ -7,6 +7,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AIChatOnboarding from "../components/AIChatOnboarding";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const AIHealthChat = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -36,7 +38,7 @@ const AIHealthChat = () => {
     const initSession = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch("http://localhost:5000/api/chat-sessions", {
+        const res = await fetch(`${API_URL}/chat-sessions`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const data = await res.json();
@@ -59,7 +61,7 @@ const AIHealthChat = () => {
   const createSessionOnServer = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch("http://localhost:5000/api/chat-sessions", {
+      const res = await fetch(`${API_URL}/chat-sessions`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -85,7 +87,7 @@ const AIHealthChat = () => {
   const handleSelectSession = async (sessionId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat-sessions/${sessionId}`, {
+      const res = await fetch(`${API_URL}/chat-sessions/${sessionId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
@@ -137,7 +139,7 @@ const AIHealthChat = () => {
       const token = localStorage.getItem('token'); 
       
       // Save user message
-      await fetch(`http://localhost:5000/api/chat-sessions/${currentSessionId}/message`, {
+      await fetch(`${API_URL}/chat-sessions/${currentSessionId}/message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -147,7 +149,7 @@ const AIHealthChat = () => {
       });
 
       // Get AI response
-      const res = await fetch("http://localhost:5000/api/ai/health-chat", {
+      const res = await fetch(`${API_URL}/ai/health-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -175,7 +177,7 @@ const AIHealthChat = () => {
       setMessages((prev) => [...prev, botMessage]);
 
       // Save bot message
-      await fetch(`http://localhost:5000/api/chat-sessions/${currentSessionId}/message`, {
+      await fetch(`${API_URL}/chat-sessions/${currentSessionId}/message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -213,7 +215,7 @@ const AIHealthChat = () => {
     setIsRenaming(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat-sessions/${activeSessionId}`, {
+      const res = await fetch(`${API_URL}/chat-sessions/${activeSessionId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

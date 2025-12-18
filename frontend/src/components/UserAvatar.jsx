@@ -9,7 +9,7 @@ const UserAvatar = ({ user, className = "", fallbackType = "initial" }) => {
     if (user?.profilePictureUrl) {
       setImgSrc(user.profilePictureUrl.startsWith('http') 
         ? user.profilePictureUrl 
-        : `http://localhost:5000${user.profilePictureUrl}`);
+        : `${import.meta.env.VITE_BACKEND_URL}${user.profilePictureUrl}`);
       setImgError(false);
     } else {
       setImgSrc(null);
