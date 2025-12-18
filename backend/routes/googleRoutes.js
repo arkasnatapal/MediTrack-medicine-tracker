@@ -9,7 +9,8 @@ const { getAuthUrl, createOAuthClient } = require("../utils/googleCalendar");
 router.get("/oauth2/callback", (req, res) => {
   const { code } = req.query;
   // Redirect to frontend settings page with the code
-  res.redirect(`http://localhost:5173/settings?code=${code}`);
+  const baseUrl = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
+  res.redirect(`${baseUrl}/settings?code=${code}`);
 });
 
 // GET /api/google/oauth2/url - get consent screen URL

@@ -27,7 +27,7 @@ async function sendFamilyInviteEmail({ to, inviterName, familyConnectionId }) {
   const transporter = getTransporter();
   if (!transporter || !to) return;
 
-  const baseUrl = process.env.APP_BASE_URL || "http://localhost:5173";
+  const baseUrl = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
   const inviteLink = `${baseUrl}/family/invitations?connectionId=${familyConnectionId}`;
 
   const mailOptions = {
@@ -184,7 +184,7 @@ async function sendWelcomeEmail({ to, name }) {
   const transporter = getTransporter();
   if (!transporter || !to) return;
 
-  const baseUrl = process.env.APP_BASE_URL || "http://localhost:5173";
+  const baseUrl = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
 
   const mailOptions = {
     from: process.env.SMTP_FROM || `"MediTrack" <${process.env.SMTP_USER}>`,

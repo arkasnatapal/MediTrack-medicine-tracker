@@ -32,7 +32,7 @@ router.get("/url", async (req, res) => {
 router.get("/callback", async (req, res) => {
   try {
     const { code, error, state } = req.query;
-    const frontendBase = process.env.APP_BASE_URL || "http://localhost:5173";
+    const frontendBase = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
 
     if (error) {
       console.error("Google OAuth error:", error);
@@ -176,7 +176,7 @@ const cloudinary = require("../utils/cloudinary");
 
   } catch (err) {
     console.error("Error in Google auth callback:", err);
-    const frontendBase = process.env.APP_BASE_URL || "http://localhost:5173";
+    const frontendBase = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
     return res.redirect(
       `${frontendBase}/login?googleError=${encodeURIComponent(
         "Failed to log in with Google"
