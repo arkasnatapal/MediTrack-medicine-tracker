@@ -68,3 +68,6 @@
 .glass-panel-dark {
   @apply bg-slate-900/50 backdrop-blur-xl border border-slate-800/50;
 }
+.spaced-word {
+  letter-spacing: 0.15em;
+}

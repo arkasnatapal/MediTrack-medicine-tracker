@@ -35,6 +35,7 @@ import Careers from './pages/Careers'
 import Cookies from './pages/Cookies'
 import FoodRoutine from './pages/FoodRoutine'
 import HealthReview from './pages/HealthReview'
+import NotFound from './pages/NotFound'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 
@@ -224,6 +225,9 @@ function AppContent() {
                   <Reminders />
                 </PrivateRoute>
               } />
+
+              {/* 404 Page */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
           {isLandingPage && <Footer />}

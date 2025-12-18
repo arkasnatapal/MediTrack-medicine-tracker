@@ -52,10 +52,8 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to={user ? "/dashboard" : "/"} className="flex-shrink-0 flex items-center gap-2">
-              <div className=" p-1.5 rounded-lg">
-                <Pill className="h-6 w-6 text-white" />
-              </div>
-              <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight">MediTrack</span>
+              <img src="./src/public/logo.png" className='h-10' alt="" />
+              <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight">Medi<span className='dark:text-white text-emerald-600'>Track</span></span>
             </Link>
             <div className="hidden md:ml-8 md:flex md:space-x-8">
               {navLinks.map((link) => (
