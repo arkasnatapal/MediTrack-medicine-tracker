@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   UserPlus,
@@ -12,6 +12,9 @@ import {
   MessageCircle,
   Sparkles,
   Pencil,
+  Heart,
+  Shield,
+  Zap
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
@@ -219,12 +222,12 @@ const Family = () => {
 
   if (loading) {
     return (
-      <div className="relative min-h-screen w-full bg-gray-50 dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500">
+      <div className="relative min-h-screen w-full bg-[#F8FAFC] dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500">
         <div className="flex items-center justify-center h-screen">
           <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
-            <p className="text-slate-600 dark:text-slate-400 font-medium">
-              Loading family...
+            <div className="animate-spin h-12 w-12 border-4 border-slate-500 border-t-transparent rounded-full"></div>
+            <p className="text-slate-600 dark:text-slate-400 font-medium tracking-wide">
+              Connecting...
             </p>
           </div>
         </div>
@@ -247,112 +250,113 @@ const Family = () => {
     : [];
 
   return (
-    <div className="relative min-h-screen w-full bg-gray-50 dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500">
-      {/* Ambient Background Effects */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-purple-500/20 blur-[120px] mix-blend-screen dark:mix-blend-overlay" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[120px] mix-blend-screen dark:mix-blend-overlay" />
-      </div>
+    <div className="relative min-h-screen w-full bg-[#F8FAFC] dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500 font-sans">
+      {/* Subtle Ambient Background - Reduced Color */}
+      {/* <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-slate-200/40 dark:bg-slate-800/20 blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-slate-200/40 dark:bg-slate-800/20 blur-[120px]" />
+      </div> */}
 
-      <div className="relative z-10 p-6 md:p-8 lg:p-10 h-screen overflow-y-auto scrollbar-hide">
+      <div className="relative z-10 p-6 md:p-10 h-screen overflow-y-auto custom-scrollbar">
         <motion.div
-          className="max-w-7xl mx-auto space-y-8 pb-10"
+          className="max-w-7xl mx-auto space-y-12 pb-10"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          {/* Header */}
+          {/* Minimalist Header */}
           <motion.div
             variants={itemVariants}
-            className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+            className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-slate-200/50 dark:border-slate-800/50 pb-8"
           >
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 flex items-center gap-3">
-                <Users className="h-8 w-8 text-emerald-500" />
-                My Family
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-widest mb-4"
+              >
+                <Shield className="w-3 h-3" />
+                Family Circle
+              </motion.div>
+              <h1 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-none mb-4">
+                Connected<span className="text-emerald-500 dark:text-emerald-600">.</span>
               </h1>
-              <p className="text-slate-500 dark:text-slate-400 mt-1 text-lg">
-                Manage your family connections and invitations
+              <p className="text-slate-500 dark:text-slate-400 text-lg max-w-lg font-medium leading-relaxed">
+                Your health network. Manage permissions, share updates, and care for your loved ones in one secure space.
               </p>
             </div>
-            <button
+            
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setShowInviteModal(true)}
-              className="group relative px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg transition-all duration-300 flex items-center gap-2 overflow-hidden"
+              className="group relative px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center gap-3 overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
-              <UserPlus className="h-5 w-5" />
-              <span>Invite Member</span>
-            </button>
+              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <UserPlus className="h-5 w-5 relative z-10" />
+              <span className="relative z-10 text-white dark:text-black">Invite Member</span>
+            </motion.button>
           </motion.div>
 
-          {/* Stats */}
-          {activeConnections.length > 0 && (
-            <motion.div
-              variants={itemVariants}
-              className="flex items-center gap-2 px-2"
-            >
-              <Sparkles className="h-5 w-5 text-emerald-500" />
-              <p className="text-slate-600 dark:text-slate-400 font-medium">
-                {activeConnections.length} family{" "}
-                {activeConnections.length === 1 ? "member" : "members"}
-              </p>
-            </motion.div>
-          )}
-
-          {/* Invitations For Me */}
+          {/* Invitations Section - Clean Ticket Style */}
           {invitations.length > 0 && (
-            <motion.div variants={itemVariants} className="space-y-4">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Mail className="h-5 w-5 text-emerald-500" />
-                Invitations For You
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <motion.div variants={itemVariants} className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pending Invites</span>
+                <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {invitations.map((invite) => {
                   if (!invite.inviter) return null;
                   return (
                     <motion.div
                       key={invite._id}
                       whileHover={{ y: -4 }}
-                      className="p-6 rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl"
+                      className="relative group overflow-hidden"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-emerald-500/20">
-                            <UserAvatar
-                              user={invite.inviter}
-                              className="h-full w-full"
-                              fallbackType="initial"
-                            />
+                      <div className="relative p-1 rounded-3xl bg-slate-200 dark:bg-slate-800 transition-colors group-hover:bg-slate-300 dark:group-hover:bg-slate-700">
+                        <div className="bg-white dark:bg-slate-950 rounded-[1.3rem] p-6 relative overflow-hidden">
+                          {/* Ticket Perforation Effect */}
+                          <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#F8FAFC] dark:bg-[#0B0F17] rounded-full" />
+                          <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#F8FAFC] dark:bg-[#0B0F17] rounded-full" />
+                          
+                          <div className="flex items-center justify-between pl-4">
+                            <div className="flex items-center gap-5">
+                              <div className="relative">
+                                <div className="w-16 h-16 rounded-2xl overflow-hidden ring-4 ring-slate-50 dark:ring-slate-900 shadow-lg">
+                                  <UserAvatar user={invite.inviter} className="h-full w-full" />
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-lg shadow-md">
+                                  <Mail className="w-3 h-3" />
+                                </div>
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                                  {invite.inviter.name || invite.inviter.email}
+                                </h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                  wants to add you as <span className="text-slate-900 dark:text-white font-bold">{invite.relationshipFromInviter || "Family"}</span>
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-3 pr-4">
+                              <button
+                                onClick={() => handleAccept(invite._id)}
+                                className="w-12 h-12 rounded-2xl bg-slate-100 hover:bg-emerald-500 dark:bg-slate-800 text-slate-600 hover:text-white dark:text-slate-400 flex items-center justify-center transition-all duration-300"
+                              >
+                                <Check className="h-5 w-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDecline(invite._id)}
+                                className="w-12 h-12 rounded-2xl bg-slate-100 hover:bg-red-500 dark:bg-slate-800 text-slate-600 hover:text-white dark:text-slate-400 flex items-center justify-center transition-all duration-300"
+                              >
+                                <X className="h-5 w-5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-slate-900 dark:text-white font-semibold">
-                              {invite.inviter.name || invite.inviter.email}
-                            </p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                              invited you to join their family
-                            </p>
-                            {invite.relationshipFromInviter && (
-                              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-                                Relationship: {invite.relationshipFromInviter}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAccept(invite._id)}
-                            className="p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-all duration-200 hover:scale-110"
-                            title="Accept"
-                          >
-                            <Check className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDecline(invite._id)}
-                            className="p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-all duration-200 hover:scale-110"
-                            title="Decline"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
                         </div>
                       </div>
                     </motion.div>
@@ -362,180 +366,124 @@ const Family = () => {
             </motion.div>
           )}
 
-          {/* Active Connections */}
-          <motion.div variants={itemVariants} className="space-y-4">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Users className="h-5 w-5 text-emerald-500" />
-              Family Members
-            </h2>
+          {/* Main Grid */}
+          <motion.div variants={itemVariants} className="space-y-8">
             {activeConnections.length === 0 ? (
-              <div className="text-center py-16 rounded-3xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm border border-dashed border-slate-300 dark:border-slate-700">
-                <Users className="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                <p className="text-slate-500 dark:text-slate-400 text-lg font-medium mb-2">
-                  No family members yet
+              <div className="py-20 text-center">
+                <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Users className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Your circle is empty</h3>
+                <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-8">
+                  Start building your health network by inviting family members to join.
                 </p>
                 <button
                   onClick={() => setShowInviteModal(true)}
-                  className="mt-4 px-6 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-medium transition-colors inline-flex items-center gap-2"
+                  className="px-8 py-3 rounded-full border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold hover:border-emerald-500 hover:text-emerald-500 transition-colors"
                 >
-                  <UserPlus className="h-4 w-4" />
-                  Invite Your First Member
+                  Send First Invite
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {activeConnections.map((connection) => {
                   const isInviter = connection.inviter?._id === user?._id;
-                  const otherUser = isInviter
-                    ? connection.invitee
-                    : connection.inviter;
-
+                  const otherUser = isInviter ? connection.invitee : connection.inviter;
                   if (!otherUser) return null;
 
-                  const relationship = isInviter
-                    ? connection.relationshipFromInviter
-                    : connection.relationshipFromInvitee;
-                  const isOnline =
-                    otherUser.lastActive &&
-                    new Date() - new Date(otherUser.lastActive) < 5 * 60 * 1000;
+                  const relationship = isInviter ? connection.relationshipFromInviter : connection.relationshipFromInvitee;
+                  const isOnline = otherUser.lastActive && new Date() - new Date(otherUser.lastActive) < 5 * 60 * 1000;
 
                   return (
                     <motion.div
                       key={connection._id}
-                      whileHover={{ y: -8, scale: 1.02 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 20,
-                      }}
-                      className="group relative cursor-pointer"
-                      onClick={() =>
-                        navigate(`/family/member/${otherUser._id}`)
-                      }
+                      whileHover={{ y: -10 }}
+                      className="group relative"
+                      onClick={() => navigate(`/family/member/${otherUser._id}`)}
                     >
-                      {/* Glowing Border Effect */}
-                      <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-3xl opacity-0 group-hover:opacity-20 blur transition duration-500" />
-
-                      {/* Card Container */}
-                      <div className="relative h-full p-6 rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl overflow-hidden">
-                        {/* Decorative Background */}
-                        <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity duration-500">
-                          <Users className="w-full h-full transform rotate-12" />
-                        </div>
-
-                        
-                        <div className="relative z-10 flex items-center gap-4 mb-4">
-                          <div className="relative h-16 w-16 rounded-full border-4 border-emerald-500/20 shadow-lg">
-                            <UserAvatar
-                              user={otherUser}
-                              className="h-full w-full rounded-full"
-                              fallbackType="initial"
-                            />
-                            
+                      <div className="absolute inset-0 bg-white/60 dark:bg-slate-800/60 rounded-[2.5rem] backdrop-blur-xl border border-white/40 dark:border-slate-700/40 shadow-xl transition-all duration-500 group-hover:shadow-2xl" />
+                      
+                      <div className="relative p-8 flex flex-col h-full">
+                        <div className="flex justify-between items-start mb-6">
+                          <div className="relative">
+                            <div className="w-20 h-20 rounded-[2rem] overflow-hidden shadow-lg ring-4 ring-white/50 dark:ring-slate-800/50 group-hover:scale-105 transition-transform duration-500">
+                              <UserAvatar user={otherUser} className="h-full w-full" />
+                            </div>
                             {isOnline && (
-                              <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+                              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white dark:border-slate-900 rounded-full" />
                             )}
-                          
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-slate-900 dark:text-white text-lg line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                              {otherUser.name || otherUser.email}
-                            </h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">
-                              {otherUser.email}
-                            </p>
-                            {editingId === otherUser._id ? (
-                              <div
-                                className="flex items-center gap-2 mt-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <input
-                                  type="text"
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  className="text-xs px-2 py-1 rounded-lg border border-emerald-500/30 bg-white/50 dark:bg-black/20 focus:outline-none focus:border-emerald-500 w-24 text-slate-900 dark:text-white"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter")
-                                      handleSaveEdit(otherUser._id);
-                                    if (e.key === "Escape") setEditingId(null);
-                                  }}
-                                />
-                                <button
-                                  onClick={() => handleSaveEdit(otherUser._id)}
-                                  className="p-1 rounded-full hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600 transition-colors"
-                                >
-                                  <Check className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => setEditingId(null)}
-                                  className="p-1 rounded-full hover:bg-red-500/10 text-red-500 hover:text-red-600 transition-colors"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 group/edit mt-1">
-                                {relationship ? (
-                                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                                    {relationship}
-                                  </p>
-                                ) : (
-                                  <p className="text-xs text-slate-400 italic">
-                                    No relationship set
-                                  </p>
-                                )}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartEdit(
-                                      otherUser._id,
-                                      relationship || ""
-                                    );
-                                  }}
-                                  className="opacity-0 group-hover/edit:opacity-100 transition-all duration-200 text-slate-400 hover:text-emerald-500 hover:scale-110 p-1"
-                                  title="Edit Relationship"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                              </div>
-                            )}
+                          
+                          <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-4 group-hover:translate-x-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/family/chat/${otherUser._id}`);
+                              }}
+                              className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-lg hover:scale-110 transition-transform relative"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                              {unreadCounts[otherUser._id] > 0 && (
+                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-slate-900" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({ connectionId: connection._id, memberName: otherUser.name || otherUser.email });
+                              }}
+                              className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 text-red-500 flex items-center justify-center shadow-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="relative z-10 flex gap-2 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/family/chat/${otherUser._id}`);
-                            }}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold transition-all duration-200 hover:scale-105 relative"
-                            title="Chat"
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                            <span className="text-sm">Chat</span>
-                            {unreadCounts[otherUser._id] > 0 && (
-                              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-slate-900">
-                                {unreadCounts[otherUser._id] > 9
-                                  ? "9+"
-                                  : unreadCounts[otherUser._id]}
-                              </span>
-                            )}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteConfirm({
-                                connectionId: connection._id,
-                                memberName: otherUser.name || otherUser.email,
-                              });
-                            }}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-semibold transition-all duration-200 hover:scale-105"
-                            title="Remove"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                        <div className="mb-auto">
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            {otherUser.name || "Family Member"}
+                          </h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-4 truncate">
+                            {otherUser.email}
+                          </p>
+                          
+                          {editingId === otherUser._id ? (
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                className="w-full bg-white/50 dark:bg-black/20 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1 text-sm focus:outline-none focus:border-emerald-500"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveEdit(otherUser._id);
+                                  if (e.key === "Escape") setEditingId(null);
+                                }}
+                              />
+                              <button onClick={() => handleSaveEdit(otherUser._id)} className="text-emerald-500"><Check className="w-4 h-4" /></button>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/50 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider group/edit">
+                              {relationship || "No Label"}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartEdit(otherUser._id, relationship || "");
+                                }}
+                                className="opacity-0 group-hover/edit:opacity-100 text-slate-400 hover:text-emerald-500 transition-colors"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
+                          <span className="flex items-center gap-1">
+                            <Zap className="w-3 h-3 text-amber-500" />
+                            Activity
+                          </span>
+                          <span>View Profile →</span>
                         </div>
                       </div>
                     </motion.div>
@@ -545,49 +493,29 @@ const Family = () => {
             )}
           </motion.div>
 
-          {/* Pending Sent Invitations */}
+          {/* Pending Sent */}
           {pendingSent.length > 0 && (
-            <motion.div variants={itemVariants} className="space-y-4">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Send className="h-5 w-5 text-emerald-500" />
-                Pending Sent Invitations
-              </h2>
+            <motion.div variants={itemVariants} className="pt-10 border-t border-slate-200/50 dark:border-slate-800/50">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Pending Outgoing Invites</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {pendingSent.map((invite) => (
-                  <motion.div
-                    key={invite._id}
-                    whileHover={{ y: -4 }}
-                    className="p-6 rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border-2 border-slate-200 dark:border-slate-700">
-                          <Mail className="h-6 w-6 text-slate-500 dark:text-slate-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-slate-900 dark:text-white line-clamp-1">
-                            {invite.inviteeEmail}
-                          </h3>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">
-                            Status:{" "}
-                            {invite.status?.replace("_", " ") || "Pending"}
-                          </p>
-                        </div>
+                  <div key={invite._id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                        <Mail className="w-4 h-4 text-slate-500" />
                       </div>
-                      <button
-                        onClick={() =>
-                          setCancelInviteConfirm({
-                            id: invite._id,
-                            email: invite.inviteeEmail,
-                          })
-                        }
-                        className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-all duration-200 hover:scale-110"
-                        title="Cancel Invitation"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">{invite.inviteeEmail}</p>
+                        <p className="text-xs text-slate-500">Waiting for response...</p>
+                      </div>
                     </div>
-                  </motion.div>
+                    <button
+                      onClick={() => setCancelInviteConfirm({ id: invite._id, email: invite.inviteeEmail })}
+                      className="text-xs font-bold text-red-500 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 ))}
               </div>
             </motion.div>
@@ -596,115 +524,101 @@ const Family = () => {
       </div>
 
       {/* Invite Modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl max-w-md w-full p-8 shadow-2xl border border-white/20 dark:border-slate-800"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Invite Family Member
-              </h2>
-              <button
-                onClick={() => setShowInviteModal(false)}
-                className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <form onSubmit={handleInviteSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={inviteData.email}
-                  onChange={(e) =>
-                    setInviteData({ ...inviteData, email: e.target.value })
-                  }
-                  className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                  placeholder="their.email@example.com"
-                />
+      <AnimatePresence>
+        {showInviteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowInviteModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white dark:bg-slate-900 rounded-[2.5rem] max-w-md w-full p-8 shadow-2xl overflow-hidden"
+            >
+              {/* Subtle Header Accent */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-slate-200 dark:bg-slate-800" />
+              
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Invite Member</h2>
+                <button onClick={() => setShowInviteModal(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={inviteData.name}
-                  onChange={(e) =>
-                    setInviteData({ ...inviteData, name: e.target.value })
-                  }
-                  className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                  placeholder="e.g. Mom"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Relationship *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={inviteData.relationship}
-                  onChange={(e) =>
-                    setInviteData({
-                      ...inviteData,
-                      relationship: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                  placeholder="e.g. Mother"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={inviteLoading}
-                className="w-full px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {inviteLoading ? (
-                  <>
-                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-5 w-5" />
-                    Send Invitation
-                  </>
-                )}
-              </button>
-            </form>
-          </motion.div>
-        </div>
-      )}
 
-      {/* Delete Family Member Confirmation */}
+              <form onSubmit={handleInviteSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={inviteData.email}
+                    onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                    className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
+                    placeholder="name@example.com"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Name (Opt)</label>
+                    <input
+                      type="text"
+                      value={inviteData.name}
+                      onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
+                      placeholder="e.g. Mom"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Relation</label>
+                    <input
+                      type="text"
+                      required
+                      value={inviteData.relationship}
+                      onChange={(e) => setInviteData({ ...inviteData, relationship: e.target.value })}
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
+                      placeholder="e.g. Mother"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={inviteLoading}
+                  className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {inviteLoading ? "Sending..." : "Send Invitation"}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <ConfirmDialog
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
         onConfirm={handleRemove}
-        title="Remove Family Member?"
-        message={`Are you sure you want to remove ${deleteConfirm?.memberName} from your family? This action cannot be undone.`}
+        title="Remove Member"
+        message={`Are you sure you want to remove ${deleteConfirm?.memberName}?`}
         confirmText="Remove"
         cancelText="Cancel"
         variant="danger"
       />
 
-      {/* Cancel Invitation Confirmation */}
       <ConfirmDialog
         isOpen={!!cancelInviteConfirm}
         onClose={() => setCancelInviteConfirm(null)}
         onConfirm={handleCancelInvitation}
-        title="Cancel Invitation?"
-        message={`Are you sure you want to cancel the invitation sent to ${cancelInviteConfirm?.email}?`}
+        title="Cancel Invite"
+        message={`Cancel invitation to ${cancelInviteConfirm?.email}?`}
         confirmText="Yes, Cancel"
-        cancelText="No, Keep It"
+        cancelText="No"
         variant="warning"
       />
     </div>

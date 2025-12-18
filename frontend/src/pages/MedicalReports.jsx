@@ -166,7 +166,7 @@ const MedicalReports = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-teal-50 to-emerald-50 opacity-0 group-hover:opacity-100 transition-opacity" />
               <Plus className="w-5 h-5 relative z-10" />
-              <span className="relative z-10">Upload Report</span>
+              <span className="relative z-10 dark:text-black">Upload Report</span>
             </motion.button>
           </div>
         </div>
@@ -274,7 +274,7 @@ const MedicalReports = () => {
                     )}
                     
                     <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-slate-700 flex items-center justify-center group-hover:bg-teal-500 group-hover:text-white transition-all transform group-hover:translate-x-1">
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4 dark:text-white" />
                     </div>
                   </div>
                 </div>

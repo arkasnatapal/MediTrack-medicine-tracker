@@ -5,7 +5,10 @@ import OCRUploader from "../components/OCRUploader";
 import { useMedicine } from "../context/MedicineContext";
 
 import Footer from "../components/Footer"
-import { Save, Loader2, ArrowLeft, Check, Upload, Calendar, Clock, Pill, FileText, AlertCircle } from "lucide-react";
+import { 
+  Save, Loader2, ArrowLeft, Check, Upload, Calendar, Clock, 
+  Pill, FileText, AlertCircle, Sparkles, Bot, ChevronRight 
+} from "lucide-react";
 
 const monthNamesMap = {
   jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
@@ -118,378 +121,403 @@ const AddMedicine = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-gray-50 dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500">
-      {/* Ambient Background Effects */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-purple-500/20 blur-[120px] mix-blend-screen dark:mix-blend-overlay" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[120px] mix-blend-screen dark:mix-blend-overlay" />
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F17] p-6 lg:p-10 font-sans">
+      <div className="max-w-7xl mx-auto space-y-10">
+        
+        {/* Creative Header Section */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-900 dark:to-emerald-900 p-10 shadow-2xl">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <motion.button 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                onClick={() => navigate("/dashboard")}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/10 text-white/90 text-xs font-medium mb-3 hover:bg-white/30 transition-colors"
+              >
+                <ArrowLeft className="w-3 h-3" />
+                <span>Back to Dashboard</span>
+              </motion.button>
+              <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-2">
+                Add Medicine
+              </h1>
+              <p className="text-teal-50 text-lg max-w-xl leading-relaxed">
+                Enter details manually or scan the label for quick entry using our AI-powered OCR.
+              </p>
+            </div>
+            
+            <div className="hidden md:block">
+              <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                <Pill className="w-10 h-10 text-white" />
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <div className="relative z-10 p-6 md:p-8 lg:p-10 h-screen overflow-y-auto scrollbar-hide">
         <motion.div 
-          className="max-w-7xl mx-auto space-y-8 pb-10"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         >
-          {/* Header */}
-          <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <button
-                onClick={() => navigate(-1)}
-                className="flex items-center text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 mb-2 transition-colors group"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1 group-hover:-translate-x-1 transition-transform" />
-                Back to Dashboard
-              </button>
-              <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
-                Add New Medicine
-              </h1>
-              <p className="text-slate-500 dark:text-slate-400 mt-1 text-lg">
-                Enter details manually or scan the label for quick entry.
-              </p>
-            </div>
-          </motion.div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - OCR */}
-            <motion.div variants={itemVariants} className="lg:col-span-1 space-y-6">
-              <div className="p-6 rounded-3xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                  <Upload className="h-5 w-5 text-emerald-500" />
-                  Scan Label
-                </h3>
+          {/* Left Column - OCR */}
+          <motion.div variants={itemVariants} className="lg:col-span-1 space-y-6">
+            <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden relative group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-teal-500/5 to-emerald-500/5 rounded-bl-[4rem] transition-all group-hover:scale-110" />
+              
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 relative z-10">
+                <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                  <Upload className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                </div>
+                Scan Label
+              </h3>
+              
+              <div className="relative z-10">
                 <OCRUploader onScanComplete={handleScanComplete} />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  Upload a clear image of the medicine packaging to automatically extract details like name, expiry, and dosage.
-                </p>
+                <div className="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30 flex gap-3">
+                  <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                    Upload a clear image of the medicine packaging to automatically extract details like name, expiry, and dosage.
+                  </p>
+                </div>
               </div>
+            </div>
 
-              {aiData && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="p-6 rounded-3xl bg-emerald-50/80 dark:bg-emerald-900/20 backdrop-blur-xl border border-emerald-100 dark:border-emerald-800 shadow-lg"
-                >
+            {aiData && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 shadow-lg border border-emerald-100 dark:border-emerald-900/30 overflow-hidden relative"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-900/10 dark:to-teal-900/10" />
+                
+                <div className="relative z-10">
                   <h4 className="font-bold text-emerald-800 dark:text-emerald-400 mb-4 flex items-center gap-2">
-                    <Check className="h-5 w-5" /> Scanned Details
+                    <Bot className="h-5 w-5" /> Scanned Details
                   </h4>
-                  <div className="space-y-3 mb-6 text-sm text-slate-700 dark:text-slate-300">
-                    <div className="grid grid-cols-2 gap-2">
-                      <span className="font-medium text-slate-500 dark:text-slate-400">Name:</span>
-                      <span className="font-semibold">{aiData.name || "—"}</span>
+                  <div className="space-y-3 mb-6">
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-white/60 dark:bg-slate-900/60 border border-emerald-100 dark:border-emerald-900/30">
+                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">{aiData.name || "—"}</span>
                     </div>
                     {aiData.expiry && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <span className="font-medium text-slate-500 dark:text-slate-400">Expiry:</span>
-                        <span>{aiData.expiry}</span>
+                      <div className="flex justify-between items-center p-3 rounded-xl bg-white/60 dark:bg-slate-900/60 border border-emerald-100 dark:border-emerald-900/30">
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Expiry</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{aiData.expiry}</span>
                       </div>
                     )}
                     {aiData.dosage && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <span className="font-medium text-slate-500 dark:text-slate-400">Dosage:</span>
-                        <span>{aiData.dosage}</span>
+                      <div className="flex justify-between items-center p-3 rounded-xl bg-white/60 dark:bg-slate-900/60 border border-emerald-100 dark:border-emerald-900/30">
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Dosage</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{aiData.dosage}</span>
                       </div>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={applyAiData}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                   >
+                    <Sparkles className="w-4 h-4" />
                     Auto-Fill Form
                   </button>
-                </motion.div>
-              )}
-            </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
 
-            {/* Right Column - Form */}
-            <motion.div variants={itemVariants} className="lg:col-span-2">
-              <div className="p-6 md:p-8 rounded-3xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl">
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  {/* Basic Info Section */}
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
-                      <Pill className="h-5 w-5 text-blue-500" />
-                      Basic Information
-                    </h3>
-                    
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Medicine Name <span className="text-red-500">*</span>
-                      </label>
+          {/* Right Column - Form */}
+          <motion.div variants={itemVariants} className="lg:col-span-2">
+            <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-sm border border-gray-100 dark:border-slate-700 relative overflow-hidden">
+              <form onSubmit={handleSubmit} className="space-y-10 relative z-10">
+                
+                {/* Basic Info Section */}
+                <div className="space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-slate-700/50">
+                    <Pill className="h-4 w-4 text-teal-500" />
+                    Basic Information
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="name" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
+                      Medicine Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      required
+                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                      placeholder="e.g. Paracetamol"
+                      value={formData.name}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="form" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Form</label>
                       <input
                         type="text"
-                        id="name"
-                        name="name"
-                        required
-                        className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:text-white"
-                        placeholder="e.g. Paracetamol"
-                        value={formData.name}
+                        id="form"
+                        name="form"
+                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                        placeholder="e.g. Tablet"
+                        value={formData.form}
                         onChange={handleChange}
                       />
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label htmlFor="form" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Form</label>
-                        <input
-                          type="text"
-                          id="form"
-                          name="form"
-                          className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:text-white"
-                          placeholder="e.g. Tablet"
-                          value={formData.form}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="quantity" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Quantity</label>
-                        <input
-                          type="number"
-                          id="quantity"
-                          name="quantity"
-                          className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:text-white"
-                          placeholder="1"
-                          value={formData.quantity}
-                          onChange={handleChange}
-                          min="1"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Dates Section */}
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
-                      <Calendar className="h-5 w-5 text-orange-500" />
-                      Important Dates
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label htmlFor="expiryDate" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                          Expiry Date <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          id="expiryDate"
-                          name="expiryDate"
-                          required
-                          className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all dark:text-white dark:[color-scheme:dark]"
-                          value={formData.expiryDate}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="mfgDate" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Manufacturing Date</label>
-                        <input
-                          type="date"
-                          id="mfgDate"
-                          name="mfgDate"
-                          className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all dark:text-white dark:[color-scheme:dark]"
-                          value={formData.mfgDate}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Additional Details */}
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
-                      <FileText className="h-5 w-5 text-purple-500" />
-                      Additional Details
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label htmlFor="batchNo" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Batch No</label>
-                        <input
-                          type="text"
-                          id="batchNo"
-                          name="batchNo"
-                          className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:text-white"
-                          placeholder="e.g. BNO1234"
-                          value={formData.batchNo}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="dosage" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Dosage</label>
-                        <input
-                          type="text"
-                          id="dosage"
-                          name="dosage"
-                          className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:text-white"
-                          placeholder="e.g. 500 mg"
-                          value={formData.dosage}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-                      <textarea
-                        id="description"
-                        name="description"
-                        rows={3}
-                        className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:text-white resize-none"
-                        placeholder="Additional notes..."
-                        value={formData.description}
-                        onChange={handleChange}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Reminder Settings */}
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
-                      <Clock className="h-5 w-5 text-red-500" />
-                      Reminders
-                    </h3>
-                    
-                    <label className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <div className="space-y-2">
+                      <label htmlFor="quantity" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Quantity</label>
                       <input
-                        type="checkbox"
-                        className="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                        checked={reminderEnabled}
-                        onChange={(e) => setReminderEnabled(e.target.checked)}
+                        type="number"
+                        id="quantity"
+                        name="quantity"
+                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                        placeholder="1"
+                        value={formData.quantity}
+                        onChange={handleChange}
+                        min="1"
                       />
-                      <span className="font-medium text-slate-700 dark:text-slate-300">Enable reminders for this medicine</span>
-                    </label>
+                    </div>
+                  </div>
+                </div>
 
-                    {reminderEnabled && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        className="space-y-6 pl-2"
-                      >
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Times per day</label>
-                          <div className="flex flex-wrap gap-3">
-                            {reminderTimes.map((t, idx) => (
-                              <div key={idx} className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                                <input
-                                  type="time"
-                                  className="bg-transparent border-none focus:ring-0 text-sm font-medium dark:text-white dark:[color-scheme:dark]"
-                                  value={t}
-                                  onChange={(e) => {
-                                    const copy = [...reminderTimes];
-                                    copy[idx] = e.target.value; 
-                                    setReminderTimes(copy);
-                                  }}
-                                />
-                                {reminderTimes.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setReminderTimes((prev) => prev.filter((_, i) => i !== idx))}
-                                    className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded-md transition-colors"
-                                  >
-                                    <span className="sr-only">Remove</span>
-                                    ×
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            {reminderTimes.length < 4 && (
-                              <button
-                                type="button"
-                                className="px-3 py-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
-                                onClick={() => setReminderTimes((prev) => [...prev, "09:00"])}
-                              >
-                                + Add time
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                {/* Dates Section */}
+                <div className="space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-slate-700/50">
+                    <Calendar className="h-4 w-4 text-orange-500" />
+                    Important Dates
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="expiryDate" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
+                        Expiry Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        id="expiryDate"
+                        name="expiryDate"
+                        required
+                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white transition-all outline-none font-medium"
+                        style={{ colorScheme: 'dark' }}
+                        value={formData.expiryDate}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="mfgDate" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Manufacturing Date</label>
+                      <input
+                        type="date"
+                        id="mfgDate"
+                        name="mfgDate"
+                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white transition-all outline-none font-medium"
+                        style={{ colorScheme: 'dark' }}
+                        value={formData.mfgDate}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Start date</label>
-                            <input
-                              type="date"
-                              className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all dark:text-white dark:[color-scheme:dark]"
-                              value={reminderStartDate}
-                              onChange={(e) => setReminderStartDate(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">End date (optional)</label>
-                            <input
-                              type="date"
-                              className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all dark:text-white dark:[color-scheme:dark]"
-                              value={reminderEndDate}
-                              onChange={(e) => setReminderEndDate(e.target.value)}
-                            />
-                          </div>
-                        </div>
+                {/* Additional Details */}
+                <div className="space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-slate-700/50">
+                    <FileText className="h-4 w-4 text-purple-500" />
+                    Additional Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="batchNo" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Batch No</label>
+                      <input
+                        type="text"
+                        id="batchNo"
+                        name="batchNo"
+                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                        placeholder="e.g. BNO1234"
+                        value={formData.batchNo}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="dosage" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Dosage</label>
+                      <input
+                        type="text"
+                        id="dosage"
+                        name="dosage"
+                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                        placeholder="e.g. 500 mg"
+                        value={formData.dosage}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="description" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Description</label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      rows={3}
+                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium resize-none"
+                      placeholder="Additional notes..."
+                      value={formData.description}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Days of week</label>
-                          <div className="flex flex-wrap gap-2">
-                            {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day) => {
-                              const active = reminderDaysOfWeek.includes(day);
-                              return (
+                {/* Reminder Settings */}
+                <div className="space-y-6">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-slate-700/50">
+                    <Clock className="h-4 w-4 text-red-500" />
+                    Reminders
+                  </h3>
+                  
+                  <label className="flex items-center gap-4 p-5 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent cursor-pointer hover:border-teal-500/20 transition-all group">
+                    <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${reminderEnabled ? 'bg-teal-500 border-teal-500' : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800'}`}>
+                      {reminderEnabled && <Check className="w-4 h-4 text-white" />}
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="hidden"
+                      checked={reminderEnabled}
+                      onChange={(e) => setReminderEnabled(e.target.checked)}
+                    />
+                    <span className="font-bold text-gray-700 dark:text-gray-200 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">Enable reminders for this medicine</span>
+                  </label>
+
+                  {reminderEnabled && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="space-y-6 pl-2 border-l-2 border-gray-100 dark:border-slate-700 ml-3"
+                    >
+                      <div className="pl-6">
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 block">Times per day</label>
+                        <div className="flex flex-wrap gap-3">
+                          {reminderTimes.map((t, idx) => (
+                            <div key={idx} className="flex items-center gap-2 bg-white dark:bg-slate-800 pl-4 pr-2 py-2 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/10 transition-all">
+                              <input
+                                type="time"
+                                className="bg-transparent border-none focus:ring-0 text-sm font-bold text-gray-900 dark:text-white p-0"
+                                style={{ colorScheme: 'dark' }}
+                                value={t}
+                                onChange={(e) => {
+                                  const copy = [...reminderTimes];
+                                  copy[idx] = e.target.value; 
+                                  setReminderTimes(copy);
+                                }}
+                              />
+                              {reminderTimes.length > 1 && (
                                 <button
                                   type="button"
-                                  key={day}
-                                  onClick={() => setReminderDaysOfWeek((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day])}
-                                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                                    active
-                                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 scale-105"
-                                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500"
-                                  }`}
+                                  onClick={() => setReminderTimes((prev) => prev.filter((_, i) => i !== idx))}
+                                  className="text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"
                                 >
-                                  {day}
+                                  <span className="sr-only">Remove</span>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                 </button>
-                              );
-                            })}
-                          </div>
+                              )}
+                            </div>
+                          ))}
+                          {reminderTimes.length < 4 && (
+                            <button
+                              type="button"
+                              className="px-4 py-2 text-sm font-bold text-teal-600 bg-teal-50 dark:bg-teal-900/20 dark:text-teal-400 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors border border-dashed border-teal-200 dark:border-teal-800"
+                              onClick={() => setReminderTimes((prev) => [...prev, "09:00"])}
+                            >
+                              + Add time
+                            </button>
+                          )}
                         </div>
-                      </motion.div>
-                    )}
-                  </div>
+                      </div>
 
-                  {/* Actions */}
-                  <div className="flex justify-end gap-4 pt-6 border-t border-slate-200 dark:border-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => navigate("/medicines")}
-                      className="px-6 py-3 rounded-xl font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="group relative px-8 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 flex items-center gap-2 overflow-hidden disabled:opacity-70 disabled:hover:scale-100"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="animate-spin h-5 w-5" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-5 w-5" />
-                          <span>Save Medicine</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-                
-              </div>
-            </motion.div>
-            
-          </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Start date</label>
+                          <input
+                            type="date"
+                            className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white transition-all outline-none font-medium"
+                            style={{ colorScheme: 'dark' }}
+                            value={reminderStartDate}
+                            onChange={(e) => setReminderStartDate(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">End date (optional)</label>
+                          <input
+                            type="date"
+                            className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white transition-all outline-none font-medium"
+                            style={{ colorScheme: 'dark' }}
+                            value={reminderEndDate}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pl-6">
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 block">Days of week</label>
+                        <div className="flex flex-wrap gap-2">
+                          {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day) => {
+                            const active = reminderDaysOfWeek.includes(day);
+                            return (
+                              <button
+                                type="button"
+                                key={day}
+                                onClick={() => setReminderDaysOfWeek((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day])}
+                                className={`w-12 h-12 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                                  active
+                                    ? "bg-teal-500 text-white shadow-lg shadow-teal-500/30 scale-105"
+                                    : "bg-gray-50 dark:bg-slate-900/50 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800"
+                                }`}
+                              >
+                                {day.charAt(0)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-4 pt-8 border-t border-gray-100 dark:border-slate-700/50">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/medicines")}
+                    className="px-8 py-4 rounded-2xl font-bold text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700/50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="group relative px-10 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-emerald-500 opacity-0 group-hover:opacity-10 dark:group-hover:opacity-20 transition-opacity" />
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="animate-spin h-5 w-5" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-5 w-5" />
+                        <span className="dark:text-black text-white">Save Medicine</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+          
         </motion.div>
-        
       </div>
-                      
     </div>
-    
   );
 };
 

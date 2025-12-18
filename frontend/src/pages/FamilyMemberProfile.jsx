@@ -14,6 +14,9 @@ import {
   CheckCircle,
   Activity,
   TrendingUp,
+  Shield,
+  Zap,
+  Heart
 } from "lucide-react";
 import { getFamilyMemberDetails } from "../api/family";
 import Loader from "../components/Loader";
@@ -83,374 +86,217 @@ const FamilyMemberProfile = () => {
 
   if (loading) {
     return (
-      <div className="relative min-h-screen w-full bg-gray-50 dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500">
-        <div className="flex items-center justify-center h-screen">
-          <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
-            <p className="text-slate-600 dark:text-slate-400 font-medium">
-              Loading profile...
-            </p>
-          </div>
+      <div className="relative min-h-screen w-full bg-[#F8FAFC] dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+          <p className="text-slate-600 dark:text-slate-400 font-medium tracking-wide">Loading Profile...</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !member) {
     return (
-      <div className="relative min-h-screen w-full bg-gray-50 dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500">
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <AlertTriangle className="h-16 w-16 mx-auto text-red-500 mb-4" />
-            <p className="text-red-500 text-lg font-medium">{error}</p>
-          </div>
+      <div className="relative min-h-screen w-full bg-[#F8FAFC] dark:bg-[#0B0F17] overflow-hidden flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-16 w-16 mx-auto text-red-500 mb-4" />
+          <p className="text-slate-900 dark:text-white text-xl font-bold">{error || "Member not found"}</p>
+          <button onClick={() => navigate('/family')} className="mt-4 text-indigo-500 font-bold hover:underline">Return to Family</button>
         </div>
       </div>
     );
   }
 
-  if (!member) {
-    return (
-      <div className="relative min-h-screen w-full bg-gray-50 dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500">
-        <div className="flex items-center justify-center h-screen">
-          <p className="text-slate-500 dark:text-slate-400 text-lg">
-            Member not found
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const isOnline =
-    member.lastActive &&
-    new Date() - new Date(member.lastActive) < 5 * 60 * 1000;
+  const isOnline = member.lastActive && new Date() - new Date(member.lastActive) < 5 * 60 * 1000;
 
   return (
-    <div className="relative min-h-screen w-full bg-gray-50 dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500">
-      {/* Ambient Background Effects */}
+    <div className="relative min-h-screen w-full bg-[#F8FAFC] dark:bg-[#0B0F17] overflow-hidden transition-colors duration-500 font-sans">
+      {/* Ambient Background */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-purple-500/20 blur-[120px] mix-blend-screen dark:mix-blend-overlay" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[120px] mix-blend-screen dark:mix-blend-overlay" />
+        <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-500/5 blur-[100px] mix-blend-multiply dark:mix-blend-screen" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[100px] mix-blend-multiply dark:mix-blend-screen" />
       </div>
 
-      <div className="relative z-10 p-6 md:p-8 lg:p-10 h-screen overflow-y-auto scrollbar-hide">
+      <div className="relative z-10 p-6 md:p-10 h-screen overflow-y-auto custom-scrollbar">
         <motion.div
           className="max-w-7xl mx-auto space-y-8 pb-10"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          {/* Back Button */}
-          <motion.button
-            variants={itemVariants}
-            onClick={() => navigate("/family")}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all hover:scale-105 shadow-lg"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="font-medium">Back to Family</span>
-          </motion.button>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column: Profile Card */}
-            <motion.div
-              variants={itemVariants}
-              className="lg:col-span-1 space-y-6"
+          {/* Header & Nav */}
+          <motion.div variants={itemVariants} className="flex items-center justify-between">
+            <button
+              onClick={() => navigate("/family")}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 transition-all group"
             >
-              <div className="rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl p-8 flex flex-col items-center text-center">
-                <div className="relative mb-6">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500/20 shadow-lg">
-                    <UserAvatar
-                      user={member}
-                      className="h-full w-full text-5xl"
-                      fallbackType="initial"
-                    />
-                  </div>
-                  {isOnline && (
-                    <span className="absolute bottom-2 right-2 w-6 h-6 bg-emerald-500 border-4 border-white dark:border-slate-900 rounded-full"></span>
-                  )}
-                </div>
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+              <span className="font-bold text-sm">Back</span>
+            </button>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-widest">
+              <Shield className="w-3 h-3" />
+              Family Profile
+            </div>
+          </motion.div>
 
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                  {member.name}
-                </h1>
-                <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-                  {member.email}
-                </p>
-
-                <button
-                  onClick={() => navigate(`/family/chat/${userId}`)}
-                  className="w-full py-3 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 mb-6"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  Message
-                </button>
-
-                <div className="w-full space-y-4 text-left border-t border-slate-200/50 dark:border-slate-700/50 pt-6">
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                      <Clock className="h-5 w-5 text-emerald-500" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Column: Profile Card (4 cols) */}
+            <motion.div variants={itemVariants} className="lg:col-span-4 space-y-6">
+              <div className="relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+                {/* Cover Gradient */}
+                <div className="h-32 bg-gradient-to-br from-indigo-500 to-purple-600" />
+                
+                <div className="px-8 pb-8 -mt-16 flex flex-col items-center text-center relative z-10">
+                  <div className="relative mb-4">
+                    <div className="w-32 h-32 rounded-[2rem] overflow-hidden border-8 border-white dark:border-slate-900 shadow-xl">
+                      <UserAvatar user={member} className="h-full w-full text-5xl" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Last Active
-                      </p>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">
-                        {formatLastActive(member.lastActive)}
-                      </p>
-                    </div>
+                    {isOnline && (
+                      <div className="absolute bottom-2 -right-2 px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-full border-4 border-white dark:border-slate-900">
+                        Online
+                      </div>
+                    )}
                   </div>
 
-                  {member.location && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                        <MapPin className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                          Location
-                        </p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          {member.location}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-1">
+                    {member.name}
+                  </h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mb-6">
+                    {member.email}
+                  </p>
 
-                  {member.phoneNumber && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
-                      <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                        <Phone className="h-5 w-5 text-purple-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                          Phone
-                        </p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          {member.phoneNumber}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    onClick={() => navigate(`/family/chat/${userId}`)}
+                    className="w-full py-3.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    Send Message
+                  </button>
 
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                      <Calendar className="h-5 w-5 text-amber-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Member Since
-                      </p>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">
-                        {new Date(member.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
+                  <div className="w-full mt-8 space-y-4">
+                    <InfoRow icon={Clock} label="Last Active" value={formatLastActive(member.lastActive)} />
+                    {member.location && <InfoRow icon={MapPin} label="Location" value={member.location} />}
+                    {member.phoneNumber && <InfoRow icon={Phone} label="Phone" value={member.phoneNumber} />}
+                    <InfoRow icon={Calendar} label="Member Since" value={new Date(member.createdAt).toLocaleDateString()} />
                   </div>
-                </div>
 
-                {/* AI Consent Toggle */}
-                <div className="w-full border-t border-slate-200/50 dark:border-slate-700/50 pt-6 mt-6">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50 dark:bg-purple-900/10 border border-purple-200/50 dark:border-purple-800/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                        <Activity className="h-5 w-5 text-purple-500" />
+                  {/* AI Consent Toggle */}
+                  <div className="w-full mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                          <Zap className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">AI Actions</p>
+                          <p className="text-xs text-slate-500">Allow reminders</p>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          Allow AI Actions
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Let family use AI to set reminders for you
-                        </p>
-                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={member.allowAiActions || false}
+                          onChange={async (e) => {
+                            const newValue = e.target.checked;
+                            setMember((prev) => ({ ...prev, allowAiActions: newValue }));
+                            try {
+                              const { updateFamilyMember } = await import("../api/family");
+                              await updateFamilyMember(member._id, { allowAiActions: newValue });
+                              notify.success(newValue ? "AI actions enabled" : "AI actions disabled");
+                            } catch (err) {
+                              setMember((prev) => ({ ...prev, allowAiActions: !newValue }));
+                              notify.error("Failed to update consent");
+                            }
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                      </label>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={member.allowAiActions || false}
-                        onChange={async (e) => {
-                          const newValue = e.target.checked;
-                          // Optimistic update
-                          setMember((prev) => ({
-                            ...prev,
-                            allowAiActions: newValue,
-                          }));
-                          try {
-                            const { updateFamilyMember } = await import(
-                              "../api/family"
-                            );
-                            await updateFamilyMember(member._id, {
-                              allowAiActions: newValue,
-                            });
-                            notify.success(
-                              newValue
-                                ? "AI actions enabled"
-                                : "AI actions disabled"
-                            );
-                          } catch (err) {
-                            console.error("Failed to update consent:", err);
-                            setMember((prev) => ({
-                              ...prev,
-                              allowAiActions: !newValue,
-                            })); // Revert
-                            notify.error("Failed to update consent");
-                          }
-                        }}
-                      />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
-                    </label>
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            {/* Right Column: Medicine Inventory & Stats */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Stats Cards */}
-              <motion.div
-                variants={itemVariants}
-                className="grid grid-cols-3 gap-4"
-              >
-                <StatCard
-                  title="Total Medicines"
-                  value={stats?.totalMedicines || 0}
-                  icon={Pill}
-                  color="blue"
-                />
-                <StatCard
-                  title="Low Stock"
-                  value={stats?.lowStock || 0}
-                  icon={AlertTriangle}
-                  color="yellow"
-                  alert={stats?.lowStock > 0}
-                />
-                <StatCard
-                  title="Expired"
-                  value={stats?.expired || 0}
-                  icon={AlertTriangle}
-                  color="red"
-                  alert={stats?.expired > 0}
-                />
+            {/* Right Column: Stats & Inventory (8 cols) */}
+            <div className="lg:col-span-8 space-y-6">
+              {/* Stats Grid */}
+              <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard title="Medicines" value={stats?.totalMedicines || 0} icon={Pill} color="indigo" />
+                <StatCard title="Low Stock" value={stats?.lowStock || 0} icon={AlertTriangle} color="amber" alert={stats?.lowStock > 0} />
+                <StatCard title="Expired" value={stats?.expired || 0} icon={Activity} color="rose" alert={stats?.expired > 0} />
               </motion.div>
 
-              {/* Medicine List */}
-              <motion.div
-                variants={itemVariants}
-                className="rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl overflow-hidden"
-              >
-                <div className="p-6 border-b border-slate-200/50 dark:border-slate-700/50 flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-emerald-500" />
-                    Medicine Inventory
-                  </h2>
+              {/* Medicine Inventory */}
+              <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Medicine Inventory</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Track adherence and stock levels</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                    <Heart className="w-5 h-5" />
+                  </div>
                 </div>
 
-                <div className="divide-y divide-slate-200/50 dark:divide-slate-700/50">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {medicines.length === 0 ? (
-                    <div className="p-12 text-center">
-                      <Pill className="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                      <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">
-                        No medicines found for this user
-                      </p>
+                    <div className="p-16 text-center">
+                      <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Pill className="h-6 w-6 text-slate-400" />
+                      </div>
+                      <p className="text-slate-500 dark:text-slate-400 font-medium">No medicines found for this user</p>
                     </div>
                   ) : (
                     medicines.map((med, index) => (
                       <motion.div
                         key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         transition={{ delay: index * 0.05 }}
-                        className="p-5 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                        className="p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                          <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
                               <Pill className="h-6 w-6" />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-slate-900 dark:text-white">
-                                {med.name}
-                              </h3>
-                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <div>
+                              <h3 className="text-lg font-bold text-slate-900 dark:text-white">{med.name}</h3>
+                              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                                 {med.dosage} • {med.frequency}
                               </p>
-                              {med.reminders && med.reminders.length > 0 && (
-                                <div className="mt-3 grid gap-2">
-                                  {med.reminders.map((rem, idx) => {
-                                    const isDaily =
-                                      !rem.daysOfWeek ||
-                                      rem.daysOfWeek.length === 0 ||
-                                      rem.daysOfWeek.length === 7;
-
-                                    return (
-                                      <div
-                                        key={idx}
-                                        className="flex items-center justify-between p-2.5 rounded-xl "
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <div
-                                            className={`w-1.5 h-1.5 rounded-full ${
-                                              isDaily
-                                                ? "bg-emerald-500"
-                                                : "bg-blue-500"
-                                            }`}
-                                          />
-                                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                            {isDaily
-                                              ? "Every Day"
-                                              : rem.daysOfWeek.join(", ")}
-                                          </span>
-                                           <div className="flex gap-1.5 mr-2 flex-wrap justify-end">
-                                          {rem.times.map((time, t) => (
-                                            <span
-                                              key={t}
-                                              className="text-xs font-mono bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                                            >
-                                              {time}
-                                            </span>
-                                          ))}
-                                        </div>
-                                        </div>
-                                       
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-6">
+                          <div className="flex items-center gap-8">
                             <div className="text-right">
-                              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">
-                                Stock
-                              </p>
-                              <p
-                                className={`font-bold ${
-                                  med.currentStock <= 5
-                                    ? "text-red-500"
-                                    : "text-slate-900 dark:text-white"
-                                }`}
-                              >
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Stock</p>
+                              <p className={`font-bold ${med.currentStock <= 5 ? "text-amber-500" : "text-slate-900 dark:text-white"}`}>
                                 {med.currentStock} / {med.totalStock}
                               </p>
                             </div>
                             <div className="text-right hidden sm:block">
-                              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">
-                                Expiry
-                              </p>
-                              <p
-                                className={`font-bold ${
-                                  new Date(med.expiryDate) < new Date()
-                                    ? "text-red-500"
-                                    : "text-slate-900 dark:text-white"
-                                }`}
-                              >
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Expiry</p>
+                              <p className={`font-bold ${new Date(med.expiryDate) < new Date() ? "text-rose-500" : "text-slate-900 dark:text-white"}`}>
                                 {new Date(med.expiryDate).toLocaleDateString()}
                               </p>
                             </div>
                           </div>
                         </div>
+
+                        {med.reminders && med.reminders.length > 0 && (
+                          <div className="mt-4 pl-[4.5rem] flex flex-wrap gap-2">
+                            {med.reminders.map((rem, idx) => (
+                              <div key={idx} className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                <span>{(!rem.daysOfWeek || rem.daysOfWeek.length === 0 || rem.daysOfWeek.length === 7) ? "Daily" : rem.daysOfWeek.join(", ")}</span>
+                                <span className="text-slate-400">|</span>
+                                <span>{rem.times.join(", ")}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </motion.div>
                     ))
                   )}
@@ -464,46 +310,43 @@ const FamilyMemberProfile = () => {
   );
 };
 
-// Stylish Stat Card Component
-const StatCard = ({ title, value, icon: Icon, color, alert }) => {
-  const colorStyles = {
-    blue: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20",
-    yellow:
-      "text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-500/10 border-yellow-100 dark:border-yellow-500/20",
-    red: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20",
-  };
+const InfoRow = ({ icon: Icon, label, value }) => (
+  <div className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+    <div className="flex items-center gap-3">
+      <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+        <Icon className="w-4 h-4" />
+      </div>
+      <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</span>
+    </div>
+    <span className="text-sm font-bold text-slate-900 dark:text-white">{value}</span>
+  </div>
+);
 
-  const activeStyle = colorStyles[color] || colorStyles.blue;
+const StatCard = ({ title, value, icon: Icon, color, alert }) => {
+  const colors = {
+    indigo: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20",
+    amber: "text-amber-600 bg-amber-50 dark:bg-amber-900/20",
+    rose: "text-rose-600 bg-rose-50 dark:bg-rose-900/20",
+  };
+  
+  const activeColor = colors[color] || colors.indigo;
 
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      className="relative p-6 rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl overflow-hidden group"
-    >
-      <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
-        <Icon className={`h-24 w-24 ${activeStyle.split(" ")[0]}`} />
+    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden group">
+      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
+        <Icon className="w-24 h-24" />
       </div>
-
-      <div className="relative z-10">
-        <div
-          className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${activeStyle} shadow-sm`}
-        >
-          <Icon className="h-6 w-6" />
-        </div>
-
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-          {title}
-        </p>
-        <div className="flex items-baseline gap-2 mt-1">
-          <h3 className="text-3xl font-bold text-slate-900 dark:text-white">
-            {value}
-          </h3>
-          {alert && (
-            <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-          )}
-        </div>
+      
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${activeColor}`}>
+        <Icon className="w-6 h-6" />
       </div>
-    </motion.div>
+      
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</p>
+      <div className="flex items-center gap-2 mt-1">
+        <h3 className="text-3xl font-black text-slate-900 dark:text-white">{value}</h3>
+        {alert && <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />}
+      </div>
+    </div>
   );
 };
 
