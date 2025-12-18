@@ -14,7 +14,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
         className="absolute top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 dark:bg-white/5 border border-white/20 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/10 transition-all duration-300 group backdrop-blur-md"
       >
         <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-        <span className="font-medium">Back to Home</span>
+        <span className="font-medium hidden md:block">Back to Home</span>
       </Link>
 
       {/* Dynamic Background */}
@@ -22,27 +22,29 @@ const AuthLayout = ({ children, title, subtitle }) => {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-gray-50 to-gray-50 dark:from-emerald-900/20 dark:via-[#020617] dark:to-[#020617]" />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 dark:opacity-20 mix-blend-overlay" />
         
-        {/* Animated Orbs */}
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-40 -right-40 w-[800px] h-[800px] bg-emerald-500/10 rounded-full blur-[100px]"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute -bottom-40 -left-40 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[100px]"
-        />
+        {/* Animated Orbs - Hidden on mobile for performance */}
+        <div className="hidden md:block">
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-40 -right-40 w-[800px] h-[800px] bg-emerald-500/10 rounded-full blur-[100px]"
+          />
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            className="absolute -bottom-40 -left-40 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[100px]"
+          />
+        </div>
       </div>
 
-      {/* Floating Medical Icons */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Floating Medical Icons - Hidden on mobile for performance */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden md:block">
         {medicalIcons.map((Icon, i) => (
           <motion.div
             key={i}

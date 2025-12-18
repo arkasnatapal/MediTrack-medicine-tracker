@@ -109,7 +109,7 @@ const Signup = () => {
       <form className="space-y-4" onSubmit={handleSubmit}>
         {/* Name Field */}
         <div>
-          <label htmlFor="name" className="block text-sm font-bold text-slate-300 mb-2">
+          <label htmlFor="name" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
             Full Name
           </label>
           <div className="relative group">
@@ -122,7 +122,7 @@ const Signup = () => {
               type="text"
               autoComplete="name"
               required
-              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
               placeholder="John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -132,7 +132,7 @@ const Signup = () => {
 
         {/* Email Field */}
         <div>
-          <label htmlFor="email" className="block text-sm font-bold text-slate-300 mb-2">
+          <label htmlFor="email" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
             Email address
           </label>
           <div className="relative group">
@@ -145,7 +145,7 @@ const Signup = () => {
               type="email"
               autoComplete="email"
               required
-              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -155,7 +155,7 @@ const Signup = () => {
 
         {/* Password Field */}
         <div>
-          <label htmlFor="password" className="block text-sm font-bold text-slate-300 mb-2">
+          <label htmlFor="password" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
             Password
           </label>
           <div className="relative group">
@@ -167,7 +167,7 @@ const Signup = () => {
               name="password"
               type={showPassword ? "text" : "password"}
               required
-              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -204,7 +204,7 @@ const Signup = () => {
 
         {/* Confirm Password Field */}
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-bold text-slate-300 mb-2">
+          <label htmlFor="confirmPassword" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
             Confirm Password
           </label>
           <div className="relative group">
@@ -216,7 +216,7 @@ const Signup = () => {
               name="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
               required
-              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -281,7 +281,7 @@ const Signup = () => {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3.5 text-white font-bold hover:bg-white/10 transition-all duration-300 group"
+          className="w-full flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3.5 text-black dark:text-white font-bold hover:bg-white/10 transition-all duration-300 group"
         >
           <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
             <path

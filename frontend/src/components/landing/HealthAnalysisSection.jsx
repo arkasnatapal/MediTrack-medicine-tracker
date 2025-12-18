@@ -78,162 +78,134 @@ const HealthAnalysisSection = () => {
             </div>
           </div>
 
-          {/* Visual Content - Connected Pipeline */}
-          <div className="lg:w-1/2 relative w-full flex justify-center">
+          {/* Visual Content - Neural Stack */}
+          <div className="lg:w-1/2 relative w-full flex justify-center mt-12 lg:mt-0">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
-              className="relative w-full max-w-[500px] aspect-[4/5] bg-slate-900/50 backdrop-blur-xl rounded-[2.5rem] border border-white/10 p-8"
+              className="relative w-full max-w-[500px] flex flex-col items-center gap-8"
             >
-               {/* Background Grid */}
-               <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:2rem_2rem] -z-10 rounded-[2.5rem]" />
+               {/* Background Glow */}
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-teal-500/10 blur-[100px] rounded-full -z-10" />
 
-               {/* SVG Connections Layer */}
-               <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
-                  <defs>
-                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(20, 184, 166, 0.1)" />
-                      <stop offset="50%" stopColor="rgba(20, 184, 166, 0.5)" />
-                      <stop offset="100%" stopColor="rgba(20, 184, 166, 0.1)" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Paths from Inputs to Core */}
-                  {/* Left (Food) -> Center */}
-                  <motion.path 
-                    d="M 85 110 C 85 180, 250 180, 250 220" 
-                    fill="none" 
-                    stroke="url(#lineGradient)" 
-                    strokeWidth="2"
-                  />
-                  {/* Center (Meds) -> Center */}
-                  <motion.path 
-                    d="M 250 110 L 250 220" 
-                    fill="none" 
-                    stroke="url(#lineGradient)" 
-                    strokeWidth="2"
-                  />
-                  {/* Right (Vitals) -> Center */}
-                  <motion.path 
-                    d="M 415 110 C 415 180, 250 180, 250 220" 
-                    fill="none" 
-                    stroke="url(#lineGradient)" 
-                    strokeWidth="2"
-                  />
+               {/* Top Layer: Data Inputs */}
+               <div className="w-full grid grid-cols-3 gap-4">
+                 {[
+                   { icon: <Utensils size={20} />, label: "Food Logs", color: "from-orange-400 to-red-500" },
+                   { icon: <Pill size={20} />, label: "Meds", color: "from-blue-400 to-indigo-500" },
+                   { icon: <Activity size={20} />, label: "Vitals", color: "from-emerald-400 to-teal-500" },
+                 ].map((item, i) => (
+                   <motion.div
+                     key={i}
+                     initial={{ y: 0, opacity: 1 }}
+                     whileInView={{ 
+                       y: 0, 
+                       opacity: 1,
 
-                  {/* Path from Core to Output */}
-                  <motion.path 
-                    d="M 250 300 L 250 360" 
-                    fill="none" 
-                    stroke="url(#lineGradient)" 
-                    strokeWidth="2"
-                  />
-
-                  {/* Animated Data Packets */}
-                  <motion.circle r="3" fill="#2dd4bf">
-                    <animateMotion dur="3s" repeatCount="indefinite" path="M 85 110 C 85 180, 250 180, 250 220" />
-                  </motion.circle>
-                  <motion.circle r="3" fill="#3b82f6">
-                    <animateMotion dur="2.5s" repeatCount="indefinite" path="M 250 110 L 250 220" />
-                  </motion.circle>
-                  <motion.circle r="3" fill="#ef4444">
-                    <animateMotion dur="3.5s" repeatCount="indefinite" path="M 415 110 C 415 180, 250 180, 250 220" />
-                  </motion.circle>
-                  
-                  {/* Output Packet */}
-                  <motion.circle r="4" fill="#10b981">
-                    <animateMotion dur="2s" repeatCount="indefinite" path="M 250 300 L 250 360" />
-                  </motion.circle>
-               </svg>
-
-               {/* HTML Elements Layer */}
-               <div className="relative z-10 w-full h-full flex flex-col justify-between">
-                  
-                  {/* Top Row: Inputs */}
-                  <div className="flex justify-between px-2">
-                    {[
-                      { icon: <Utensils size={18} />, label: "Food", color: "bg-teal-500" },
-                      { icon: <Pill size={18} />, label: "Meds", color: "bg-blue-500" },
-                      { icon: <Activity size={18} />, label: "Vitals", color: "bg-red-500" },
-                    ].map((item, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ y: -20, opacity: 0 }}
-                        whileInView={{ y: 0, opacity: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="w-20 h-24 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 backdrop-blur-md shadow-lg"
-                      >
-                        <div className={`p-2.5 rounded-xl ${item.color}/20 text-white`}>
-                          {item.icon}
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.label}</span>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* Middle: AI Core */}
-                  <div className="flex justify-center items-center">
-                    <div className="relative w-24 h-24">
-                      <div className="absolute inset-0 bg-teal-500/20 rounded-full animate-ping opacity-20" />
-                      <div className="absolute inset-0 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-3xl rotate-45 flex items-center justify-center shadow-2xl shadow-teal-500/30 border border-white/20 z-20">
-                        <Brain className="text-white -rotate-45 w-10 h-10" />
-                      </div>
-                      {/* Connecting Nodes */}
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-teal-400 rounded-full z-30" />
-                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-emerald-400 rounded-full z-30" />
-                       
-                    </div>
-                  </div>
-
-                  {/* Bottom: Thesis Output */}
-                  <div className="flex justify-center">
-                    <motion.div 
-                        initial={{ y: 30, opacity: 0 }}
-                        whileInView={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                        className="w-full max-w-[280px] bg-white dark:bg-[#0f172a] rounded-2xl p-1 shadow-2xl border border-teal-500/30"
-                    >
-                        <div className="bg-slate-50 dark:bg-[#1e293b] rounded-xl p-5 border border-white/5">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-teal-500/10 rounded-lg text-teal-500">
-                                        <FileText size={20} />
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-900 dark:text-white">Health Thesis</div>
-                                        <div className="text-[10px] text-slate-500 uppercase">Ready</div>
-                                    </div>
-                                </div>
-                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            </div>
-
-                            <button
-                                onClick={handleDownload}
-                                className={`w-full py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-all duration-300 ${
-                                    isDownloaded 
-                                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
-                                    : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:shadow-lg hover:scale-[1.02]"
-                                }`}
-                            >
-                                {isDownloaded ? (
-                                    <>
-                                    <CheckCircle size={16} />
-                                    <span>Saved</span>
-                                    </>
-                                ) : (
-                                    <>
-                                    <Download size={16} />
-                                    <span className="text-black dark:text-black">Download</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </motion.div>
-                  </div>
-
+                     }}
+                     viewport={{ once: true }}
+                     className="relative group"
+                   >
+                     <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 rounded-2xl group-hover:bg-white/10 transition-all duration-500" />
+                     <div className="relative h-32 bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 p-2 hover:border-white/20 transition-colors">
+                       <div className={`p-3 rounded-xl bg-gradient-to-br ${item.color} shadow-lg`}>
+                         <div className="text-white">
+                           {item.icon}
+                         </div>
+                       </div>
+                       <span className="text-xs font-bold text-slate-300 text-center">{item.label}</span>
+                     </div>
+                   </motion.div>
+                 ))}
                </div>
+
+               {/* Middle Layer: Neural Core */}
+               <div className="relative py-4">
+                 {/* Connecting Beams */}
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1px] h-full bg-gradient-to-b from-transparent via-teal-500/50 to-transparent" />
+                 
+                 <div className="relative z-10 w-32 h-32 flex items-center justify-center">
+                   {/* Spinning Rings */}
+                   <motion.div 
+                     animate={{ rotate: 360 }}
+                     transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                     className="absolute inset-0 rounded-full border border-teal-500/30 border-t-teal-400 border-r-transparent"
+                   />
+                   <motion.div 
+                     animate={{ rotate: -360 }}
+                     transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                     className="absolute inset-2 rounded-full border border-emerald-500/30 border-b-emerald-400 border-l-transparent"
+                   />
+                   
+                   {/* Core */}
+                   <div className="relative w-20 h-20 bg-slate-900 rounded-full border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(20,184,166,0.3)]">
+                     <Brain className="w-10 h-10 text-teal-400" />
+                     <div className="absolute inset-0 bg-teal-400/20 rounded-full animate-ping" />
+                   </div>
+                 </div>
+               </div>
+
+               {/* Bottom Layer: Thesis Output */}
+               <motion.div 
+                 initial={{ y: 20, opacity: 0 }}
+                 whileInView={{ y: 0, opacity: 1 }}
+                 viewport={{ once: true }}
+                 transition={{ delay: 0.6 }}
+                 className="w-full"
+               >
+                 <div className="relative bg-gradient-to-b from-slate-800/50 to-slate-900/50 backdrop-blur-xl rounded-3xl border border-white/10 p-1">
+                   <div className="bg-[#020617]/50 rounded-[1.3rem] p-6 border border-white/5">
+                     <div className="flex items-center justify-between mb-6">
+                       <div className="flex items-center gap-4">
+                         <div className="p-3 bg-teal-500/10 rounded-xl text-teal-400 border border-teal-500/20">
+                           <FileText size={24} />
+                         </div>
+                         <div>
+                           <h3 className="text-lg font-bold text-white">Health Thesis</h3>
+                           <p className="text-xs text-teal-400 font-medium uppercase tracking-wider">Analysis Complete</p>
+                         </div>
+                       </div>
+                       <Sparkles className="text-amber-400 animate-pulse" size={20} />
+                     </div>
+
+                     <div className="space-y-3 mb-6">
+                       {[
+                         { label: "Metabolic Rate", value: "Optimized", color: "text-emerald-400" },
+                         { label: "Medication Adherence", value: "98%", color: "text-blue-400" },
+                         { label: "Health Score", value: "Improving", color: "text-purple-400" },
+                       ].map((stat, i) => (
+                         <div key={i} className="flex items-center justify-between text-sm py-2 border-b border-white/5 last:border-0">
+                           <span className="text-slate-400">{stat.label}</span>
+                           <span className={`font-bold ${stat.color}`}>{stat.value}</span>
+                         </div>
+                       ))}
+                     </div>
+
+                     <button
+                       onClick={handleDownload}
+                       className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 group ${
+                         isDownloaded 
+                           ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
+                           : "bg-white text-slate-900 hover:bg-teal-50 hover:shadow-lg hover:shadow-teal-500/10"
+                       }`}
+                     >
+                       {isDownloaded ? (
+                         <>
+                           <CheckCircle size={18} />
+                           <span>Report Saved</span>
+                         </>
+                       ) : (
+                         <>
+                           <Download size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+                           <span className="text-black dark:text-black">Download Full Report</span>
+                         </>
+                       )}
+                     </button>
+                   </div>
+                 </div>
+               </motion.div>
             </motion.div>
           </div>
 

@@ -106,7 +106,7 @@ const Login = () => {
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-bold text-slate-300 mb-2"
+            className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2"
           >
             Email address
           </label>
@@ -120,7 +120,7 @@ const Login = () => {
               type="email"
               autoComplete="email"
               required
-              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-12 pr-4 py-3.5 text-black dark:text-white bg-white/5 border border-white/10 rounded-2xl placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
               placeholder="jane.doe@mail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -133,7 +133,7 @@ const Login = () => {
           <div className="flex items-center justify-between mb-2">
             <label
               htmlFor="password"
-              className="block text-sm font-bold text-slate-300"
+              className="block text-sm font-bold text-slate-600 dark:text-slate-300"
             >
               Password
             </label>
@@ -155,7 +155,7 @@ const Login = () => {
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               required
-              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -184,7 +184,7 @@ const Login = () => {
           />
           <label
             htmlFor="remember-me"
-            className="ml-2 block text-sm text-slate-400 cursor-pointer font-medium hover:text-slate-300 transition-colors"
+            className="ml-2 block text-sm dark:text-slate-300 text-slate-700 cursor-pointer font-medium hover:text-slate-600 transition-colors"
           >
             Remember me for 30 days
           </label>
@@ -223,7 +223,7 @@ const Login = () => {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3.5 text-white font-bold hover:bg-white/10 transition-all duration-300 group"
+          className="w-full flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3.5 dark:text-white font-bold hover:bg-white/10 transition-all duration-300 group"
         >
           <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
             <path
@@ -249,11 +249,11 @@ const Login = () => {
         {/* Divider */}
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/5"></div>
+            <div className="w-full border-t border-white/5 "></div>
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-[#0f172a] text-slate-500 font-medium rounded-full border border-white/5">
-              Secure login powered by MediTrack
+          <div className="relative flex justify-center text-xs">
+            <span className="px-4 dark:bg-[#0f172a] text-slate-500 font-light rounded-full border border-white/5">
+              Secure login powered by <span className="font-bold">Medi<span className="text-emerald-500 dark:text-emerald-500">Track</span></span>
             </span>
           </div>
         </div>

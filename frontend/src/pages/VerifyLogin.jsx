@@ -75,7 +75,7 @@ const VerifyLogin = () => {
       subtitle={`Enter the code sent to ${email}`}
     >
       <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="flex justify-between gap-2">
+        <div className="flex justify-center gap-2 sm:gap-4">
           {otp.map((digit, index) => (
             <input
               key={index}
@@ -84,7 +84,7 @@ const VerifyLogin = () => {
               value={digit}
               onChange={(e) => handleChange(e.target, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              className="w-12 h-14 text-center text-2xl font-bold rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+              className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
             />
           ))}
         </div>
