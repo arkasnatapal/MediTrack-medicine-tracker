@@ -23,6 +23,8 @@ import {
 import { useNotification } from '../context/NotificationContext';
 import UserAvatar from '../components/UserAvatar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Onboarding from '../components/Onboarding';
+import AIChatOnboarding from '../components/AIChatOnboarding';
 
 const Settings = () => {
   const { user, updatePassword, toggleTwoFactor } = useAuth();
@@ -74,6 +76,10 @@ const Settings = () => {
 
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Onboarding Demo State
+  const [showOnboardingDemo, setShowOnboardingDemo] = useState(false);
+  const [showAIOnboardingDemo, setShowAIOnboardingDemo] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -653,6 +659,29 @@ const Settings = () => {
                     </div>
                   </div>
 
+                  {/* <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-white">Onboarding Tours</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">View the welcome tours again</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => setShowOnboardingDemo(true)}
+                        className="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:hover:bg-indigo-900/30 font-medium text-sm transition-all"
+                      >
+                        Show App Onboarding
+                      </button>
+                      <button
+                        onClick={() => setShowAIOnboardingDemo(true)}
+                        className="px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 font-medium text-sm transition-all"
+                      >
+                        Show AI Onboarding
+                      </button>
+                    </div>
+                  </div> */}
+
 
                   {/* --------FEAURE TO BE INTEGRATED LATER---------  */}
                       
@@ -840,6 +869,19 @@ const Settings = () => {
         cancelText="Cancel"
         variant="danger"
       />
+      {/* Onboarding Demos */}
+      {showOnboardingDemo && (
+        <Onboarding 
+          forceOpen={true} 
+          onClose={() => setShowOnboardingDemo(false)} 
+        />
+      )}
+      {showAIOnboardingDemo && (
+        <AIChatOnboarding 
+          forceOpen={true} 
+          onClose={() => setShowAIOnboardingDemo(false)} 
+        />
+      )}
     </div>
   );
 };

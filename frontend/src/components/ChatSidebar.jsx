@@ -5,6 +5,10 @@ import ConfirmDialog from "./ConfirmDialog";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+
+// For local development use this 
+// const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 const ChatSidebar = ({ activeSessionId, onSelectSession, onNewChat, onDeleteSession }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [sessions, setSessions] = useState([]);

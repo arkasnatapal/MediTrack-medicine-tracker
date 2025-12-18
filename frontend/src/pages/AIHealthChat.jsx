@@ -21,6 +21,9 @@ import UserAvatar from "../components/UserAvatar";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// For local development use this 
+// const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 const AIHealthChat = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
