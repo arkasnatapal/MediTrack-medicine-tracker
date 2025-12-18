@@ -28,7 +28,8 @@ async function sendFamilyInviteEmail({ to, inviterName, familyConnectionId }) {
   if (!transporter || !to) return;
 
   const baseUrl = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
-  const inviteLink = `${baseUrl}/family/invitations?connectionId=${familyConnectionId}`;
+    const inviteLink = `${baseUrl}/family`;
+  // const inviteLink = `${baseUrl}/family/invitations?connectionId=${familyConnectionId}`;
 
   const mailOptions = {
     from: process.env.SMTP_FROM || `"MediTrack" <${process.env.SMTP_USER}>`,
@@ -43,17 +44,55 @@ ${inviteLink}
 If you do not recognize this, you can ignore this email.
     `.trim(),
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px;">
-        <h2 style="color:#2563eb;">MediTrack Family Invitation</h2>
-        <p><strong>${inviterName}</strong> has invited you to join their family on <strong>MediTrack</strong>.</p>
-        <p>
-          <a href="${inviteLink}" style="display:inline-block;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;">
-            Join Family
-          </a>
-        </p>
-        <p style="color:#666;font-size:13px;">If you don't recognize this invitation, you can safely ignore this email.</p>
-        <p style="color:#999;font-size:12px;margin-top:24px;">– MediTrack Team</p>
-      </div>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Family Invitation</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">MediTrack</h1>
+              <p style="color: #ecfdf5; margin: 10px 0 0; font-size: 16px; font-weight: 500;">Family Connection Request</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #1e293b; margin-top: 0; font-size: 22px; font-weight: 700;">You've been invited! 🎉</h2>
+              <p style="color: #475569; line-height: 1.6; font-size: 16px; margin-bottom: 24px;">
+                Hi there,<br><br>
+                <strong>${inviterName}</strong> wants to add you to their family circle on MediTrack. This will allow you to share medicine schedules and monitor each other's health adherence.
+              </p>
+              
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${inviteLink}" style="display: inline-block; background-color: #10b981; color: #ffffff; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);">
+                  Accept Invitation
+                </a>
+              </div>
+              
+              <p style="color: #64748b; font-size: 14px; line-height: 1.5; text-align: center;">
+                If you don't recognize this person, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `,
   };
 
@@ -81,40 +120,54 @@ async function sendOtpEmail({ to, otp, name }) {
     to,
     subject: `Your Verification Code - MediTrack`,
     html: `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-        <!-- Header -->
-        <div style="background-color: #2563eb; padding: 30px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">MediTrack</h1>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px 30px;">
-          <h2 style="color: #1e293b; margin-top: 0; font-size: 20px;">Verify your email address</h2>
-          <p style="color: #475569; line-height: 1.6; margin-bottom: 25px;">
-            Hi <strong>${name}</strong>,<br><br>
-            Thank you for signing up for MediTrack! To complete your registration and verify your email address, please use the following One-Time Password (OTP).
-          </p>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Verify Email</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">MediTrack</h1>
+              <p style="color: #ecfdf5; margin: 10px 0 0; font-size: 16px; font-weight: 500;">Verification Code</p>
+            </td>
+          </tr>
           
-          <div style="background-color: #f1f5f9; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
-            <span style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: 700; color: #2563eb; letter-spacing: 4px;">${otp}</span>
-          </div>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #1e293b; margin-top: 0; font-size: 22px; font-weight: 700;">Verify your email address</h2>
+              <p style="color: #475569; line-height: 1.6; font-size: 16px; margin-bottom: 24px;">
+                Hi <strong>${name}</strong>,<br><br>
+                Thank you for choosing MediTrack! Please use the code below to complete your verification.
+              </p>
+              
+              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 24px; text-align: center; margin: 32px 0;">
+                <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; color: #059669; letter-spacing: 6px;">${otp}</span>
+              </div>
+              
+              <p style="color: #64748b; font-size: 14px; text-align: center; margin-bottom: 0;">
+                This code will expire in 10 minutes.<br>
+                If you didn't create an account, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
           
-          <p style="color: #64748b; font-size: 14px; text-align: center;">
-            This code will expire in 10 minutes.
-          </p>
-          
-          <p style="color: #475569; line-height: 1.6; margin-top: 30px;">
-            If you didn't create an account with MediTrack, you can safely ignore this email.
-          </p>
-        </div>
-        
-        <!-- Footer -->
-        <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-          <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-            &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
-          </p>
-        </div>
-      </div>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `,
   };
 
@@ -135,40 +188,54 @@ async function sendPasswordResetEmail({ to, otp, name }) {
     to,
     subject: `Reset Your Password - MediTrack`,
     html: `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-        <!-- Header -->
-        <div style="background-color: #2563eb; padding: 30px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">MediTrack</h1>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px 30px;">
-          <h2 style="color: #1e293b; margin-top: 0; font-size: 20px;">Reset your password</h2>
-          <p style="color: #475569; line-height: 1.6; margin-bottom: 25px;">
-            Hi <strong>${name}</strong>,<br><br>
-            We received a request to reset your password for your MediTrack account. Use the following OTP to proceed with resetting your password.
-          </p>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Password</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">MediTrack</h1>
+              <p style="color: #ecfdf5; margin: 10px 0 0; font-size: 16px; font-weight: 500;">Password Reset</p>
+            </td>
+          </tr>
           
-          <div style="background-color: #f1f5f9; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
-            <span style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: 700; color: #2563eb; letter-spacing: 4px;">${otp}</span>
-          </div>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #1e293b; margin-top: 0; font-size: 22px; font-weight: 700;">Reset your password</h2>
+              <p style="color: #475569; line-height: 1.6; font-size: 16px; margin-bottom: 24px;">
+                Hi <strong>${name}</strong>,<br><br>
+                We received a request to reset your password. Use the code below to proceed.
+              </p>
+              
+              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 24px; text-align: center; margin: 32px 0;">
+                <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; color: #059669; letter-spacing: 6px;">${otp}</span>
+              </div>
+              
+              <p style="color: #64748b; font-size: 14px; text-align: center; margin-bottom: 0;">
+                This code will expire in 10 minutes.<br>
+                If you didn't request this, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
           
-          <p style="color: #64748b; font-size: 14px; text-align: center;">
-            This code will expire in 10 minutes.
-          </p>
-          
-          <p style="color: #475569; line-height: 1.6; margin-top: 30px;">
-            If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
-          </p>
-        </div>
-        
-        <!-- Footer -->
-        <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-          <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-            &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
-          </p>
-        </div>
-      </div>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `,
   };
 
@@ -191,65 +258,82 @@ async function sendWelcomeEmail({ to, name }) {
     to,
     subject: `Welcome to MediTrack! 🌟`,
     html: `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-        <!-- Header -->
-        <div style="background-color: #2563eb; padding: 40px 30px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">Welcome to MediTrack!</h1>
-          <p style="color: #bfdbfe; margin-top: 10px; font-size: 16px;">Your health journey starts here</p>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px 30px;">
-          <p style="color: #475569; line-height: 1.6; font-size: 16px;">
-            Hi <strong>${name}</strong>,
-          </p>
-          <p style="color: #475569; line-height: 1.6; font-size: 16px;">
-            We're thrilled to have you on board! MediTrack is designed to make managing your health and your family's well-being simple and stress-free.
-          </p>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to MediTrack</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">MediTrack</h1>
+              <p style="color: #ecfdf5; margin: 10px 0 0; font-size: 16px; font-weight: 500;">Welcome Aboard!</p>
+            </td>
+          </tr>
           
-          <h3 style="color: #1e293b; margin-top: 30px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Here's what you can do:</h3>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="color: #475569; line-height: 1.6; font-size: 16px; margin-bottom: 24px;">
+                Hi <strong>${name}</strong>,<br><br>
+                We're thrilled to have you here! MediTrack is your new companion for a healthier, more organized life.
+              </p>
+              
+              <h3 style="color: #1e293b; margin-top: 32px; margin-bottom: 20px; font-size: 18px; font-weight: 700;">What you can do now:</h3>
+              
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td width="40" valign="top" style="padding-bottom: 20px;">
+                    <span style="font-size: 24px;">💊</span>
+                  </td>
+                  <td valign="top" style="padding-bottom: 20px;">
+                    <strong style="color: #334155; display: block; margin-bottom: 4px;">Track Medicines</strong>
+                    <span style="color: #64748b; font-size: 14px; line-height: 1.5;">Never miss a dose with smart reminders.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="40" valign="top" style="padding-bottom: 20px;">
+                    <span style="font-size: 24px;">👨‍👩‍👧‍👦</span>
+                  </td>
+                  <td valign="top" style="padding-bottom: 20px;">
+                    <strong style="color: #334155; display: block; margin-bottom: 4px;">Family Hub</strong>
+                    <span style="color: #64748b; font-size: 14px; line-height: 1.5;">Care for your loved ones in one place.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="40" valign="top" style="padding-bottom: 20px;">
+                    <span style="font-size: 24px;">📊</span>
+                  </td>
+                  <td valign="top" style="padding-bottom: 20px;">
+                    <strong style="color: #334155; display: block; margin-bottom: 4px;">Health Insights</strong>
+                    <span style="color: #64748b; font-size: 14px; line-height: 1.5;">Visualize your progress with AI analytics.</span>
+                  </td>
+                </tr>
+              </table>
+              
+              <div style="text-align: center; margin-top: 32px;">
+                <a href="${baseUrl}/dashboard" style="display: inline-block; background-color: #10b981; color: #ffffff; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);">
+                  Go to Dashboard
+                </a>
+              </div>
+            </td>
+          </tr>
           
-          <ul style="list-style: none; padding: 0; margin: 20px 0;">
-            <li style="margin-bottom: 15px; display: flex; align-items: flex-start;">
-              <span style="color: #2563eb; font-size: 18px; margin-right: 10px;">💊</span>
-              <div>
-                <strong style="color: #334155;">Track Medicines</strong>
-                <p style="margin: 4px 0 0; color: #64748b; font-size: 14px;">Set schedules and never miss a dose with smart reminders.</p>
-              </div>
-            </li>
-            <li style="margin-bottom: 15px; display: flex; align-items: flex-start;">
-              <span style="color: #2563eb; font-size: 18px; margin-right: 10px;">👨‍👩‍👧‍👦</span>
-              <div>
-                <strong style="color: #334155;">Family Management</strong>
-                <p style="margin: 4px 0 0; color: #64748b; font-size: 14px;">Connect with family members to monitor their health adherence.</p>
-              </div>
-            </li>
-            <li style="margin-bottom: 15px; display: flex; align-items: flex-start;">
-              <span style="color: #2563eb; font-size: 18px; margin-right: 10px;">📊</span>
-              <div>
-                <strong style="color: #334155;">Health Insights</strong>
-                <p style="margin: 4px 0 0; color: #64748b; font-size: 14px;">Visualize your progress with intuitive dashboards.</p>
-              </div>
-            </li>
-          </ul>
-          
-          <div style="text-align: center; margin-top: 40px;">
-            <a href="${baseUrl}/dashboard" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
-              Go to Dashboard
-            </a>
-          </div>
-        </div>
-        
-        <!-- Footer -->
-        <div style="background-color: #f8fafc; padding: 25px; text-align: center; border-top: 1px solid #e2e8f0;">
-          <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;">
-            We're here to help! If you have any questions, just reply to this email.
-          </p>
-          <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-            &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
-          </p>
-        </div>
-      </div>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `,
   };
 

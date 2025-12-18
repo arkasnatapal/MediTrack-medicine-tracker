@@ -14,7 +14,7 @@ import {
   Pencil,
   Heart,
   Shield,
-  Zap
+  Zap,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
@@ -63,8 +63,8 @@ const Family = () => {
         getFamilyConnections(),
         getInvitations(),
       ]);
-      setConnections(connectionsData.connections);
-      setInvitations(invitationsData.invitations);
+      setConnections(connectionsData?.connections || []);
+      setInvitations(invitationsData?.invitations || []);
 
       try {
         const unreadData = await getUnreadByUser();
@@ -270,7 +270,7 @@ const Family = () => {
             className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-slate-200/50 dark:border-slate-800/50 pb-8"
           >
             <div>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-widest mb-4"
@@ -279,13 +279,17 @@ const Family = () => {
                 Family Circle
               </motion.div>
               <h1 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-none mb-4">
-                Connected<span className="text-emerald-500 dark:text-emerald-600">.</span>
+                Connected
+                <span className="text-emerald-500 dark:text-emerald-600">
+                  .
+                </span>
               </h1>
               <p className="text-slate-500 dark:text-slate-400 text-lg max-w-lg font-medium leading-relaxed">
-                Your health network. Manage permissions, share updates, and care for your loved ones in one secure space.
+                Your health network. Manage permissions, share updates, and care
+                for your loved ones in one secure space.
               </p>
             </div>
-            
+
             <motion.button
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
@@ -294,19 +298,23 @@ const Family = () => {
             >
               <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <UserPlus className="h-5 w-5 relative z-10" />
-              <span className="relative z-10 text-white dark:text-black">Invite Member</span>
+              <span className="relative z-10 text-white dark:text-black">
+                Invite Member
+              </span>
             </motion.button>
           </motion.div>
 
           {/* Invitations Section - Clean Ticket Style */}
-          {invitations.length > 0 && (
+          {Array.isArray(invitations) && invitations.length > 0 && (
             <motion.div variants={itemVariants} className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pending Invites</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Pending Invites
+                </span>
                 <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {invitations.map((invite) => {
                   if (!invite.inviter) return null;
@@ -321,12 +329,15 @@ const Family = () => {
                           {/* Ticket Perforation Effect */}
                           <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#F8FAFC] dark:bg-[#0B0F17] rounded-full" />
                           <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#F8FAFC] dark:bg-[#0B0F17] rounded-full" />
-                          
+
                           <div className="flex items-center justify-between pl-4">
                             <div className="flex items-center gap-5">
                               <div className="relative">
                                 <div className="w-16 h-16 rounded-2xl overflow-hidden ring-4 ring-slate-50 dark:ring-slate-900 shadow-lg">
-                                  <UserAvatar user={invite.inviter} className="h-full w-full" />
+                                  <UserAvatar
+                                    user={invite.inviter}
+                                    className="h-full w-full"
+                                  />
                                 </div>
                                 <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-lg shadow-md">
                                   <Mail className="w-3 h-3" />
@@ -337,11 +348,14 @@ const Family = () => {
                                   {invite.inviter.name || invite.inviter.email}
                                 </h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                                  wants to add you as <span className="text-slate-900 dark:text-white font-bold">{invite.relationshipFromInviter || "Family"}</span>
+                                  wants to add you as{" "}
+                                  <span className="text-slate-900 dark:text-white font-bold">
+                                    {invite.relationshipFromInviter || "Family"}
+                                  </span>
                                 </p>
                               </div>
                             </div>
-                            
+
                             <div className="flex gap-3 pr-4">
                               <button
                                 onClick={() => handleAccept(invite._id)}
@@ -373,9 +387,12 @@ const Family = () => {
                 <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Users className="h-10 w-10 text-slate-300 dark:text-slate-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Your circle is empty</h3>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                  Your circle is empty
+                </h3>
                 <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-8">
-                  Start building your health network by inviting family members to join.
+                  Start building your health network by inviting family members
+                  to join.
                 </p>
                 <button
                   onClick={() => setShowInviteModal(true)}
@@ -388,32 +405,43 @@ const Family = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {activeConnections.map((connection) => {
                   const isInviter = connection.inviter?._id === user?._id;
-                  const otherUser = isInviter ? connection.invitee : connection.inviter;
+                  const otherUser = isInviter
+                    ? connection.invitee
+                    : connection.inviter;
                   if (!otherUser) return null;
 
-                  const relationship = isInviter ? connection.relationshipFromInviter : connection.relationshipFromInvitee;
-                  const isOnline = otherUser.lastActive && new Date() - new Date(otherUser.lastActive) < 5 * 60 * 1000;
+                  const relationship = isInviter
+                    ? connection.relationshipFromInviter
+                    : connection.relationshipFromInvitee;
+                  const isOnline =
+                    otherUser.lastActive &&
+                    new Date() - new Date(otherUser.lastActive) < 5 * 60 * 1000;
 
                   return (
                     <motion.div
                       key={connection._id}
                       whileHover={{ y: -10 }}
                       className="group relative"
-                      onClick={() => navigate(`/family/member/${otherUser._id}`)}
+                      onClick={() =>
+                        navigate(`/family/member/${otherUser._id}`)
+                      }
                     >
                       <div className="absolute inset-0 bg-white/60 dark:bg-slate-800/60 rounded-[2.5rem] backdrop-blur-xl border border-white/40 dark:border-slate-700/40 shadow-xl transition-all duration-500 group-hover:shadow-2xl" />
-                      
+
                       <div className="relative p-8 flex flex-col h-full">
                         <div className="flex justify-between items-start mb-6">
                           <div className="relative">
                             <div className="w-20 h-20 rounded-[2rem] overflow-hidden shadow-lg ring-4 ring-white/50 dark:ring-slate-800/50 group-hover:scale-105 transition-transform duration-500">
-                              <UserAvatar user={otherUser} className="h-full w-full" />
+                              <UserAvatar
+                                user={otherUser}
+                                className="h-full w-full"
+                              />
                             </div>
                             {isOnline && (
                               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white dark:border-slate-900 rounded-full" />
                             )}
                           </div>
-                          
+
                           <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-4 group-hover:translate-x-0">
                             <button
                               onClick={(e) => {
@@ -430,7 +458,10 @@ const Family = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setDeleteConfirm({ connectionId: connection._id, memberName: otherUser.name || otherUser.email });
+                                setDeleteConfirm({
+                                  connectionId: connection._id,
+                                  memberName: otherUser.name || otherUser.email,
+                                });
                               }}
                               className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 text-red-500 flex items-center justify-center shadow-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                             >
@@ -446,9 +477,12 @@ const Family = () => {
                           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-4 truncate">
                             {otherUser.email}
                           </p>
-                          
+
                           {editingId === otherUser._id ? (
-                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <div
+                              className="flex items-center gap-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <input
                                 type="text"
                                 value={editValue}
@@ -456,11 +490,17 @@ const Family = () => {
                                 className="w-full bg-white/50 dark:bg-black/20 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1 text-sm focus:outline-none focus:border-emerald-500"
                                 autoFocus
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleSaveEdit(otherUser._id);
+                                  if (e.key === "Enter")
+                                    handleSaveEdit(otherUser._id);
                                   if (e.key === "Escape") setEditingId(null);
                                 }}
                               />
-                              <button onClick={() => handleSaveEdit(otherUser._id)} className="text-emerald-500"><Check className="w-4 h-4" /></button>
+                              <button
+                                onClick={() => handleSaveEdit(otherUser._id)}
+                                className="text-emerald-500"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
                             </div>
                           ) : (
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/50 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider group/edit">
@@ -468,7 +508,10 @@ const Family = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleStartEdit(otherUser._id, relationship || "");
+                                  handleStartEdit(
+                                    otherUser._id,
+                                    relationship || ""
+                                  );
                                 }}
                                 className="opacity-0 group-hover/edit:opacity-100 text-slate-400 hover:text-emerald-500 transition-colors"
                               >
@@ -495,22 +538,39 @@ const Family = () => {
 
           {/* Pending Sent */}
           {pendingSent.length > 0 && (
-            <motion.div variants={itemVariants} className="pt-10 border-t border-slate-200/50 dark:border-slate-800/50">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Pending Outgoing Invites</h3>
+            <motion.div
+              variants={itemVariants}
+              className="pt-10 border-t border-slate-200/50 dark:border-slate-800/50"
+            >
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">
+                Pending Outgoing Invites
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {pendingSent.map((invite) => (
-                  <div key={invite._id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800">
+                  <div
+                    key={invite._id}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
                         <Mail className="w-4 h-4 text-slate-500" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">{invite.inviteeEmail}</p>
-                        <p className="text-xs text-slate-500">Waiting for response...</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                          {invite.inviteeEmail}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Waiting for response...
+                        </p>
                       </div>
                     </div>
                     <button
-                      onClick={() => setCancelInviteConfirm({ id: invite._id, email: invite.inviteeEmail })}
+                      onClick={() =>
+                        setCancelInviteConfirm({
+                          id: invite._id,
+                          email: invite.inviteeEmail,
+                        })
+                      }
                       className="text-xs font-bold text-red-500 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       Cancel
@@ -527,14 +587,14 @@ const Family = () => {
       <AnimatePresence>
         {showInviteModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowInviteModal(false)}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -542,46 +602,66 @@ const Family = () => {
             >
               {/* Subtle Header Accent */}
               <div className="absolute top-0 left-0 w-full h-1 bg-slate-200 dark:bg-slate-800" />
-              
+
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Invite Member</h2>
-                <button onClick={() => setShowInviteModal(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  Invite Member
+                </h2>
+                <button
+                  onClick={() => setShowInviteModal(false)}
+                  className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
                   <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
 
               <form onSubmit={handleInviteSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Email Address
+                  </label>
                   <input
                     type="email"
                     required
                     value={inviteData.email}
-                    onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
-                    className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
+                    onChange={(e) =>
+                      setInviteData({ ...inviteData, email: e.target.value })
+                    }
+                    className="w-full px-5 py-4 rounded-2xl dark:text-white text-black bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
                     placeholder="name@example.com"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Name (Opt)</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Name (Opt)
+                    </label>
                     <input
                       type="text"
                       value={inviteData.name}
-                      onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
+                      onChange={(e) =>
+                        setInviteData({ ...inviteData, name: e.target.value })
+                      }
                       className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
                       placeholder="e.g. Mom"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Relation</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Relation
+                    </label>
                     <input
                       type="text"
                       required
                       value={inviteData.relationship}
-                      onChange={(e) => setInviteData({ ...inviteData, relationship: e.target.value })}
-                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
+                      onChange={(e) =>
+                        setInviteData({
+                          ...inviteData,
+                          relationship: e.target.value,
+                        })
+                      }
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:text-white text-black dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
                       placeholder="e.g. Mother"
                     />
                   </div>
