@@ -128,7 +128,7 @@ const Footer = () => {
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
               <Mail className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               <a 
-                href="mailto:support@meditrack.com"
+                href="mailto: meditrack.ultimate.team@gmail.com"
                 className="text-sm text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium"
               >
                meditrack.ultimate.team@gmail.com

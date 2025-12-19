@@ -131,7 +131,7 @@ const FeaturesSection = () => {
           </motion.p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 relative z-10">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-4 relative z-10">
           {features.map((feature, index) => (
             <motion.div
               key={index}

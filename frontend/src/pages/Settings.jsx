@@ -575,7 +575,7 @@ const Settings = () => {
                     </h4>
                     
                     <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 p-5">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
                         <div>
                           <p className="font-semibold text-slate-900 dark:text-white">
                             {profile.google?.calendarConnected ? 'Connected' : 'Not Connected'}
@@ -834,7 +834,7 @@ const Settings = () => {
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
                       Type <span className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</span> to confirm
                     </label>
-                    <div className="flex gap-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
                       <input 
                         type="text" 
                         value={deleteConfirm}
