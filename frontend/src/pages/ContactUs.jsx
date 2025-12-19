@@ -46,8 +46,8 @@ const ContactUs = () => {
     {
       icon: Mail,
       title: "Email",
-      value: "arka4551@gmail.com",
-      link: "mailto:arka4551@gmail.com",
+      value: "meditrack.ultimate.team@gmail.com",
+      link: "mailto:meditrack.ultimate.team@gmail.com",
     },
     // {
     //   icon: Phone,

@@ -131,7 +131,7 @@ const Footer = () => {
                 href="mailto:support@meditrack.com"
                 className="text-sm text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium"
               >
-                arka4551@gmail.com
+               meditrack.ultimate.team@gmail.com
               </a>
             </div>
           </div>
