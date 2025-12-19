@@ -149,10 +149,10 @@ const PrivacyPolicy = () => {
                 please don't hesitate to contact us.
               </p>
               <a
-                href="mailto:privacy@meditrack.com"
+                href="mailto:meditrack.ultimate.team@gmail.com"
                 className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
               >
-                privacy@meditrack.com
+                 meditrack.ultimate.team@gmail.com
               </a>
             </div>
           </div>

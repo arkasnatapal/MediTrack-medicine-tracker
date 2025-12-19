@@ -183,10 +183,10 @@ const TermsAndConditions = () => {
             If you have any questions about these Terms of Service, please contact our legal team.
           </p>
           <a
-            href="mailto:legal@meditrack.com"
+            href="mailto:meditrack.ultimate.team@gmail.com"
             className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
           >
-            legal@meditrack.com
+             meditrack.ultimate.team@gmail.com
           </a>
         </motion.div>
       </div>
