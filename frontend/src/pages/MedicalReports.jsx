@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, Folder, FileText, Image as ImageIcon, Trash2, 
   Bot, Calendar, Plus, X, Activity, ChevronRight, Search, Filter,
-  Loader2, AlertCircle, FileHeart, Stethoscope, Pill, Sparkles
+  Loader2, AlertCircle, FileHeart, Stethoscope, Pill, Sparkles,
+  ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Loader from '../components/Loader';
@@ -27,6 +28,11 @@ const MedicalReports = () => {
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [reportToDelete, setReportToDelete] = useState(null);
+
+  // Image Viewer State
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [imageLoading, setImageLoading] = useState(true);
 
   // Upload Form State
   const [folderName, setFolderName] = useState('');
@@ -430,12 +436,14 @@ const MedicalReports = () => {
                       </h3>
                       <div className="space-y-4">
                         {selectedReport.files.map((file, idx) => (
-                          <a
+                          <div
                             key={idx}
-                            href={file.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-all group border border-transparent hover:border-teal-200 dark:hover:border-teal-800"
+                            onClick={() => {
+                              setSelectedImage(file.url);
+                              setZoom(1);
+                              setImageLoading(true);
+                            }}
+                            className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-all group border border-transparent hover:border-teal-200 dark:hover:border-teal-800 cursor-pointer"
                           >
                             <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                               <ImageIcon className="w-6 h-6 text-blue-500" />
@@ -444,7 +452,7 @@ const MedicalReports = () => {
                               <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{file.originalName}</p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Click to view</p>
                             </div>
-                          </a>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -577,6 +585,86 @@ const MedicalReports = () => {
                   </div>
 
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Image Viewer Portal */}
+      {selectedImage && createPortal(
+        <AnimatePresence>
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedImage(null)}
+              className="absolute inset-0 bg-black/95 backdrop-blur-xl"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative z-10 w-full h-full flex flex-col items-center justify-center pointer-events-none"
+            >
+              {/* Toolbar */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/10 pointer-events-auto z-50">
+                <button 
+                  onClick={() => setZoom(prev => Math.max(0.5, prev - 0.25))}
+                  className="p-2 hover:bg-white/10 rounded-xl text-white transition-colors"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-5 h-5" />
+                </button>
+                <span className="text-white text-sm font-medium w-12 text-center">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button 
+                  onClick={() => setZoom(prev => Math.min(3, prev + 0.25))}
+                  className="p-2 hover:bg-white/10 rounded-xl text-white transition-colors"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-5 h-5" />
+                </button>
+                <div className="w-px h-6 bg-white/20 mx-1" />
+                <button 
+                  onClick={() => setZoom(1)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-white transition-colors"
+                  title="Reset Zoom"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+                <div className="w-px h-6 bg-white/20 mx-1" />
+                <button 
+                  onClick={() => setSelectedImage(null)}
+                  className="p-2 hover:bg-red-500/20 text-white hover:text-red-400 rounded-xl transition-colors"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Image Container */}
+              <div className="w-full h-full overflow-auto flex items-center justify-center p-4 pointer-events-auto custom-scrollbar">
+                {imageLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="w-12 h-12 text-teal-500 animate-spin" />
+                  </div>
+                )}
+                <motion.img 
+                  src={selectedImage} 
+                  alt="Medical Report" 
+                  onLoad={() => setImageLoading(false)}
+                  animate={{ scale: zoom }}
+                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                  className={`max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
+                  style={{ cursor: zoom > 1 ? 'grab' : 'default' }}
+                  drag={zoom > 1}
+                  dragConstraints={{ left: -1000, right: 1000, top: -1000, bottom: 1000 }}
+                />
               </div>
             </motion.div>
           </div>
