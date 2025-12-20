@@ -9,6 +9,7 @@ const User = require("../models/User");
 const Notification = require("../models/Notification");
 const AuditLog = require("../models/AuditLog");
 const HealthReport = require("../models/HealthReport");
+const Report = require("../models/Report");
 const {
   createCalendarEvent,
   updateCalendarEvent,
@@ -323,7 +324,7 @@ RULES FOR FAMILY ACTIONS:
 - After adding a medicine, ask if they want to proceed with setting the reminder.
 
 MANDATORY FOOTER:
-At the bottom of every AI response, you MUST include this exact line:
+At the bottom of every AI response, you MUST include this type of line:
 "ℹ️ This explanation is meant to help you understand your health better. It does not replace advice from a qualified doctor."
 `;
 
@@ -413,6 +414,35 @@ router.post("/health-chat", auth, async (req, res) => {
         }
     }
 
+    // --- Medical Reports Context Integration ---
+    const mentionsHealthReports = [
+      "report",
+      "analysis",
+      "overview",
+      "health graph",
+      "improvement",
+      "my health",
+      "body",
+    ].some((k) => lowerMsg.includes(k));
+
+    let reportContext = "";
+
+    if (mentionsHealthReports) {
+      const reports = await Report.find({ userId: userId }).sort({ reportDate: 1 });
+      
+      if (reports && reports.length > 0) {
+        reportContext = reports.map(r => {
+          const date = r.reportDate ? new Date(r.reportDate).toISOString().split('T')[0] : "Unknown Date";
+          const score = r.aiAnalysis?.healthScore || "N/A";
+          const summary = r.aiAnalysis?.summary || "No summary available";
+          const title = r.folderName || "Untitled Report";
+          return `- [${date}] "${title}" (Score: ${score}): ${summary}`;
+        }).join("\n");
+        
+        reportContext = `Here are the user's uploaded medical reports (Chronological Order):\n${reportContext}`;
+      }
+    }
+
     let finalSystemInstruction = SYSTEM_INSTRUCTION;
     
     // Append the enhanced instructions and data
@@ -421,6 +451,9 @@ router.post("/health-chat", auth, async (req, res) => {
 ---
 ### 🍎 USER'S FOOD ROUTINE DATA (Context)
 ${foodSummary ? foodSummary : "No food routine data available yet."}
+
+### 🩺 MEDICAL REPORTS ANALYSIS & GRAPH
+${reportContext ? reportContext : "No medical reports available yet."}
 
 ### 🧠 ADVANCED HEALTH & NUTRITION PROTOCOLS (CRITICAL)
 
@@ -456,7 +489,22 @@ If the user asks "Show me my food chart":
    - **Display**: If they specify, output the data in a clean **Markdown Table** or **List**.
    - **Do not make up data**: Only show what is in the "USER'S FOOD ROUTINE DATA" section above.
 
-#### 5. 🌟 PERSONA
+#### 5. 📈 HEALTH OVERVIEW & GRAPH GENERATION
+If the user asks for a health overview, analysis of reports, or "tell me about my health":
+   - **Analyze Reports**: Use the "MEDICAL REPORTS ANALYSIS & GRAPH" section above.
+   - **Synthesize**: Create a friendly, easy-to-understand summary of their health journey based on the reports.
+   - **Graph Data**: You **MUST** generate a JSON dataset for a health improvement graph.
+     - **Format**: Append this EXACT block at the very end of your response:
+       \`\`\`json:graph
+       [
+         { "date": "YYYY-MM-DD", "score": 85, "label": "Blood Test" },
+         { "date": "YYYY-MM-DD", "score": 90, "label": "Checkup" }
+       ]
+       \`\`\`
+     - **Score Logic**: Assign a "Health Score" (0-100) for each report based on your analysis (100 = Perfect, <50 = Critical). If the report has a score, use it.
+     - **Label**: Use the report title or a short summary.
+
+#### 6. 🌟 PERSONA
    - You are the **World's Best Medicine & Health Tracker Assistant**.
    - Be proactive, caring, and extremely knowledgeable.
    - Empower the user with knowledge (side effects, nutrition facts) rather than just restricting them.

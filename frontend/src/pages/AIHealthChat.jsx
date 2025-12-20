@@ -13,6 +13,15 @@ import {
   Menu,
   Utensils,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import MarkdownRenderer from "../components/MarkdownRenderer";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -23,6 +32,46 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 // For local development use this 
 // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const HealthGraph = ({ data }) => {
+  if (!data || data.length === 0) return null;
+
+  return (
+    <div className="w-full h-64 mt-4 bg-white dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">
+        Health Improvement Over Time
+      </h4>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.3} />
+          <XAxis 
+            dataKey="date" 
+            stroke="#94a3b8" 
+            fontSize={12} 
+            tickFormatter={(value) => {
+              const date = new Date(value);
+              return isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            }}
+          />
+          <YAxis stroke="#94a3b8" fontSize={12} domain={[0, 100]} />
+          <Tooltip 
+            contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
+            itemStyle={{ color: '#10b981' }}
+            labelStyle={{ color: '#94a3b8' }}
+          />
+          <Line
+            type="monotone"
+            dataKey="score"
+            stroke="#10b981"
+            strokeWidth={3}
+            dot={{ r: 4, fill: "#10b981" }}
+            activeDot={{ r: 6 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
 const AIHealthChat = () => {
   const { user } = useAuth();
@@ -379,9 +428,9 @@ const AIHealthChat = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl mt-8">
                   {[
                     "What are the side effects of Ibuprofen?",
-                    "Remind me to take my vitamins at 9 AM",
+                    "Remind my Dad to take Vitamins at 9 AM",
                     "How do I manage high blood pressure?",
-                    "Explain my recent prescription",
+                    "Analyze my health based on my reports.",
                   ].map((suggestion, i) => (
                     <button
                       key={i}
@@ -461,7 +510,23 @@ const AIHealthChat = () => {
                               </p>
                             ) : (
                               <div className="prose prose-slate dark:prose-invert prose-p:leading-7 prose-li:marker:text-emerald-500 max-w-none">
-                                <MarkdownRenderer content={msg.content} />
+                                <MarkdownRenderer content={(() => {
+                                  const graphMatch = msg.content.match(/```json:graph\s*([\s\S]*?)\s*```/);
+                                  return graphMatch ? msg.content.replace(graphMatch[0], "").trim() : msg.content;
+                                })()} />
+                                {(() => {
+                                  const graphMatch = msg.content.match(/```json:graph\s*([\s\S]*?)\s*```/);
+                                  if (graphMatch) {
+                                    try {
+                                      const graphData = JSON.parse(graphMatch[1]);
+                                      return <HealthGraph data={graphData} />;
+                                    } catch (e) {
+                                      console.error("Failed to parse graph data", e);
+                                      return null;
+                                    }
+                                  }
+                                  return null;
+                                })()}
                               </div>
                             )}
                           </div>
