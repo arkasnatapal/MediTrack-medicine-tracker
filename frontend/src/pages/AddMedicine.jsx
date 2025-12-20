@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import OCRUploader from "../components/OCRUploader";
@@ -7,8 +7,10 @@ import { useMedicine } from "../context/MedicineContext";
 import Footer from "../components/Footer"
 import { 
   Save, Loader2, ArrowLeft, Check, Upload, Calendar, Clock, 
-  Pill, FileText, AlertCircle, Sparkles, Bot, ChevronRight 
+  Pill, FileText, AlertCircle, Sparkles, Bot, ChevronRight, Search, Info,
+  Syringe, Droplets, Tablets
 } from "lucide-react";
+import api from "../api/api";
 
 const monthNamesMap = {
   jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
@@ -50,11 +52,26 @@ function parseDateFromString(str, { useLastDay = false } = {}) {
   return date.toISOString().split("T")[0];
 }
 
+const getMedicineIcon = (category) => {
+  const cat = category?.toLowerCase() || "";
+  if (cat.includes("injection") || cat.includes("syringe")) return <Syringe className="w-10 h-10 text-rose-500" />;
+  if (cat.includes("syrup") || cat.includes("liquid") || cat.includes("drop")) return <Droplets className="w-10 h-10 text-cyan-500" />;
+  if (cat.includes("tablet") || cat.includes("capsule") || cat.includes("pill")) return <Tablets className="w-10 h-10 text-indigo-500" />;
+  return <Pill className="w-10 h-10 text-emerald-500" />;
+};
+
 const AddMedicine = () => {
   const navigate = useNavigate();
   const { addMedicine } = useMedicine();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aiData, setAiData] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResult, setSearchResult] = useState(null);
+  const [searchError, setSearchError] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const searchTimeoutRef = useRef(null);
 
   const [formData, setFormData] = useState({
     name: "", form: "", quantity: "1", expiryDate: "", mfgDate: "",
@@ -92,6 +109,118 @@ const AddMedicine = () => {
       updates.description = aiData.raw_cleaned;
     }
     setFormData(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleAISearch = async () => {
+    if (!formData.name) {
+      setSearchError("Please enter a medicine name first.");
+      return;
+    }
+    
+    setIsSearching(true);
+    setSearchError(null);
+    setSearchResult(null);
+
+    try {
+      // 1. Try Local Lookup
+      const lookupRes = await api.post(`/medicine-catalog/lookup`, {
+        query: formData.name
+      });
+
+      if (lookupRes.data.found) {
+        setSearchResult(lookupRes.data.data);
+      } else {
+        // 2. If not found, trigger AI Search
+        const aiRes = await api.post(`/medicine-catalog/ai-search`, {
+          query: formData.name
+        });
+        setSearchResult(aiRes.data.data);
+      }
+    } catch (err) {
+      console.error("AI Search Error:", err);
+      setSearchError(err.response?.data?.message || "Failed to fetch medicine details.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const applySearchResult = () => {
+    if (!searchResult) return;
+    
+    setFormData(prev => ({
+      ...prev,
+      name: searchResult.brandName || prev.name,
+      genericName: searchResult.genericName || prev.genericName,
+      form: searchResult.category || prev.form,
+      dosage: searchResult.dosageInfo || prev.dosage,
+      description: `Common Uses: ${searchResult.commonUses?.join(", ")}\nPrecautions: ${searchResult.precautions?.join(", ")}`
+    }));
+  };
+
+  const handleNameChange = (e) => {
+    const value = e.target.value;
+    setFormData(prev => ({ ...prev, name: value }));
+    setSearchError(null);
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    if (value.length > 1) {
+      searchTimeoutRef.current = setTimeout(async () => {
+        try {
+          const res = await api.get(`/medicine-catalog/search?query=${encodeURIComponent(value)}`);
+          if (res.data.success && res.data.data.length > 0) {
+            setSuggestions(res.data.data);
+            setShowSuggestions(true);
+            setActiveSuggestionIndex(-1); // Reset selection
+          } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            setActiveSuggestionIndex(-1);
+          }
+        } catch (err) {
+          console.error("Autocomplete error:", err);
+        }
+      }, 300); // 300ms debounce
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setActiveSuggestionIndex(-1);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveSuggestionIndex(prev => 
+        prev < suggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
+        selectSuggestion(suggestions[activeSuggestionIndex]);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectSuggestion = (medicine) => {
+    setFormData(prev => ({
+      ...prev,
+      name: medicine.brandName,
+      genericName: medicine.genericName || prev.genericName,
+      form: medicine.category || prev.form,
+      dosage: medicine.dosageInfo || prev.dosage,
+      description: `Common Uses: ${medicine.commonUses?.join(", ")}\nPrecautions: ${medicine.precautions?.join(", ")}`
+    }));
+    setSearchResult(null); // Clear result to prevent showing the "Use This Data" card
+    setSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const handleChange = (e) => {
@@ -229,7 +358,64 @@ const AddMedicine = () => {
           </motion.div>
 
           {/* Right Column - Form */}
-          <motion.div variants={itemVariants} className="lg:col-span-2">
+          <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
+            
+            {/* AI Search Result Card */}
+            {searchResult && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 shadow-lg border border-indigo-100 dark:border-indigo-900/30 overflow-hidden relative"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/10 dark:to-purple-900/10" />
+                <div className="relative z-10 flex flex-col md:flex-row gap-6 items-start">
+                  <div className="w-24 h-24 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-md border border-gray-100 dark:border-slate-700">
+                    {getMedicineIcon(searchResult.category)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          {searchResult.brandName}
+                          {searchResult.verified && <Check className="w-4 h-4 text-blue-500" />}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{searchResult.genericName}</p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider">
+                        {searchResult.createdBy === 'ai' ? 'AI Generated' : 'Verified'}
+                      </span>
+                    </div>
+                    
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-xs font-bold text-gray-400 uppercase">Category</span>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{searchResult.category}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-gray-400 uppercase">Dosage</span>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{searchResult.dosageInfo}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={applySearchResult}
+                        className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
+                      >
+                        <Check className="w-4 h-4" />
+                        Use This Data
+                      </button>
+                      <div className="flex items-center gap-2 text-xs text-orange-500 bg-orange-50 dark:bg-orange-900/10 px-3 py-2 rounded-lg border border-orange-100 dark:border-orange-900/30">
+                        <AlertCircle className="w-3 h-3" />
+                        AI-assisted data. Please consult a doctor.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-sm border border-gray-100 dark:border-slate-700 relative overflow-hidden">
               <form onSubmit={handleSubmit} className="space-y-10 relative z-10">
                 
@@ -244,16 +430,67 @@ const AddMedicine = () => {
                     <label htmlFor="name" className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
                       Medicine Name <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      required
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
-                      placeholder="e.g. Paracetamol"
-                      value={formData.name}
-                      onChange={handleChange}
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        required
+                        className="w-full px-5 py-4 pr-32 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                        placeholder="e.g. Paracetamol"
+                        value={formData.name}
+                        onChange={handleNameChange}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
+                        onFocus={() => formData.name.length > 1 && setShowSuggestions(true)}
+                        onKeyDown={handleKeyDown}
+                        autoComplete="off"
+                      />
+                      
+                      {/* Autocomplete Dropdown */}
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 max-h-60 overflow-y-auto z-50">
+                          {suggestions.map((medicine, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()} // Prevent blur on click
+                              onClick={() => selectSuggestion(medicine)}
+                              className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors border-b border-gray-50 dark:border-slate-700/50 last:border-0 ${
+                                idx === activeSuggestionIndex ? "bg-gray-50 dark:bg-slate-700/50 ring-1 ring-inset ring-indigo-500/20" : ""
+                              }`}
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                                {React.cloneElement(getMedicineIcon(medicine.category), { className: "w-5 h-5" })}
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-gray-900 dark:text-white">{medicine.brandName}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{medicine.genericName}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleAISearch}
+                        disabled={isSearching || !formData.name}
+                        className="absolute right-2 top-2 bottom-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 text-white disabled:text-gray-700 dark:disabled:text-white font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 z-10"
+                      >
+                        {isSearching ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4" />
+                        )}
+                        {isSearching ? "Searching..." : "AI Search"}
+                      </button>
+                    </div>
+                    {searchError && (
+                      <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {searchError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
