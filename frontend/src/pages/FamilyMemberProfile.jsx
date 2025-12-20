@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -16,12 +16,121 @@ import {
   TrendingUp,
   Shield,
   Zap,
-  Heart
+  Heart,
+  Syringe,
+  Droplets,
+  Tablets,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { getFamilyMemberDetails } from "../api/family";
 import Loader from "../components/Loader";
 import UserAvatar from "../components/UserAvatar";
 import { useNotification } from "../context/NotificationContext";
+
+
+const getMedicineIcon = (category) => {
+  const cat = category?.toLowerCase() || "";
+  if (cat.includes("injection") || cat.includes("syringe")) return <Syringe className="w-6 h-6" />;
+  if (cat.includes("syrup") || cat.includes("liquid") || cat.includes("drop")) return <Droplets className="w-6 h-6" />;
+  if (cat.includes("tablet") || cat.includes("capsule") || cat.includes("pill")) return <Tablets className="w-6 h-6" />;
+  return <Pill className="w-6 h-6" />;
+};
+
+const MedicineItem = React.memo(({ med, isExpanded, onToggle, index }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 0.05 }}
+      className="p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
+      onClick={() => onToggle(index)}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-5 flex-1 min-w-0">
+          <div className="relative w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex-shrink-0 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+            {getMedicineIcon(med.form || med.category)}
+            {med.reminders && med.reminders.length > 0 && (
+              <div className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-rose-500 border-2 border-white dark:border-slate-900 flex items-center justify-center">
+                <Clock className="w-3 h-3 text-white" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate pr-2">{med.name}</h3>
+            <p className={`text-sm text-slate-500 dark:text-slate-400 font-medium ${isExpanded ? "" : "truncate"}`}>
+              {med.dosage} • {med.frequency}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 sm:gap-8 flex-shrink-0">
+          <div className="text-right">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Stock</p>
+            <p className={`font-bold ${med.currentStock <= 5 ? "text-amber-500" : "text-slate-900 dark:text-white"}`}>
+              {med.currentStock} / {med.totalStock}
+            </p>
+          </div>
+          <div className="text-right hidden sm:block">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Expiry</p>
+            <p className={`font-bold ${new Date(med.expiryDate) < new Date() ? "text-rose-500" : "text-slate-900 dark:text-white"}`}>
+              {new Date(med.expiryDate).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-indigo-500 transition-colors">
+            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Details */}
+      {isExpanded && (
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800/50"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description & Instructions</h4>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                {med.description || "No specific instructions provided."}
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Schedule</h4>
+                {med.reminders && med.reminders.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {med.reminders.map((rem, idx) => (
+                      <div key={idx} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-xs font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+                        <Clock className="w-3 h-3" />
+                        <span>{(!rem.daysOfWeek || rem.daysOfWeek.length === 0 || rem.daysOfWeek.length === 7) ? "Daily" : rem.daysOfWeek.join(", ")}</span>
+                        <span className="text-indigo-300 dark:text-indigo-700">|</span>
+                        <span>{rem.times.join(", ")}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500 italic">No reminders set</p>
+                )}
+              </div>
+              
+              <div className="sm:hidden">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Expiry Date</h4>
+                <p className={`text-sm font-bold ${new Date(med.expiryDate) < new Date() ? "text-rose-500" : "text-slate-900 dark:text-white"}`}>
+                  {new Date(med.expiryDate).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+});
 
 const FamilyMemberProfile = () => {
   const { userId } = useParams();
@@ -31,8 +140,13 @@ const FamilyMemberProfile = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedMedIndex, setExpandedMedIndex] = useState(null);
 
   const { notify } = useNotification();
+
+  const handleToggle = useCallback((index) => {
+    setExpandedMedIndex((prev) => (prev === index ? null : index));
+  }, []);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -249,55 +363,13 @@ const FamilyMemberProfile = () => {
                     </div>
                   ) : (
                     medicines.map((med, index) => (
-                      <motion.div
+                      <MedicineItem 
                         key={index}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                              <Pill className="h-6 w-6" />
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-bold text-slate-900 dark:text-white">{med.name}</h3>
-                              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                                {med.dosage} • {med.frequency}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-8">
-                            <div className="text-right">
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Stock</p>
-                              <p className={`font-bold ${med.currentStock <= 5 ? "text-amber-500" : "text-slate-900 dark:text-white"}`}>
-                                {med.currentStock} / {med.totalStock}
-                              </p>
-                            </div>
-                            <div className="text-right hidden sm:block">
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Expiry</p>
-                              <p className={`font-bold ${new Date(med.expiryDate) < new Date() ? "text-rose-500" : "text-slate-900 dark:text-white"}`}>
-                                {new Date(med.expiryDate).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {med.reminders && med.reminders.length > 0 && (
-                          <div className="mt-4 pl-[4.5rem] flex flex-wrap gap-2">
-                            {med.reminders.map((rem, idx) => (
-                              <div key={idx} className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300">
-                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                <span>{(!rem.daysOfWeek || rem.daysOfWeek.length === 0 || rem.daysOfWeek.length === 7) ? "Daily" : rem.daysOfWeek.join(", ")}</span>
-                                <span className="text-slate-400">|</span>
-                                <span>{rem.times.join(", ")}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </motion.div>
+                        med={med}
+                        index={index}
+                        isExpanded={expandedMedIndex === index}
+                        onToggle={handleToggle}
+                      />
                     ))
                   )}
                 </div>
