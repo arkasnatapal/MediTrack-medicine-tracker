@@ -13,7 +13,8 @@ const HealthIntelligencePanel = ({ isOpen, onClose }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/dashboard/intelligence', {
+      const API_URL = import.meta.env.VITE_API_URL;
+      const res = await axios.get(`${API_URL}/dashboard/intelligence`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -35,7 +36,8 @@ const HealthIntelligencePanel = ({ isOpen, onClose }) => {
       setRefreshing(true);
       setMessage('');
       const token = localStorage.getItem('token');
-      const res = await axios.post('http://localhost:5000/api/dashboard/intelligence/refresh', {}, {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await axios.post(`${API_URL}/dashboard/intelligence/refresh`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

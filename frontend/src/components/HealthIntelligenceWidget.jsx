@@ -12,7 +12,8 @@ const HealthIntelligenceWidget = () => {
   const fetchIntelligence = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/dashboard/intelligence', {
+      const API_URL = import.meta.env.VITE_API_URL;
+      const res = await axios.get(`${API_URL}/dashboard/intelligence`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
