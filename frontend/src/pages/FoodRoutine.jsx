@@ -226,10 +226,10 @@ const FoodRoutine = () => {
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => askAI(null)}
-                className="flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-2xl hover:bg-white/20 transition-all font-bold text-sm"
+                className="flex items-center gap-2 px-6 py-3 bg-white/30 dark:bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-2xl hover:bg-white/20 transition-all font-bold text-sm"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>Ask AI</span>
+                <Sparkles className="w-4 h-4 text-black dark:text-white" />
+                <span className="text-black dark:text-white">Ask AI</span>
               </button>
               <button
                 onClick={() => {
@@ -247,7 +247,7 @@ const FoodRoutine = () => {
                 className="flex items-center gap-2 px-6 py-3 bg-white text-teal-700 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all text-sm"
               >
                 <Plus className="w-5 h-5" />
-                <span className="text-white dark:text-black">Add Meal</span>
+                <span className="text-black dark:text-black">Add Meal</span>
               </button>
             </div>
           </div>
