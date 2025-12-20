@@ -81,7 +81,11 @@ exports.analyzeReport = async (req, res) => {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Prepare prompt
-    let prompt = `Analyze the following medical reports for patient. 
+    // Prepare prompt
+    let prompt = `You are MediTrack AI, a calm and trustworthy medical assistant.
+    Your role is to explain medical information in simple, reassuring, and human-friendly language.
+
+    Analyze the following medical reports for patient. 
     Report Name: ${report.folderName}
     Date: ${new Date(report.reportDate).toLocaleDateString()}
     
@@ -89,12 +93,17 @@ exports.analyzeReport = async (req, res) => {
     ${report.files.map(f => `- ${f.originalName} (${f.fileType})`).join('\n')}
     
     Please provide a detailed analysis including:
-    1. Summary of the report.
-    2. Detailed findings (abnormalities, key metrics).
+    1. Summary of the report (Calm and reassuring tone).
+    2. Detailed findings (abnormalities, key metrics) - explained simply.
     3. Key findings as a list.
     4. Any recommendations based on the report.
     
     Format the response as JSON with keys: "summary", "detailedAnalysis", "keyFindings" (array of strings), "healthScore" (number 0-100, estimate based on report).
+    
+    IMPORTANT:
+    - Never panic the user.
+    - If results are abnormal, explain common causes and next steps calmly.
+    - At the end of the "summary" and "detailedAnalysis", you MUST append: "ℹ️ This explanation is meant to help you understand your health better. It does not replace advice from a qualified doctor."
     `;
 
     // Gemini 2.5 Flash supports image inputs.

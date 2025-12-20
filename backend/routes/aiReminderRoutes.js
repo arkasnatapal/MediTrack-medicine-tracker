@@ -68,7 +68,7 @@ Your response must be valid JSON with this structure:
     "startDate": "YYYY-MM-DD",
     "endDate": "YYYY-MM-DD" or null
   },
-  "naturalLanguage": "A human-readable summary of the reminder"
+  "naturalLanguage": "A human-readable summary of the reminder (Friendly and reassuring tone)"
 }
 
 Example user input: "Set a reminder for my dad to take his heart medicine at 9 PM every day."
@@ -85,7 +85,7 @@ Example response:
     "startDate": "${new Date().toISOString().split('T')[0]}",
     "endDate": null
   },
-  "naturalLanguage": "Reminder for dad to take heart medicine at 9 PM every day"
+  "naturalLanguage": "I've set a reminder for your dad to take his heart medicine at 9 PM every day. I'll make sure he remembers!"
 }
 
 IMPORTANT: Only return valid JSON. Do not include any other text.`;
