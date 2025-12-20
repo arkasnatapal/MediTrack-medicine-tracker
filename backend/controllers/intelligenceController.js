@@ -127,12 +127,33 @@ exports.refreshIntelligence = async (req, res) => {
       }
     }
 
+    const MedicineLog = require('../models/MedicineLog');
+
     // 3. Aggregate Data
-    const [reports, medicines, foods] = await Promise.all([
+    const [reports, medicines, foods, medicineLogs] = await Promise.all([
       Report.find({ userId }).sort({ reportDate: -1 }).limit(5),
       Medicine.find({ userId }),
-      FoodItem.find({ user: userId }).limit(20)
+      FoodItem.find({ user: userId }).limit(20),
+      MedicineLog.find({ userId })
+        .sort({ scheduledTime: -1 })
+        .limit(50)
+        .populate('medicineId', 'name')
     ]);
+
+    // Summarize Medicine Logs
+    const logSummary = medicineLogs.reduce((acc, log) => {
+      const medName = log.medicineId?.name || "Unknown";
+      if (!acc[medName]) acc[medName] = { taken: 0, late: 0, skipped: 0, total: 0 };
+      acc[medName].total++;
+      if (log.status === 'taken_on_time') acc[medName].taken++;
+      if (log.status === 'taken_late') acc[medName].late++;
+      if (log.status === 'skipped') acc[medName].skipped++;
+      return acc;
+    }, {});
+
+    const logSummaryString = Object.entries(logSummary).map(([name, stats]) => 
+      `${name}: ${stats.taken} on time, ${stats.late} late, ${stats.skipped} skipped (Total: ${stats.total})`
+    ).join('; ');
 
     // 4. Prepare AI Context
     let prompt = `
@@ -140,6 +161,7 @@ exports.refreshIntelligence = async (req, res) => {
       
       CURRENT DATA:
       - Medicines: ${medicines.map(m => `${m.name} (${m.quantity} left)`).join(', ') || "None"}
+      - Medication Adherence (Last 50 logs): ${logSummaryString || "No logs recorded yet"}
       - Recent Reports: ${reports.map(r => `${r.folderName} (Score: ${r.aiAnalysis?.healthScore || 'N/A'})`).join(', ') || "None"}
       - Recent Food: ${foods.map(f => f.name).join(', ') || "None"}
     `;
@@ -170,6 +192,7 @@ exports.refreshIntelligence = async (req, res) => {
         "dietScore": "good" | "average" | "poor",
         "summary": "Plain English summary of health status",
         "highlights": ["Bullet point 1", "Bullet point 2"],
+        "medicationInsights": ["Specific insight about adherence", "Suggestion for improvement"],
         "progressionNote": "Comparison with last snapshot (e.g., 'Your BP control has improved...')"
       }
       
@@ -201,6 +224,7 @@ exports.refreshIntelligence = async (req, res) => {
       trend,
       summary: aiResponse.summary,
       highlights: aiResponse.highlights,
+      medicationInsights: aiResponse.medicationInsights || [],
       breakdown: {
         reports: { count: reports.length, improved: aiResponse.markersImproved },
         medicines: { count: medicines.length },

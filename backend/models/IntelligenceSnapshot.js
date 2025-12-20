@@ -25,6 +25,9 @@ const intelligenceSnapshotSchema = new mongoose.Schema({
   highlights: [{
     type: String
   }],
+  medicationInsights: [{
+    type: String
+  }],
   breakdown: {
     reports: { type: Object },
     medicines: { type: Object },
