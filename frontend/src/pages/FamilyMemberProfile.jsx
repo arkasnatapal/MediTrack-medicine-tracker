@@ -94,7 +94,7 @@ const MedicineItem = React.memo(({ med, isExpanded, onToggle, index }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description & Instructions</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
                 {med.description || "No specific instructions provided."}
               </p>
             </div>

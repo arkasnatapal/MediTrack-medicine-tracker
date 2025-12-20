@@ -292,7 +292,7 @@ router.get("/:id", auth, async (req, res) => {
     const Reminder = require("../models/Reminder");
     
     const medicinesRaw = await Medicine.find({ userId: memberId }).select(
-      "name dosage frequency quantity expiryDate"
+      "name dosage frequency quantity expiryDate description"
     );
 
     const medicines = await Promise.all(medicinesRaw.map(async (m) => {
