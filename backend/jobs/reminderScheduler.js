@@ -66,6 +66,16 @@ async function executeReminderCheck() {
           status: "pending",
         });
 
+        // [NEW] LOGGING HOOK
+        const MedicineLog = require("../models/MedicineLog");
+        await MedicineLog.create({
+          userId: userId,
+          medicineId: rem.medicine._id,
+          reminderId: rem._id,
+          scheduledTime: ist,
+          status: "pending",
+        });
+
         // CREATE IN-APP NOTIFICATION (only if user might be online)
         await Notification.create({
           user: userId,

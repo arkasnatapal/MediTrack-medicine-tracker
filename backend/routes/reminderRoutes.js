@@ -233,6 +233,10 @@ router.delete("/:id", auth, async (req, res) => {
       console.error("Google Calendar Sync Error (Delete):", calErr.message);
     }
 
+    // [NEW] LOGGING HOOK
+    const MedicineLog = require("../models/MedicineLog");
+    await MedicineLog.deleteMany({ reminderId: id });
+
     await Reminder.findByIdAndDelete(id);
     res.json({ success: true, message: "Reminder deleted successfully" });
   } catch (err) {

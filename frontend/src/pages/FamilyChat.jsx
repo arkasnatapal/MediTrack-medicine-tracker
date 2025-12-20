@@ -250,8 +250,8 @@ const FamilyChat = () => {
                           <div
                             className={`px-5 py-3 shadow-lg relative backdrop-blur-sm ${
                               isMe
-                                ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-3xl rounded-tr-md'
-                                : 'bg-white/80 dark:bg-slate-800/80 text-slate-900 dark:text-white border border-white/20 dark:border-slate-700 rounded-3xl rounded-tl-md'
+                                ? 'bg-gradient-to-br bg-green-400 dark:bg-blue-600 dark:text-white text-black font-semibold rounded-3xl rounded-tr-md'
+                                : 'bg-white/80 dark:bg-slate-800/80 text-black font-semibold dark:text-white border border-white/20 dark:border-slate-700 rounded-3xl rounded-tl-md'
                             }`}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>

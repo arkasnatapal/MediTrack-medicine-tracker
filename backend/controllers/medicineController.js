@@ -170,6 +170,10 @@ exports.deleteMedicine = async (req, res) => {
     // Delete all reminders associated with this medicine
     await Reminder.deleteMany({ medicine: medicine._id });
 
+    // [NEW] LOGGING HOOK
+    const MedicineLog = require('../models/MedicineLog');
+    await MedicineLog.deleteMany({ medicineId: medicine._id });
+
     // Delete the medicine
     await Medicine.deleteOne({ _id: medicine._id });
 

@@ -5,6 +5,7 @@ const PendingReminder = require("../models/PendingReminder");
 const Medicine = require("../models/Medicine");
 const Reminder = require("../models/Reminder");
 const FamilyConnection = require("../models/FamilyConnection");
+const MedicineLog = require("../models/MedicineLog");
 
 // GET /api/pending-reminders - Get all pending reminders for current user
 router.get("/", auth, async (req, res) => {
@@ -43,7 +44,36 @@ router.post("/:id/confirm", auth, async (req, res) => {
     // Update pending reminder status
     pendingReminder.status = "confirmed";
     pendingReminder.confirmedAt = new Date();
+    pendingReminder.confirmedAt = new Date();
     await pendingReminder.save();
+
+    // [NEW] LOGGING HOOK
+    const actionTime = new Date();
+    const scheduledTime = new Date(pendingReminder.scheduledTime);
+    const diffMs = actionTime - scheduledTime;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    let logStatus = "taken_on_time";
+    let delayMinutes = null;
+
+    if (diffMins > 60) {
+        logStatus = "taken_late";
+        delayMinutes = diffMins;
+    }
+
+    await MedicineLog.findOneAndUpdate(
+        { 
+            userId: req.user.id, 
+            medicineId: pendingReminder.medicine._id,
+            reminderId: pendingReminder.reminder,
+            scheduledTime: pendingReminder.scheduledTime
+        },
+        {
+            status: logStatus,
+            actionTime: actionTime,
+            delayMinutes: delayMinutes
+        }
+    );
 
     // Reduce medicine stock by 1
     const medicine = await Medicine.findById(pendingReminder.medicine._id);
@@ -127,6 +157,22 @@ router.post("/:id/dismiss", auth, async (req, res) => {
       { new: true }
     );
 
+    if (pendingReminder) {
+        // [NEW] LOGGING HOOK
+        await MedicineLog.findOneAndUpdate(
+            { 
+                userId: req.user.id, 
+                medicineId: pendingReminder.medicine,
+                reminderId: pendingReminder.reminder,
+                scheduledTime: pendingReminder.scheduledTime
+            },
+            {
+                status: "skipped",
+                actionTime: new Date()
+            }
+        );
+    }
+
     if (!pendingReminder) {
       return res.status(404).json({ success: false, message: "Pending reminder not found" });
     }
@@ -182,6 +228,9 @@ router.delete("/medicines/:id/with-reminders", auth, async (req, res) => {
 
     // Delete all pending reminders for this medicine
     await PendingReminder.deleteMany({ medicine: id });
+
+    // [NEW] LOGGING HOOK
+    await MedicineLog.deleteMany({ medicineId: id });
 
     // Delete the medicine
     await Medicine.findByIdAndDelete(id);

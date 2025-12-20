@@ -71,6 +71,7 @@ app.use('/api/food', require('./routes/foodRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/dashboard/intelligence', require('./routes/intelligenceRoutes'));
 app.use('/api/medicine-catalog', require('./routes/medicineCatalogRoutes'));
+app.use('/api/medicine-logs', require('./routes/medicineLogRoutes'));
 
 const googleRoutes = require("./routes/googleRoutes");
 app.use("/api/google", googleRoutes);

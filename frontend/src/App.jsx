@@ -36,6 +36,7 @@ import Cookies from './pages/Cookies'
 import FoodRoutine from './pages/FoodRoutine'
 import HealthReview from './pages/HealthReview'
 import MedicalReports from './pages/MedicalReports'
+import MedicationStatus from './pages/MedicationStatus'
 import NotFound from './pages/NotFound'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -230,6 +231,12 @@ function AppContent() {
               <Route path="/reports" element={
                 <PrivateRoute>
                   <MedicalReports />
+                </PrivateRoute>
+              } />
+
+              <Route path="/medication-status" element={
+                <PrivateRoute>
+                  <MedicationStatus />
                 </PrivateRoute>
               } />
 
