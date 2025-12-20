@@ -13,6 +13,7 @@ import QuickFamilyWidget from '../components/QuickFamilyWidget';
 import EditMedicineModal from '../components/EditMedicineModal';
 import HealthTipWidget from '../components/HealthTipWidget';
 import SearchModal from '../components/SearchModal';
+import HealthIntelligenceWidget from '../components/HealthIntelligenceWidget';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -186,7 +187,12 @@ const Dashboard = () => {
           </motion.div>
 
           {/* Action Center Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {/* Health Intelligence Widget */}
+            <motion.div variants={itemVariants}>
+              <HealthIntelligenceWidget />
+            </motion.div>
+
             {/* Pending Reminders Widget */}
             <motion.div variants={itemVariants}>
               <PendingRemindersWidget />

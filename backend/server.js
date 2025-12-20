@@ -69,6 +69,7 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/pending-reminders', require('./routes/pendingReminderRoutes'));
 app.use('/api/food', require('./routes/foodRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/dashboard/intelligence', require('./routes/intelligenceRoutes'));
 
 const googleRoutes = require("./routes/googleRoutes");
 app.use("/api/google", googleRoutes);
