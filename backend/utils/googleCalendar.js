@@ -20,6 +20,68 @@ function createOAuthClient() {
   );
 }
 
+function getUtcDateForTargetTime(dateStr, timeStr, timeZone) {
+  // dateStr: YYYY-MM-DD (from reminder.startDate or dynamically calculated)
+  // timeStr: HH:MM (from reminder.times[0])
+  // timeZone: e.g., 'Asia/Kolkata'
+
+  const [year, month, day] = new Date(dateStr).toISOString().split('T')[0].split('-').map(Number);
+  const [hours, minutes] = timeStr.split(':').map(Number);
+
+  // We need to find a UTC time such that when displayed in 'timeZone', it matches the target year, month, day, hours, minutes.
+  // We can't just use setHours/setMinutes because those operate in local time (or UTC if using setUTCHours),
+  // but we need the CONVERSION from Target TZ -> UTC.
+
+  // Approach:
+  // 1. Create a guess date in UTC.
+  // 2. Format it to parts in the target timezone.
+  // 3. Compare parts and adjust difference.
+  
+  // Better Approach using Intl (reliable in Node environment without external libs):
+  // Construct a string in a format that Date.parse or new Date() accepts WITH timezone info? 
+  // JS Date parsing with timezone is tricky without libraries.
+
+  // Robust Native Approach:
+  // Create a date object that represents the approximate time.
+  // Then use Intl.DateTimeFormat to read what time that "moment" is in the target timezone.
+  // Calculate the difference and Apply offset.
+  
+  // Let's rely on the input strings which are clean: YYYY, MM, DD, HH, MM.
+  // We want to construct a Date object 'd' such that d.toLocaleString('en-US', {timeZone}) reads YYYY-MM-DD HH:MM.
+
+  // Start with a UTC date assuming the inputs are UTC.
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+  
+  // Get what time this point-in-time actually is in the target timezone.
+  const formatOptions = {
+      timeZone,
+      year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', second: 'numeric',
+      hour12: false
+  };
+  
+  const formatter = new Intl.DateTimeFormat('en-US', formatOptions);
+  const parts = formatter.formatToParts(utcDate);
+  const getPart = (type) => parseInt(parts.find(p => p.type === type).value);
+  
+  const tzYear = getPart('year');
+  const tzMonth = getPart('month');
+  const tzDay = getPart('day');
+  const tzHour = getPart('hour');
+  const tzMinute = getPart('minute');
+
+  // Create a Date from the timezone-projected values (treated as UTC for math)
+  const tzProjectedAsUtc = new Date(Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute, 0));
+  
+  // The difference is the offset of that timezone at that specific time.
+  const offsetMs = tzProjectedAsUtc.getTime() - utcDate.getTime();
+  
+  // To get the correct UTC instant, we SUBTRACT the offset from our initial assumption.
+  // (e.g. if we want 9am IST, but 9am UTC is 2:30pm IST, we are ahead, so we subtract).
+  
+  return new Date(utcDate.getTime() - offsetMs);
+}
+
 function getAuthUrl(mode = "login") {
   const oAuth2Client = createOAuthClient();
   const scopes = (GOOGLE_CALENDAR_SCOPES || "https://www.googleapis.com/auth/calendar.events,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/userinfo.profile")
@@ -85,10 +147,15 @@ async function createCalendarEvent(userId, reminder) {
     // However, the prompt example suggests a single event. Let's try to make it meaningful.
     // If reminder.times has values, pick the first one for the start time on the start date.
     
-    let eventStart = new Date(startDateTime);
+    const timeZone = reminder.timezone || "Asia/Kolkata";
+    
+    let eventStart;
     if (reminder.times && reminder.times.length > 0) {
-        const [hours, minutes] = reminder.times[0].split(':').map(Number);
-        eventStart.setHours(hours, minutes, 0, 0);
+        // Use the new helper to get precise UTC start time
+        eventStart = getUtcDateForTargetTime(reminder.startDate, reminder.times[0], timeZone);
+    } else {
+        // Fallback if no specific time is set
+        eventStart = new Date(startDateTime);
     }
 
     const endDateTime = new Date(eventStart.getTime() + 30 * 60 * 1000); // 30 min duration
@@ -151,10 +218,13 @@ async function updateCalendarEvent(userId, googleEventId, reminder) {
 
     const calendar = google.calendar({ version: "v3", auth });
 
-    let eventStart = new Date(reminder.startDate);
+    const timeZone = reminder.timezone || "Asia/Kolkata";
+
+    let eventStart;
     if (reminder.times && reminder.times.length > 0) {
-        const [hours, minutes] = reminder.times[0].split(':').map(Number);
-        eventStart.setHours(hours, minutes, 0, 0);
+       eventStart = getUtcDateForTargetTime(reminder.startDate, reminder.times[0], timeZone);
+    } else {
+       eventStart = new Date(reminder.startDate); 
     }
     const endDateTime = new Date(eventStart.getTime() + 30 * 60 * 1000);
 
