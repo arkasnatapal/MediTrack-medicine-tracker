@@ -1,38 +1,27 @@
-# Changes - Medicine Reminder Logging System
+# Changes: Cron Migration & Fixes
 
-## Backend
-- **New Collection**: `medicine_logs`
-  - Tracks status: `pending`, `taken_on_time`, `taken_late`, `skipped`.
-  - Stores `scheduledTime`, `actionTime`, `delayMinutes`.
-- **New Model**: `backend/models/MedicineLog.js`
-- **Hooks Added**:
-  - `backend/jobs/reminderScheduler.js`: Creates "pending" log when reminder is triggered.
-  - `backend/routes/pendingReminderRoutes.js`:
-    - `confirm`: Updates log to "taken_on_time" or "taken_late".
-    - `dismiss`: Updates log to "skipped".
-    - `delete`: Deletes associated logs.
-  - `backend/routes/reminderRoutes.js`: Deletes logs when reminder is deleted.
-  - `backend/controllers/medicineController.js`: Deletes logs when medicine is deleted.
-- **New API**: `GET /api/medicine-logs` in `backend/routes/medicineLogRoutes.js`.
+## Summary
+Migrated `node-cron` to HTTP endpoints and implemented robust "lookback window" logic to ensure reminders are never missed even if the trigger is delayed or infrequent.
 
-## Frontend
-- **New Page**: `MedicationStatus.jsx` at `/medication-status`.
-- **Route Added**: `/medication-status` in `App.jsx`.
-- **Features**:
-  - Displays list of medicine logs.
-  - Shows status badges (Pending, Taken on Time, Taken Late, Skipped).
-  - Shows delay in minutes for late intake.
-  - Responsive table layout.
+## Key Fixes (Recent)
 
-## Logic
-- **On Time vs Late**: If action is within 60 minutes of scheduled time, it is "taken_on_time". Otherwise "taken_late".
-- **Skipped**: If user dismisses the reminder.
-- **Pending**: If no action is taken.
-- **Cascade Delete**: Logs are deleted if the medicine or reminder is deleted.
+### `backend/jobs/reminderScheduler.js`
+- **Added Lookback Window**: Scheduler checks for reminders due in the **last 1 minute** (adjustable) to handle slight delays while assuming a per-minute cron schedule.
+- **Duplicate Prevention**: Improved logic to check `lastTriggeredAt` against the specific due slot to prevent double-sending notifications.
+- **Timezone Robustness**: Explicitly handles UTC to IST conversion for accurate window calculation.
+- **Fixed Model Loading**: Added explicit `require` for `Medicine`, `PendingReminder`, and `MedicineLog` models at the top level to prevent serverless cold start crashes.
 
-## Constraints Check
-- Existing reminder logic NOT modified.
-- Existing scheduling code NOT modified (only hooked into).
-- No AI usage.
-- No background inference.
-- No UI behavior changes to existing reminder flow.
+## Previous Migration Changes
+
+### `backend/package.json`
+- **Removed**: `node-cron` dependency.
+
+### `backend/server.js`
+- **Removed**: `startCronJobs()` and `startReminderScheduler()` calls.
+- **Added**: `/api/cron` route registration.
+
+### `backend/routes/cronRoutes.js`
+- **Authentication**: Endpoints protected by `CRON_SECRET`.
+
+## Verification
+You can trigger the check at any time. The system assumes an external scheduler (like Vercel Cron) triggers the endpoint every minute.

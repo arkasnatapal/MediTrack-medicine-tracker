@@ -1,16 +1,7 @@
-const cron = require('node-cron');
+// [REMOVED] node-cron dependency
 const { checkExpiredMedicines } = require('../utils/expiryChecker');
 
-const startCronJobs = () => {
-  // Run daily at 9 AM IST
-  cron.schedule(process.env.CRON_SCHEDULE || '0 9 * * *', async () => {
-    console.log('⏰ Running scheduled expiry check...');
-    await checkExpiredMedicines();
-  }, {
-    timezone: process.env.TIMEZONE || 'Asia/Kolkata'
-  });
+// [REMOVED] Internal scheduling logic.
+// checkExpiredMedicines is now exposed via cronRoutes to be triggered externally.
 
-  console.log('✅ Cron jobs initialized - Running daily at 9 AM IST');
-};
-
-module.exports = { startCronJobs };
+module.exports = { checkExpiredMedicines };

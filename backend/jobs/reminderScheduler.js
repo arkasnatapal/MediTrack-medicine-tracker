@@ -1,7 +1,11 @@
-const cron = require("node-cron");
+// [REMOVED] node-cron dependency for serverless compatibility
 const Reminder = require("../models/Reminder");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const PendingReminder = require("../models/PendingReminder");
+const MedicineLog = require("../models/MedicineLog");
+// Ensure Medicine model is registered for population
+require("../models/Medicine");
 const { sendReminderEmail } = require("../utils/reminderEmail");
 
 function getCurrentISTTime() {
@@ -9,28 +13,46 @@ function getCurrentISTTime() {
   // Convert to UTC first, then add IST offset (UTC + 5:30)
   const utcOffset = now.getTime() + (now.getTimezoneOffset() * 60000);
   const istOffset = 5.5 * 60 * 60 * 1000;
-  const ist = new Date(utcOffset + istOffset);
+  // Return actual IST Date object
+  return new Date(utcOffset + istOffset);
+}
 
-  const hours = ist.getHours().toString().padStart(2, "0");
-  const minutes = ist.getMinutes().toString().padStart(2, "0");
-  const dayIndex = ist.getDay();
-  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  return { ist, hhmm: `${hours}:${minutes}`, today: days[dayIndex] };
+function getWindowTimes(istDate, lookbackMinutes = 1) {
+  const times = [];
+  const current = new Date(istDate.getTime());
+  
+  // Checking times from [now - lookback] up to [now]
+  // We go minute by minute
+  for (let i = 0; i <= lookbackMinutes; i++) {
+    const d = new Date(current.getTime() - (i * 60000));
+    const hh = d.getHours().toString().padStart(2, '0');
+    const mm = d.getMinutes().toString().padStart(2, '0');
+    times.push(`${hh}:${mm}`);
+  }
+  return [...new Set(times)]; // Unique times
 }
 
 async function executeReminderCheck() {
-  const { ist, hhmm, today } = getCurrentISTTime();
-  console.log("⏰ Running reminder check at (IST):", hhmm, today);
+  const ist = getCurrentISTTime();
+  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const todayDay = days[ist.getDay()];
+  
+  // Lookback window to catch skipped minutes (e.g. if cron runs every 10 mins)
+  const checkTimes = getWindowTimes(ist, 15);
+  const currentTimeStr = ist.getHours().toString().padStart(2,'0') + ":" + ist.getMinutes().toString().padStart(2,'0');
+
+  console.log(`⏰ Running reminder check at (IST): ${currentTimeStr}, Window: [${checkTimes[checkTimes.length-1]} - ${checkTimes[0]}]`);
 
   try {
+    // Find reminders that match ANY of the times in our window
     const reminders = await Reminder.find({
       active: true,
       startDate: { $lte: ist },
       $or: [{ endDate: null }, { endDate: { $gte: ist } }],
-      times: hhmm,
+      times: { $in: checkTimes }, // Matches any time in the window
       $or: [
         { daysOfWeek: { $size: 0 } },
-        { daysOfWeek: today }
+        { daysOfWeek: todayDay }
       ]
     })
       .populate("targetUser", "name email")
@@ -39,14 +61,60 @@ async function executeReminderCheck() {
       .populate("medicine", "name dosage");
 
     if (!reminders.length) {
-      console.log("✅ No reminders due right now.");
+      console.log("✅ No matching reminders in this window.");
       return;
     }
 
-    console.log(`🚨 ${reminders.length} reminder(s) due — triggering...`);
+    console.log(`🔍 Found ${reminders.length} potential reminder(s)... checking if already triggered.`);
+
+    let triggeredCount = 0;
 
     for (const rem of reminders) {
-      const uniqueRecipients = new Set([
+      // Check each scheduled time in the window for this reminder
+      // A reminder might have multiple times, e.g. ["09:00", "14:00"]
+      // We only care about the ones strictly in our checkTimes window
+      const dueTimes = rem.times.filter(t => checkTimes.includes(t));
+
+      for (const dueTime of dueTimes) {
+         // Construct the specific Due Date for this time slot (Today at HH:MM)
+         const [h, m] = dueTime.split(':').map(Number);
+         const dueDate = new Date(ist);
+         dueDate.setHours(h, m, 0, 0);
+
+         // CRITICAL: Check if already triggered for this specific slot or later
+         // If lastTriggeredAt is AFTER the due date (with 1 min tolerance), skip
+         // Tolerance allows slight overlaps without double firing, though equality check is usually enough
+         // If lastTriggeredAt >= dueDate, it means we handled this slot (or a later one).
+         if (rem.lastTriggeredAt && rem.lastTriggeredAt >= dueDate) {
+            // converting dates to timestamps for safer comparison logic if needed, 
+            // but JS date comparison works fine.
+            // console.log(`Skipping ${rem.medicineName} at ${dueTime} - already triggered at ${rem.lastTriggeredAt}`);
+            continue;
+         }
+
+         // If we are here, it's due and hasn't been triggered
+         console.log(`🚀 Triggering ${rem.medicineName} for ${dueTime} (Due: ${dueDate.toLocaleTimeString()})`);
+         
+         await triggerSingleReminder(rem, ist, dueTime);
+         
+         // Update lastTriggeredAt to NOW (so we don't re-trigger this slot)
+         // Note: If multiple slots match in one run (rare/backlog), this updates for the latest one processed.
+         await Reminder.findByIdAndUpdate(rem._id, { lastTriggeredAt: ist });
+         triggeredCount++;
+      }
+    }
+    
+    if (triggeredCount === 0) {
+        console.log("✅ All due reminders were already triggered.");
+    }
+
+  } catch (err) {
+    console.error("❌ Reminder scheduler error:", err);
+  }
+}
+
+async function triggerSingleReminder(rem, ist, dueTime) {
+    const uniqueRecipients = new Set([
         rem.targetUser?._id?.toString(),
         ...(rem.watchers || []).map(w => w._id.toString())
       ]);
@@ -55,8 +123,11 @@ async function executeReminderCheck() {
         const user = await User.findById(userId);
         if (!user) continue;
 
-        // CREATE PENDING REMINDER (for tracking and offline support)
-        const PendingReminder = require("../models/PendingReminder");
+        // CREATE PENDING REMINDER
+        // Check if pending reminder already exists for today/this time to be extra safe?
+        // Relying on lastTriggeredAt is mostly sufficient, but redundancy helps.
+        // Skipping redundant check for performance unless requested.
+
         await PendingReminder.create({
           user: userId,
           reminder: rem._id,
@@ -66,8 +137,7 @@ async function executeReminderCheck() {
           status: "pending",
         });
 
-        // [NEW] LOGGING HOOK
-        const MedicineLog = require("../models/MedicineLog");
+        // LOGGING HOOK
         await MedicineLog.create({
           userId: userId,
           medicineId: rem.medicine._id,
@@ -76,12 +146,12 @@ async function executeReminderCheck() {
           status: "pending",
         });
 
-        // CREATE IN-APP NOTIFICATION (only if user might be online)
+        // NOTIFICATION
         await Notification.create({
           user: userId,
           type: "medicine_reminder",
           title: `Time to take ${rem.medicineName}`,
-          message: `Reminder scheduled at ${hhmm}.`,
+          message: `Reminder scheduled at ${dueTime}.`,
           read: false,
           meta: {
             medicineId: rem.medicine?._id,
@@ -90,73 +160,25 @@ async function executeReminderCheck() {
           }
         });
 
-        console.log(`🔔 Notification and pending reminder created for ${user.email}`);
+        console.log(`🔔 Sent to ${user.email} for ${dueTime}`);
 
-        // SEND EMAIL IF ENABLED
+        // EMAIL
         if (rem.channels?.email && user.email) {
           try {
             await sendReminderEmail({
               to: user.email,
               title: `Medicine Reminder — ${rem.medicineName}`,
-              message: `It's time to take your medicine at ${hhmm}.`,
+              message: `It's time to take your medicine at ${dueTime}.`,
               reminder: rem,
             });
-            console.log(`📨 Reminder email sent to ${user.email}`);
           } catch (e) {
-            console.error("❌ Email sending failed:", e.message);
+            console.error("❌ Email failed:", e.message);
           }
         }
       }
-
-      await Reminder.findByIdAndUpdate(rem._id, { lastTriggeredAt: ist });
-    }
-  } catch (err) {
-    console.error("❌ Reminder scheduler error:", err);
-  }
 }
 
-// Check for pending reminders that exceeded grace period (30 mins)
-async function checkGracePeriod() {
-  try {
-    const GRACE_PERIOD_MINS = 30;
-    const now = new Date();
-    const graceTime = new Date(now.getTime() - GRACE_PERIOD_MINS * 60000);
+// [REMOVED] internal logic of startReminderScheduler. 
+// Function logic is now exposed via executeReminderCheck to be triggered via HTTP.
 
-    // Find pending reminders created before graceTime that are still 'pending'
-    // and haven't triggered a 'not_taken' notification yet.
-    // We need a way to mark that we've sent the 'not_taken' notification.
-    // For now, we can check if we already sent a notification or add a flag to PendingReminder.
-    // Let's assume we add a flag `notTakenNotified` to PendingReminder schema or just use a separate check.
-    // Since we can't easily modify schema in this step without breaking previous steps or requiring more edits,
-    // let's just find them and if we haven't notified, notify. 
-    // Wait, if I don't mark it, I will spam notifications.
-    // I should add `notTakenNotified` to PendingReminder schema.
-    
-    // For this iteration, I will assume I can add the field to the schema in a separate tool call if needed, 
-    // or I can just use the `updatedAt` field if I update the status to something else? 
-    // But the requirement says "if target marks taken before grace ends...". 
-    // If I change status, they can't mark it taken? 
-    // Maybe I should just add the field.
-    
-    // Let's add `notTakenNotified` to PendingReminder schema first.
-  } catch (err) {
-    console.error("Error in grace period check:", err);
-  }
-}
-
-// Run every minute
-function startReminderScheduler() {
-  console.log("✅ Reminder Scheduler Started (runs every minute)");
-  // Run immediately on startup to catch anything due right now
-  executeReminderCheck();
-  
-  // Also run grace period check
-  const { checkGracePeriod } = require('./gracePeriodCheck');
-  
-  cron.schedule("* * * * *", async () => {
-      await executeReminderCheck();
-      await checkGracePeriod();
-  });
-}
-
-module.exports = { startReminderScheduler };
+module.exports = { executeReminderCheck };

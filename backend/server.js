@@ -13,7 +13,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const ocrRoutes = require('./routes/ocrRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const errorMiddleware = require('./middleware/errorMiddleware');
-const { startCronJobs } = require('./jobs/cronJobs');
+// [REMOVED] cron job imports
 const connectDB = require('./config/db');
 
 // Connect to database
@@ -72,6 +72,7 @@ app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/dashboard/intelligence', require('./routes/intelligenceRoutes'));
 app.use('/api/medicine-catalog', require('./routes/medicineCatalogRoutes'));
 app.use('/api/medicine-logs', require('./routes/medicineLogRoutes'));
+app.use('/api/cron', require('./routes/cronRoutes'));
 
 const googleRoutes = require("./routes/googleRoutes");
 app.use("/api/google", googleRoutes);
@@ -84,11 +85,8 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Start cron jobs
-startCronJobs();
-
-const { startReminderScheduler } = require("./jobs/reminderScheduler");
-startReminderScheduler();
+// [REMOVED] Automatic cron startup
+// Cron jobs are now triggered via HTTP endpoints in /api/cron
 
 // Start server
 const PORT = process.env.PORT || 5000;
