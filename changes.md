@@ -11,6 +11,12 @@ Migrated `node-cron` to HTTP endpoints and implemented robust "lookback window" 
 - **Timezone Robustness**: Explicitly handles UTC to IST conversion for accurate window calculation.
 - **Fixed Model Loading**: Added explicit `require` for `Medicine`, `PendingReminder`, and `MedicineLog` models at the top level to prevent serverless cold start crashes.
 
+### `backend/vercel.json`
+- **Added Cron Config**: Configured Vercel Cron to automatically call the new endpoints:
+    - `/api/cron/run-reminder-check` (Every minute)
+    - `/api/cron/check-grace-period` (Every 30 mins)
+    - `/api/cron/check-expired-medicines` (Daily at 9 AM)
+
 ## Previous Migration Changes
 
 ### `backend/package.json`
