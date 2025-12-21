@@ -11,19 +11,5 @@
             "src": "/(.*)",
             "dest": "server.js"
         }
-    ],
-    "crons": [
-        {
-            "path": "/api/cron/run-reminder-check",
-            "schedule": "* * * * *"
-        },
-        {
-            "path": "/api/cron/check-grace-period",
-            "schedule": "*/30 * * * *"
-        },
-        {
-            "path": "/api/cron/check-expired-medicines",
-            "schedule": "0 9 * * *"
-        }
     ]
 }
