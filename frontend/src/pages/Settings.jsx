@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+
 import Loader from '../components/Loader';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -296,20 +296,7 @@ const Settings = () => {
   };
 
   // Animation Variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.05,
-      },
-    },
-  };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
-  };
 
   if (loading) return <Loader fullScreen text="Loading settings..." />;
 
@@ -329,15 +316,10 @@ const Settings = () => {
         <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[120px] mix-blend-screen dark:mix-blend-overlay" />
       </div>
 
-      <div className="relative z-10 p-6 md:p-8 lg:p-10 h-screen overflow-y-auto scrollbar-hide">
-        <motion.div 
-          className="max-w-7xl mx-auto space-y-8 pb-10"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
+      <div className="relative z-10 p-4 md:p-8 lg:p-10 h-screen overflow-y-auto scrollbar-hide">
+        <div className="max-w-7xl mx-auto space-y-8 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Header */}
-          <motion.div variants={itemVariants}>
+          <div>
             <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 flex items-center gap-3">
               <SettingsIcon className="h-8 w-8 text-emerald-500" />
               Settings
@@ -345,31 +327,33 @@ const Settings = () => {
             <p className="text-slate-500 dark:text-slate-400 mt-1 text-lg">
               Manage your account preferences and settings
             </p>
-          </motion.div>
+          </div>
           
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex flex-col lg:flex-row gap-8">
             {/* Sidebar Navigation */}
-            <motion.div variants={itemVariants} className="w-full lg:w-64 flex-shrink-0">
-              <div className="rounded-3xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl overflow-hidden">
-                {tabs.map((tab, index) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center px-6 py-4 text-sm font-semibold transition-all ${
-                      activeTab === tab.id 
-                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-l-4 border-emerald-600' 
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white border-l-4 border-transparent'
-                    } ${tab.id === 'danger' ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10' : ''}`}
-                  >
-                    <tab.icon className={`h-5 w-5 mr-3 ${activeTab === tab.id ? 'text-emerald-600 dark:text-emerald-400' : tab.id === 'danger' ? 'text-red-500' : 'text-slate-400'}`} />
-                    {tab.label}
-                  </button>
-                ))}
+            <div className="w-full lg:w-72 flex-shrink-0">
+              <div className="rounded-3xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl overflow-hidden sticky top-4">
+                <div className="p-4 space-y-2">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center px-4 py-3.5 text-sm font-semibold rounded-2xl transition-all duration-300 ${
+                        activeTab === tab.id 
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 translate-x-1' 
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:translate-x-1'
+                      } ${tab.id === 'danger' && activeTab !== 'danger' ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10' : ''} ${tab.id === 'danger' && activeTab === 'danger' ? '!bg-red-500 !text-white !shadow-red-500/20' : ''}`}
+                    >
+                      <tab.icon className={`h-5 w-5 mr-3 transition-transform duration-300 ${activeTab === tab.id ? 'scale-110' : ''}`} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </motion.div>
+            </div>
 
             {/* Content Area */}
-            <motion.div variants={itemVariants} className="flex-1">
+            <div className="flex-1 min-w-0">
               
               {/* Profile Tab */}
               {activeTab === 'profile' && (
@@ -854,9 +838,9 @@ const Settings = () => {
                 </div>
               )}
 
-            </motion.div>
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       <ConfirmDialog

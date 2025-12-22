@@ -270,9 +270,9 @@ const HealthReview = () => {
                     year: 'numeric', month: 'long', day: 'numeric' 
                   })}
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-6 flex-grow">
+                <div className="text-slate-500 dark:text-slate-400 text-sm mb-6 flex-grow leading-relaxed">
                   {report.summary}
-                </p>
+                </div>
                 
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <span className="text-sm font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1 group-hover:gap-2 transition-all">
@@ -382,11 +382,11 @@ const HealthReview = () => {
                 </div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Primary Symptom</span>
               </div>
-              <div>
-                <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+              <div className="flex-1">
+                <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                   {data?.symptomsAnalysis?.probableSymptoms[0] || "None Detected"}
                 </h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-5">
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                   {data?.symptomsAnalysis?.explanation || "No significant symptoms reported."}
                 </p>
               </div>
@@ -400,11 +400,11 @@ const HealthReview = () => {
                 </div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Attention Needed</span>
               </div>
-              <div>
-                <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+              <div className="flex-1">
+                <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                   {data?.diseaseRisk?.ongoing[0] || "Prevention Focus"}
                 </h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-5">
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                   {data?.diseaseRisk?.prevention[0] || "Maintain current healthy habits."}
                 </p>
               </div>

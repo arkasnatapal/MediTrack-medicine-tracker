@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
-import { motion } from "framer-motion";
+
 import AuthLayout from "../components/AuthLayout";
 import InfoDialog from "../components/InfoDialog";
 import api from "../api/api";
@@ -188,11 +188,9 @@ const Login = () => {
         </div>
 
         {/* Submit Button */}
-        <motion.button
+        <button
           type="submit"
           disabled={isSubmitting}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
           className="relative w-full group overflow-hidden rounded-2xl"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600" />
@@ -209,7 +207,7 @@ const Login = () => {
               </>
             )}
           </div>
-        </motion.button>
+        </button>
 
         <div className="relative flex py-2 items-center">
           <div className="flex-grow border-t border-white/10"></div>
