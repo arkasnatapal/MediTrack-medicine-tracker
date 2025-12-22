@@ -138,6 +138,8 @@ const FamilyMemberProfile = () => {
   const [member, setMember] = useState(null);
   const [medicines, setMedicines] = useState([]);
   const [stats, setStats] = useState(null);
+  const [medicationStatus, setMedicationStatus] = useState([]);
+  const [showAllStatus, setShowAllStatus] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedMedIndex, setExpandedMedIndex] = useState(null);
@@ -155,6 +157,7 @@ const FamilyMemberProfile = () => {
         setMember(data.member);
         setMedicines(data.medicines);
         setStats(data.stats);
+        setMedicationStatus(data.medicationStatus || []);
       } catch (err) {
         console.error("Error fetching member details:", err);
         setError("Failed to load profile");
@@ -340,6 +343,100 @@ const FamilyMemberProfile = () => {
                 <StatCard title="Low Stock" value={stats?.lowStock || 0} icon={AlertTriangle} color="amber" alert={stats?.lowStock > 0} />
                 <StatCard title="Expired" value={stats?.expired || 0} icon={Activity} color="rose" alert={stats?.expired > 0} />
               </motion.div>
+
+              {/* Medication Status Section */}
+              {medicationStatus && medicationStatus.length > 0 && (
+                <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                  <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900 dark:text-white">Today's Status</h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Real-time medication tracking</p>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                      <Activity className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {(showAllStatus ? medicationStatus : medicationStatus.slice(0, 4)).map((item, idx) => (
+                        <div 
+                          key={idx} 
+                          className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-300 group"
+                        >
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110 ${
+                            item.status === 'confirmed' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30' :
+                            item.status === 'dismissed' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30' :
+                            'bg-amber-100 text-amber-600 dark:bg-amber-900/30'
+                          }`}>
+                            {item.status === 'confirmed' ? <CheckCircle className="w-6 h-6" /> :
+                             item.status === 'dismissed' ? <AlertTriangle className="w-6 h-6" /> :
+                             <Clock className="w-6 h-6" />}
+                          </div>
+                          
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                              {new Date(item.scheduledTime).toLocaleTimeString("en-US", { 
+                                hour: "2-digit", 
+                                minute: "2-digit", 
+                                timeZone: "Asia/Kolkata" 
+                              })}
+                            </p>
+                            <h4 className="font-bold text-slate-900 dark:text-white truncate transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                              {item.medicineName}
+                            </h4>
+                            <div className="flex flex-col mt-1">
+                              {(() => {
+                                let statusText = 'Pending';
+                                let statusColor = 'text-amber-500';
+                                
+                                if (item.status === 'confirmed') {
+                                  // Check if late (more than 60 mins)
+                                  const diff = new Date(item.confirmedAt) - new Date(item.scheduledTime);
+                                  const isLate = diff > 60 * 60 * 1000;
+                                  
+                                  statusText = isLate ? 'Taken Late' : 'Taken';
+                                  statusColor = isLate ? 'text-amber-600' : 'text-emerald-500';
+                                } else if (item.status === 'dismissed') {
+                                  statusText = 'Skipped';
+                                  statusColor = 'text-rose-500';
+                                }
+
+                                return (
+                                  <>
+                                    <span className={`text-xs font-bold ${statusColor}`}>
+                                      {statusText}
+                                    </span>
+                                    {(item.status === 'confirmed' || item.status === 'dismissed') && (
+                                      <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">
+                                        at {new Date(item.status === 'confirmed' ? item.confirmedAt : item.dismissedAt).toLocaleTimeString("en-US", {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                          timeZone: "Asia/Kolkata"
+                                        })}
+                                      </span>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {medicationStatus.length > 4 && (
+                      <button
+                        onClick={() => setShowAllStatus(!showAllStatus)}
+                        className="w-full mt-6 flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-300"
+                      >
+                        <span>{showAllStatus ? "Show Less" : `Show ${medicationStatus.length - 4} More`}</span>
+                        {showAllStatus ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
 
               {/* Medicine Inventory */}
               <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">

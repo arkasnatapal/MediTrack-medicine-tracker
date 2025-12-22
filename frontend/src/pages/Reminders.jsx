@@ -342,11 +342,11 @@ const Reminders = () => {
                 <div className="relative z-10">
                   {/* Header */}
                   <div className="flex justify-between items-start mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
                         <Pill className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                           {reminder.medicineName}
                         </h3>

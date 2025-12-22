@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+
 import { Calendar, Edit2, Trash2, Clock, Package, Pill } from 'lucide-react';
 import { formatDate, getDaysUntilExpiry } from '../utils/formatDate';
 import { useMedicine } from '../context/MedicineContext';
@@ -12,10 +12,10 @@ const MedicineCard = ({ medicine, onEdit }) => {
   const daysUntilExpiry = getDaysUntilExpiry(medicine.expiryDate);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
-  // Premium Status Configuration - Simplified for Performance
+  // Premium Status Configuration
   let statusConfig = {
     bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-    border: 'border-emerald-200 dark:border-emerald-800',
+    border: 'border-emerald-100 dark:border-emerald-800',
     text: 'text-emerald-700 dark:text-emerald-400',
     label: 'Good',
     indicator: 'bg-emerald-500'
@@ -26,13 +26,13 @@ const MedicineCard = ({ medicine, onEdit }) => {
       bg: 'bg-slate-50 dark:bg-slate-800',
       border: 'border-slate-200 dark:border-slate-700',
       text: 'text-slate-600 dark:text-slate-400',
-      label: 'Update Required',
-      indicator: 'bg-slate-500'
+      label: 'Update Info',
+      indicator: 'bg-slate-400'
     };
   } else if (daysUntilExpiry < 0) {
     statusConfig = {
       bg: 'bg-rose-50 dark:bg-rose-900/20',
-      border: 'border-rose-200 dark:border-rose-800',
+      border: 'border-rose-100 dark:border-rose-800',
       text: 'text-rose-700 dark:text-rose-400',
       label: 'Expired',
       indicator: 'bg-rose-500'
@@ -40,14 +40,15 @@ const MedicineCard = ({ medicine, onEdit }) => {
   } else if (daysUntilExpiry <= 30) {
     statusConfig = {
       bg: 'bg-amber-50 dark:bg-amber-900/20',
-      border: 'border-amber-200 dark:border-amber-800',
+      border: 'border-amber-100 dark:border-amber-800',
       text: 'text-amber-700 dark:text-amber-400',
-      label: 'Expiring Soon',
+      label: 'Expiring',
       indicator: 'bg-amber-500'
     };
   }
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
     setShowDeleteDialog(true);
   };
 
@@ -61,105 +62,96 @@ const MedicineCard = ({ medicine, onEdit }) => {
   };
 
   return (
-    <motion.div 
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2 }}
-      className="group relative cursor-pointer h-full"
-      onClick={handleCardClick}
-    >
-      {/* Card Container - Removed heavy blur/gradients */}
-      <div className="relative h-full p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-teal-500/30 dark:hover:border-teal-500/30 transition-all duration-300 flex flex-col">
-        
-        {/* Header Section */}
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1 min-w-0 pr-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                <Pill className="w-3 h-3" />
-              </span>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {medicine.form || medicine.category || 'Medicine'}
-              </p>
+    <>
+      <div 
+        className="group relative cursor-pointer h-full transition-all duration-300 hover:-translate-y-1"
+        onClick={handleCardClick}
+      >
+        <div className="relative h-full p-5 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm group-hover:shadow-xl group-hover:border-teal-500/30 dark:group-hover:border-teal-500/30 transition-all duration-300 flex flex-col overflow-hidden">
+          
+          {/* Header Section */}
+          <div className="flex justify-between items-start mb-5">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-teal-50 dark:group-hover:bg-teal-900/20 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors duration-300 flex-shrink-0">
+                <Pill className="w-6 h-6" />
+              </div>
+              
+              <div className="min-w-0 pt-0.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                  {medicine.form || medicine.category || 'Medicine'}
+                </p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white truncate pr-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                  {medicine.name}
+                </h3>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-              {medicine.name}
-            </h3>
+            
+            {/* Compact Status Badge */}
+            <div className={`px-2 py-1 rounded-lg ${statusConfig.bg} border ${statusConfig.border} flex items-center gap-1.5 flex-shrink-0`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.indicator}`} />
+              <span className={`text-[10px] font-bold ${statusConfig.text} uppercase tracking-wide`}>
+                {statusConfig.label}
+              </span>
+            </div>
           </div>
           
-          {/* Lightweight Status Badge */}
-          <div className={`px-2.5 py-1 rounded-lg ${statusConfig.bg} border ${statusConfig.border} flex items-center gap-1.5`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.indicator}`} />
-            <span className={`text-[10px] font-bold ${statusConfig.text} uppercase tracking-wide`}>
-              {statusConfig.label}
-            </span>
-          </div>
-        </div>
-        
-        {/* Info Grid - Simplified backgrounds */}
-        <div className="grid grid-cols-2 gap-2 mb-4 flex-grow">
-          {/* Expiry Date */}
-          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-            <div className="flex items-center gap-1.5 mb-0.5 text-slate-400">
-              <Calendar className="w-3 h-3" />
-              <span className="text-[9px] font-bold uppercase tracking-wider">Expires</span>
-            </div>
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-              {medicine.expiryDate ? formatDate(medicine.expiryDate) : 'Not Set'}
-            </p>
-          </div>
-
-          {/* Days Remaining */}
-          <div className={`p-2.5 rounded-xl border ${daysUntilExpiry <= 30 ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700/50'}`}>
-            <div className={`flex items-center gap-1.5 mb-0.5 ${daysUntilExpiry <= 30 ? 'text-amber-500' : 'text-slate-400'}`}>
-              <Clock className="w-3 h-3" />
-              <span className="text-[9px] font-bold uppercase tracking-wider">Remaining</span>
-            </div>
-            <p className={`text-xs font-bold ${daysUntilExpiry <= 30 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'}`}>
-              {daysUntilExpiry !== null 
-                ? (daysUntilExpiry > 0 ? `${daysUntilExpiry} Days` : `${Math.abs(daysUntilExpiry)} Days Ago`)
-                : 'Unknown'}
-            </p>
-          </div>
-
-          {/* Stock */}
-          {medicine.quantity !== undefined && (
-            <div className="col-span-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 flex justify-between items-center">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Package className="w-3 h-3" />
-                <span className="text-[9px] font-bold uppercase tracking-wider">Stock</span>
+          {/* Info Grid */}
+          <div className="grid grid-cols-2 gap-3 mb-5 flex-grow">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+              <div className="flex items-center gap-1.5 text-slate-400 mb-2">
+                <Calendar className="w-3 h-3" />
+                <span className="text-[9px] font-bold uppercase tracking-wider">Expires</span>
               </div>
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                {medicine.quantity} {medicine.quantity === 1 ? 'Unit' : 'Units'}
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                {medicine.expiryDate ? formatDate(medicine.expiryDate) : 'Not Set'}
               </p>
             </div>
-          )}
-        </div>
 
-        {/* Action Buttons - Simplified */}
-        <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onEdit) {
-                onEdit(medicine);
-              } else {
-                navigate(`/medicines/${medicine._id}`);
-              }
-            }}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-          >
-            <Edit2 className="h-3 w-3" />
-            Edit
-          </button>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteClick();
-            }}
-            className="flex items-center justify-center px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-900/10 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+            <div className={`p-3 rounded-2xl border flex flex-col justify-between ${daysUntilExpiry <= 30 ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'}`}>
+              <div className={`flex items-center gap-1.5 mb-2 ${daysUntilExpiry <= 30 ? 'text-amber-500' : 'text-slate-400'}`}>
+                <Clock className="w-3 h-3" />
+                <span className="text-[9px] font-bold uppercase tracking-wider">Remaining</span>
+              </div>
+              <p className={`text-xs font-bold truncate ${daysUntilExpiry <= 30 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                {daysUntilExpiry !== null 
+                  ? (daysUntilExpiry > 0 ? `${daysUntilExpiry} Days` : `${Math.abs(daysUntilExpiry)} Days Ago`)
+                  : 'Unknown'}
+              </p>
+            </div>
+            
+            {medicine.quantity !== undefined && (
+              <div className="col-span-2 px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex justify-between items-center group/stock">
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <Package className="w-3 h-3" />
+                  <span className="text-[9px] font-bold uppercase tracking-wider">Stock Level</span>
+                </div>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover/stock:text-indigo-500 transition-colors">
+                  {medicine.quantity} {medicine.quantity === 1 ? 'Unit' : 'Units'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-800 mt-auto">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onEdit) onEdit(medicine);
+                else navigate(`/medicines/${medicine._id}`);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-wider hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-all duration-300 group/btn"
+            >
+              <Edit2 className="h-3.5 w-3.5 group-hover/btn:scale-110 transition-transform" />
+              Edit
+            </button>
+            <button 
+              onClick={handleDeleteClick}
+              className="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-900/10 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-all duration-300 hover:rotate-6 active:scale-95"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
       
@@ -173,7 +165,7 @@ const MedicineCard = ({ medicine, onEdit }) => {
         cancelText="Cancel"
         variant="danger"
       />
-    </motion.div>
+    </>
   );
 };
 

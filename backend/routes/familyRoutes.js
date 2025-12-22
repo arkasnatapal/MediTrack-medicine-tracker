@@ -4,6 +4,7 @@ const auth = require("../middleware/authMiddleware");
 const User = require("../models/User");
 const FamilyConnection = require("../models/FamilyConnection");
 const Message = require("../models/Message");
+const PendingReminder = require("../models/PendingReminder");
 const { sendFamilyInviteEmail } = require("../utils/email");
 
 // GET /api/family - my connections (as inviter or invitee)
@@ -321,7 +322,20 @@ router.get("/:id", auth, async (req, res) => {
     const memberObj = member.toObject();
     memberObj.allowAiActions = connection.allowAiActions;
 
-    res.json({ success: true, member: memberObj, medicines, stats });
+    // Fetch today's medication status
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const medicationStatus = await PendingReminder.find({
+      user: memberId,
+      scheduledTime: { $gte: startOfDay, $lte: endOfDay }
+    }).select("medicineName scheduledTime status confirmedAt dismissedAt")
+      .sort({ scheduledTime: 1 })
+      .lean();
+
+    res.json({ success: true, member: memberObj, medicines, stats, medicationStatus });
   } catch (err) {
     console.error("Error fetching family member profile:", err);
     res.status(500).json({ success: false, message: "Failed to load profile" });
