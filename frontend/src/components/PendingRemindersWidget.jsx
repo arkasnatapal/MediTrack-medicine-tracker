@@ -251,7 +251,7 @@ const PendingRemindersWidget = () => {
                                 </div>
                                 <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/50 text-[10px] font-bold text-slate-500 dark:text-slate-400">
                                     <Clock className="h-3 w-3" />
-                                    {new Date(reminder.scheduledTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}
+                                    {new Date(reminder.scheduledTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}
                                 </div>
                             </div>
 
