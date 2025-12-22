@@ -106,6 +106,13 @@ exports.updateMedicine = async (req, res) => {
       updateData.manufactureDate = req.body.mfgDate;
     }
 
+    // [FIX] Reset alert flags if quantity is updated manually
+    if (updateData.quantity !== undefined) {
+        const qty = parseInt(updateData.quantity);
+        if (qty > 0) updateData.outOfStockAlertSent = false;
+        if (qty > 5) updateData.lowStockAlertSent = false;
+    }
+
     const medicine = await Medicine.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id },
       updateData,

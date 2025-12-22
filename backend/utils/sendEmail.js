@@ -3,7 +3,7 @@ const transporter = require('../config/emailConfig');
 const sendEmail = async ({ to, subject, html }) => {
   try {
     const mailOptions = {
-      from: `"MediTrack" <${process.env.EMAIL_USER}>`,
+      from: process.env.SMTP_FROM || `"MediTrack" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
@@ -47,4 +47,53 @@ const sendExpiryReminder = async (user, medicine) => {
   });
 };
 
-module.exports = { sendEmail, sendExpiryReminder };
+const sendLowStockAlert = async (user, medicine) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+      <h2 style="color: #f59e0b;">⚠️ Low Stock Alert</h2>
+      <p>Hello <strong>${user.name}</strong>,</p>
+      <p>This is a gentle reminder that your medicine <strong>${medicine.name}</strong> is running low.</p>
+      
+      <div style="background-color: #fffbeb; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+        <p style="margin: 5px 0;"><strong>Medicine:</strong> ${medicine.name}</p>
+        <p style="margin: 5px 0;"><strong>Quantity Left:</strong> <span style="font-size: 1.2em; font-weight: bold; color: #d97706;">${medicine.quantity}</span></p>
+        <p style="margin: 5px 0;"><strong>Dosage:</strong> ${medicine.dosage || 'N/A'}</p>
+      </div>
+      
+      <p>Please ensure to refill your prescription soon to avoid missing any doses.</p>
+      <p style="color: #666; font-size: 12px; margin-top: 30px;">This is an automated message from MediTrack.</p>
+    </div>
+  `;
+
+  return await sendEmail({
+    to: user.email,
+    subject: `⚠️ Low Stock Alert: ${medicine.name}`,
+    html,
+  });
+};
+
+const sendOutOfStockAlert = async (user, medicine) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+      <h2 style="color: #dc2626;">🚨 Out of Stock Alert</h2>
+      <p>Hello <strong>${user.name}</strong>,</p>
+      <p>You have run out of your medicine <strong>${medicine.name}</strong>.</p>
+      
+      <div style="background-color: #fef2f2; padding: 15px; border-left: 4px solid #dc2626; margin: 20px 0;">
+        <p style="margin: 5px 0;"><strong>Medicine:</strong> ${medicine.name}</p>
+        <p style="margin: 5px 0;"><strong>Quantity Left:</strong> <span style="font-size: 1.2em; font-weight: bold; color: #dc2626;">0</span></p>
+      </div>
+      
+      <p style="font-weight: bold;">Please refill immediately to continue with your medical journey.</p>
+      <p style="color: #666; font-size: 12px; margin-top: 30px;">This is an automated message from MediTrack.</p>
+    </div>
+  `;
+
+  return await sendEmail({
+    to: user.email,
+    subject: `🚨 Out of Stock: ${medicine.name}`,
+    html,
+  });
+};
+
+module.exports = { sendEmail, sendExpiryReminder, sendLowStockAlert, sendOutOfStockAlert };

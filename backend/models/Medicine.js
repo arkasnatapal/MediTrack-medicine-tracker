@@ -59,6 +59,14 @@ const medicineSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  lowStockAlertSent: {
+    type: Boolean,
+    default: false,
+  },
+  outOfStockAlertSent: {
+    type: Boolean,
+    default: false,
+  },
   aiInsights: {
     type: Object,
     default: null,

@@ -82,6 +82,36 @@ router.post("/:id/confirm", auth, async (req, res) => {
     }
 
     medicine.quantity = Math.max(0, medicine.quantity - 1);
+
+    // [NEW] Low Stock / Out of Stock Email Triggers
+    const { sendLowStockAlert, sendOutOfStockAlert } = require("../utils/sendEmail");
+    
+    console.log(`[StockCheck] Medicine: ${medicine.name}, Qty: ${medicine.quantity}, LowSent: ${medicine.lowStockAlertSent}, OutSent: ${medicine.outOfStockAlertSent}`);
+    console.log(`[StockCheck] User Email for alert: ${req.user.email}`);
+
+    // Check for Out of Stock (0)
+    if (medicine.quantity === 0 && !medicine.outOfStockAlertSent) {
+      console.log(`[StockCheck] Triggering Out of Stock Alert for ${req.user.email}`);
+      const result = await sendOutOfStockAlert(req.user, medicine);
+      console.log(`[StockCheck] Email Result:`, result);
+      
+      if (result.success) {
+        medicine.outOfStockAlertSent = true;
+      }
+    } 
+    // Check for Low Stock (<= 5)
+    else if (medicine.quantity <= 5 && medicine.quantity > 0 && !medicine.lowStockAlertSent) {
+      console.log(`[StockCheck] Triggering Low Stock Alert for ${req.user.email}`);
+      const result = await sendLowStockAlert(req.user, medicine);
+      console.log(`[StockCheck] Email Result:`, result);
+      
+      if (result.success) {
+        medicine.lowStockAlertSent = true;
+      }
+    } else {
+        console.log(`[StockCheck] No alert needed or already sent.`);
+    }
+
     await medicine.save();
 
     // Notify the creator if it's a different user
@@ -200,6 +230,11 @@ router.post("/medicines/:id/refill", auth, async (req, res) => {
     }
 
     medicine.quantity += parseInt(quantity);
+    
+    // Reset alert flags when refilled
+    if (medicine.quantity > 0) medicine.outOfStockAlertSent = false;
+    if (medicine.quantity > 5) medicine.lowStockAlertSent = false;
+
     await medicine.save();
 
     res.json({
