@@ -107,13 +107,9 @@ const AIHealthChat = () => {
         });
         const data = await res.json();
 
-        if (data.success && data.sessions.length > 0) {
-          handleSelectSession(data.sessions[0]._id);
-        } else {
-          // Don't create on server yet, just reset local state
-          setActiveSessionId(null);
-          setMessages([]);
-        }
+        // ALWAYS start a new session on page load (User Request)
+        setActiveSessionId(null);
+        setMessages([]);
       } catch (error) {
         console.error("Error initializing chat:", error);
       }
