@@ -6,6 +6,7 @@ import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
 import InfoDialog from "../components/InfoDialog";
 import api from "../api/api";
+import SEO from "../components/SEO";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -84,6 +85,10 @@ const Login = () => {
 
   return (
     <>
+    <SEO 
+      title="Login"
+      description="Sign in to your MediTrack account to access your medicines, reminders, and health reports."
+    />
     <AuthLayout
       title="Welcome back"
       subtitle={

@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import PublicPageLayout from '../components/PublicPageLayout';
 import { Pill, Bell, Users, Shield, Brain, Calendar, Heart, Smartphone, Network } from 'lucide-react';
 
+import SEO from '../components/SEO';
+
 const Features = () => {
   const features = [
     {
@@ -60,6 +62,10 @@ const Features = () => {
       title="Powerful Features"
       subtitle="Everything you need to manage your health and medications effectively"
     >
+      <SEO 
+        title="Features"
+        description="Explore MediTrack's powerful features: AI health assistant, smart medicine reminders, family care management, and secure health records."
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((feature, index) => (

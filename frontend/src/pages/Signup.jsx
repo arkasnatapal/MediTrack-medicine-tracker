@@ -6,6 +6,7 @@ import { User, Mail, Lock, Loader2, Eye, EyeOff, Sparkles, Check, X } from 'luci
 import AuthLayout from '../components/AuthLayout';
 import InfoDialog from "../components/InfoDialog";
 import api from "../api/api";
+import SEO from "../components/SEO";
 
 const Signup = () => {
   const [name, setName] = useState('');
@@ -92,6 +93,10 @@ const Signup = () => {
 
   return (
     <>
+    <SEO 
+      title="Sign Up"
+      description="Create a free MediTrack account today. Start managing your health, family, and prescriptions with our AI-powered platform."
+    />
     <AuthLayout 
       title="Create your account" 
       subtitle={

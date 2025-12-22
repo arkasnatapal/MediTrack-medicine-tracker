@@ -12,6 +12,7 @@ import {
 import PublicPageLayout from "../components/PublicPageLayout";
 import api from "../api/api";
 import { useNotification } from "../context/NotificationContext";
+import SEO from '../components/SEO';
 
 const ContactUs = () => {
   const { notify } = useNotification();
@@ -69,11 +70,17 @@ const ContactUs = () => {
     },
   ];
 
+
+
   return (
     <PublicPageLayout
       title="Get in Touch"
       subtitle="We're here to help. Send us a message and we'll respond as soon as possible."
     >
+      <SEO 
+        title="Contact Us"
+        description="Have questions? Contact our support team for assistance with MediTrack. We are here to help you with your health management needs."
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Information */}

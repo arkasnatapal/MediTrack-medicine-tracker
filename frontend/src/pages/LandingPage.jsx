@@ -15,6 +15,7 @@ import TestimonialsSection from "../components/landing/TestimonialsSection";
 import CTASection from "../components/landing/CTASection";
 import HealthAnalysisSection from "../components/landing/HealthAnalysisSection";
 import ReportThesisSection from "../components/landing/ReportThesisSection";
+import SEO from "../components/SEO";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -77,8 +78,15 @@ const LandingPage = () => {
     setMobileMenuOpen(false);
   };
 
+
+
   return (
     <div className="min-h-screen bg-[#020617] text-slate-50 relative overflow-x-hidden selection:bg-emerald-500/30 selection:text-emerald-200 font-sans">
+      <SEO 
+        title="MediTrack - Smartest Way to Manage Health"
+        description="MediTrack uses advanced AI to track medications, analyze health trends, and provide personalized insights for you and your family."
+        keywords="medicine tracker, AI health assistant, family health, medical reports, health analysis"
+      />
       {/* Navbar - Appears only after Hero */}
       <AnimatePresence>
         {showNavbar && (

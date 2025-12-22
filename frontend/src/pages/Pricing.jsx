@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import PublicPageLayout from '../components/PublicPageLayout';
 import { Check, Sparkles } from 'lucide-react';
 
+
+
 const Pricing = () => {
   const plans = [
     {

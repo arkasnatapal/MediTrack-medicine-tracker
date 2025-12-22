@@ -46,6 +46,7 @@ import Onboarding from './components/Onboarding'
 import Sidebar from './components/Sidebar'
 import OfflinePage from './pages/OfflinePage'
 import { SidebarProvider } from './context/SidebarContext'
+import SEO from './components/SEO'
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth()
@@ -103,12 +104,15 @@ function AppContent() {
     }
   };
 
+
+
   if (!isOnline) {
     return <OfflinePage onRetry={checkConnection} isChecking={isChecking} />;
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+      <SEO />
       <Onboarding />
       {user && !isLandingPage && <Navbar />}
       <div className="flex flex-1 relative">

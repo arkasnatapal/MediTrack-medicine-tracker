@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://meditrack-ultimate.vercel.app/sitemap.xml

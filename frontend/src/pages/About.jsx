@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import PublicPageLayout from '../components/PublicPageLayout';
 import { Target, Users, Heart, Award } from 'lucide-react';
 
+import SEO from '../components/SEO';
+
 const About = () => {
   const values = [
     {
@@ -32,6 +34,10 @@ const About = () => {
       title="About MediTrack"
       subtitle="Empowering healthier lives through innovative technology"
     >
+      <SEO 
+        title="About Us"
+        description="Learn about MediTrack's mission to simplify health management. Meet our dedicated team and discover our core values of privacy and user-centric design."
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Story Section */}
         <motion.div
