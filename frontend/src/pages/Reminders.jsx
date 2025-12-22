@@ -18,6 +18,8 @@ const Reminders = () => {
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
 
   useEffect(() => {
     fetchReminders();
@@ -47,17 +49,18 @@ const Reminders = () => {
     if (!deleteId) return;
 
     try {
+      setDeleteLoading(true);
       await api.delete(`/reminders/${deleteId}`);
       setReminders((prev) => prev.filter((r) => r._id !== deleteId));
       notify.success("Reminder deleted successfully");
+      setShowDeleteDialog(false);
+      setDeleteId(null);
     } catch (error) {
       console.error("Error deleting reminder:", error);
       const msg = error.response?.data?.message || "Failed to delete reminder";
       notify.error(msg);
-    }
-    finally {
-      setShowDeleteDialog(false);
-      setDeleteId(null);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -137,6 +140,7 @@ const Reminders = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     try {
+      setSubmitLoading(true);
       const payload = {
         ...formData,
         medicineId: selectedMedicine?._id,
@@ -162,6 +166,8 @@ const Reminders = () => {
     } catch (error) {
       console.error("Error saving reminder:", error);
       notify.error("Failed to save reminder");
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -764,9 +770,17 @@ const Reminders = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    disabled={submitLoading}
+                    className="px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                   >
-                    {editingReminder ? "Update Reminder" : "Set Reminder"}
+                    {submitLoading ? (
+                      <>
+                        <div className="h-5 w-5 border-2 border-white/30 dark:border-gray-900/30 border-t-current rounded-full animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      editingReminder ? "Update Reminder" : "Set Reminder"
+                    )}
                   </button>
                 </div>
               </form>
@@ -784,6 +798,7 @@ const Reminders = () => {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+        isLoading={deleteLoading}
       />
     </div>
   );

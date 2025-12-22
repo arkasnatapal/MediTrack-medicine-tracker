@@ -56,7 +56,7 @@ const MedicationStatus = () => {
         hour: 'numeric', 
         minute: 'numeric', 
         hour12: true,
-        timeZone: 'UTC'
+        timeZone: 'Asia/Kolkata'
     });
   };
 

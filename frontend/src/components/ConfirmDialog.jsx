@@ -9,7 +9,8 @@ const ConfirmDialog = ({
   message, 
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  variant = 'danger' // 'danger' or 'warning'
+  variant = 'danger', // 'danger' or 'warning'
+  isLoading = false
 }) => {
   if (!isOpen) return null;
 
@@ -57,19 +58,26 @@ const ConfirmDialog = ({
           <div className="p-6 flex gap-3 justify-end bg-gray-50/50 dark:bg-gray-900/50">
             <button
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 transition-all font-medium shadow-sm hover:shadow"
+              disabled={isLoading}
+              className="px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 transition-all font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cancelText}
             </button>
             <button
               onClick={handleConfirm}
-              className={`px-5 py-2.5 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl ${
+              disabled={isLoading}
+              className={`px-5 py-2.5 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${
                 variant === 'danger' 
                   ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white' 
                   : 'bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white'
               }`}
             >
-              {confirmText}
+              {isLoading ? (
+                <>
+                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : confirmText}
             </button>
           </div>
         </div>

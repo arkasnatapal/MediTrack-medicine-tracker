@@ -141,7 +141,7 @@ const ReminderActionModal = ({ pendingReminder, onClose, onConfirm }) => {
               className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400"
             >
               <Clock className="h-4 w-4" />
-              {new Date(pendingReminder.scheduledTime).toLocaleTimeString()}
+              {new Date(pendingReminder.scheduledTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}
             </motion.div>
           </div>
 
