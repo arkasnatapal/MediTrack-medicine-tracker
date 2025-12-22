@@ -38,23 +38,25 @@ const MedicationStatus = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', { 
+    return date.toLocaleString('en-IN', { 
         month: 'short', 
         day: 'numeric', 
         year: 'numeric', 
         hour: 'numeric', 
         minute: 'numeric', 
-        hour12: true 
+        hour12: true,
+        timeZone: 'UTC'
     });
   };
 
   const formatTime = (dateString) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', { 
+    return date.toLocaleString('en-IN', { 
         hour: 'numeric', 
         minute: 'numeric', 
-        hour12: true 
+        hour12: true,
+        timeZone: 'UTC'
     });
   };
 
