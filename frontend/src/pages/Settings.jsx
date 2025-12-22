@@ -116,7 +116,7 @@ const Settings = () => {
 
   const connectGoogle = async () => {
     try {
-      const response = await api.get('/google/oauth2/url');
+      const response = await api.get('/google/oauth2/url?mode=connect');
       if (response.data.success && response.data.url) {
         window.location.href = response.data.url;
       }

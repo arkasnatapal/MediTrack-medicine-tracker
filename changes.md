@@ -31,3 +31,8 @@ Migrated `node-cron` to HTTP endpoints and implemented robust "lookback window" 
 
 ## Verification
 You can trigger the check at any time. The system assumes an external scheduler (like Vercel Cron) triggers the endpoint every minute.
+
+## Fix: Pending Reminder Time Display
+
+### `frontend/src/components/PendingRemindersWidget.jsx`
+- **Fixed Timezone Display**: Updated the time formatting for pending reminders to use `UTC` timezone. The backend stores IST-shifted time as a UTC timestamp (e.g., 11:52 stored as 11:52 UTC). Displaying this in 'Asia/Kolkata' added another 5.5 hours (resulting in 17:22). Using `UTC` renders the intended IST time (11:52).

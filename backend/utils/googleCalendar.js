@@ -92,7 +92,7 @@ function getAuthUrl(mode = "login") {
 
   const url = oAuth2Client.generateAuthUrl({
     access_type: "offline",
-    prompt: mode === "signup" ? "consent" : "select_account",
+    prompt: (mode === "signup" || mode === "connect") ? "consent" : "select_account",
     scope: scopes,
     state,
   });

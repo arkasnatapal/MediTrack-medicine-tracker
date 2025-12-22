@@ -16,7 +16,8 @@ router.get("/oauth2/callback", (req, res) => {
 // GET /api/google/oauth2/url - get consent screen URL
 router.get("/oauth2/url", auth, async (req, res) => {
   try {
-    const url = getAuthUrl();
+    const { mode } = req.query;
+    const url = getAuthUrl(mode);
     if (!url) {
       return res.status(500).json({
         success: false,
