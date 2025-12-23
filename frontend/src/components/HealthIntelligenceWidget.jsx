@@ -154,8 +154,8 @@ const HealthIntelligenceWidget = () => {
             <div className="flex flex-col h-full">
               {/* Score Section */}
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <div className="relative w-16 h-16">
+                <div className="flex items-start gap-5">
+                    <div className="relative w-16 h-16 shrink-0 mt-1">
                         <svg className="w-full h-full transform -rotate-90">
                         <circle
                             cx="32"
@@ -185,13 +185,13 @@ const HealthIntelligenceWidget = () => {
                             </span>
                         </div>
                     </div>
-                    <div>
+                    <div className="flex flex-col min-w-0">
                         {data.predictedThreat ? (
-                          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold mb-1 border ${severityConfig.bg} ${severityConfig.color} ${severityConfig.border}`}>
+                          <div className={`flex items-start px-3 py-1.5 rounded-lg text-xs font-bold mb-2 border leading-tight ${severityConfig.bg} ${severityConfig.color} ${severityConfig.border}`}>
                               {data.predictedThreat.title}
                           </div>
                         ) : (
-                          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold mb-1 ${getStatusText(data.healthScore).color}`}>
+                          <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold mb-2 ${getStatusText(data.healthScore).color}`}>
                               {getStatusText(data.healthScore).text}
                           </div>
                         )}
