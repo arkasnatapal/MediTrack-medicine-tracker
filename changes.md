@@ -1,38 +1,34 @@
-# Changes: Cron Migration & Fixes
+# Health Intelligence System Upgrade
 
-## Summary
-Migrated `node-cron` to HTTP endpoints and implemented robust "lookback window" logic to ensure reminders are never missed even if the trigger is delayed or infrequent.
+## 1. Domain-Based Intelligence (Previous Update)
+- Insights are split by domain (e.g., Cardiology, Glucose).
+- Adherence logic is isolated and rule-based.
+- Quota: AI only runs on NEW reports per domain.
 
-## Key Fixes (Recent)
+## 2. Future Health Prediction (Upgrade)
+- A **separate, derived layer** that sits above the domain insights.
+- **Goal**: Predict future trajectory (Next 7-14 days) using *current stable insights*.
+- **Trigger Rule**:
+  - The Future Prediction AI is called **IF AND ONLY IF**:
+    1. At least one domain insight was updated (New report content).
+    2. OR Medication Adherence score changed significantly (> 5%).
+    3. OR No previous prediction exists.
+  - If data is stable, the **previous prediction is reused** (0 AI Tokens).
 
-### `backend/jobs/reminderScheduler.js`
-- **Added Lookback Window**: Scheduler checks for reminders due in the **last 1 minute** (adjustable) to handle slight delays while assuming a per-minute cron schedule.
-- **Duplicate Prevention**: Improved logic to check `lastTriggeredAt` against the specific due slot to prevent double-sending notifications.
-- **Timezone Robustness**: Explicitly handles UTC to IST conversion for accurate window calculation.
-- **Fixed Model Loading**: Added explicit `require` for `Medicine`, `PendingReminder`, and `MedicineLog` models at the top level to prevent serverless cold start crashes.
+### Explainability
+- The system now stores a `predictionBasis` array.
+- This is displayed in the UI as "Prediction Basis", showing exactly which domains (e.g. "Glucose (Stable)") and adherence data contributed to the prediction.
 
-### `backend/vercel.json`
-- **Added Cron Config**: Configured Vercel Cron to automatically call the new endpoints:
-    - `/api/cron/run-reminder-check` (Every minute)
-    - `/api/cron/check-grace-period` (Every 30 mins)
-    - `/api/cron/check-expired-medicines` (Daily at 9 AM)
+## 3. Quota Optimization (User Request)
+- **Automatic Refresh**: Restricted to once every **24 hours** (previously 5 minutes) to save AI credits.
+- **Manual Refresh**: Users can still trigger an immediate update via the "Refresh" button in the panel.
 
-## Previous Migration Changes
+## 4. Bug Fixes
+- Fixed `ReferenceError: mimeType` in OCR route.
+- Fixed `SyntaxError` (missing braces and commas) in Controller and Scheme files.
 
-### `backend/package.json`
-- **Removed**: `node-cron` dependency.
-
-### `backend/server.js`
-- **Removed**: `startCronJobs()` and `startReminderScheduler()` calls.
-- **Added**: `/api/cron` route registration.
-
-### `backend/routes/cronRoutes.js`
-- **Authentication**: Endpoints protected by `CRON_SECRET`.
-
-## Verification
-You can trigger the check at any time. The system assumes an external scheduler (like Vercel Cron) triggers the endpoint every minute.
-
-## Fix: Pending Reminder Time Display
-
-### `frontend/src/components/PendingRemindersWidget.jsx`
-- **Fixed Timezone Display**: Updated the time formatting for pending reminders to use `UTC` timezone. The backend stores IST-shifted time as a UTC timestamp (e.g., 11:52 stored as 11:52 UTC). Displaying this in 'Asia/Kolkata' added another 5.5 hours (resulting in 17:22). Using `UTC` renders the intended IST time (11:52).
+## Verification Checklist
+- [x] **Stability**: Refreshing without new data does NOT trigger new prediction generation.
+- [x] **Separation**: Future prediction is a distinct visual layer from Domain Cards.
+- [x] **Transparency**: Users can see *why* a prediction was made via the "Prediction Basis" sidebar.
+- [x] **Rate Limiting**: Automatic AI calls limited to 24h interval.

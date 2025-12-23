@@ -142,7 +142,7 @@ router.post("/", upload.single("image"), async (req, res) => {
     const imageBuffer = req.file.buffer;
 
     // Call Gemini Vision
-    const ai = await analyzeMedicineImage(imageBuffer, mimeType);
+    const ai = await analyzeMedicineImage(imageBuffer, req.file.mimetype);
 
     // No need to clean up temp file as we are using memory storage
 

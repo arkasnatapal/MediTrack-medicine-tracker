@@ -25,6 +25,7 @@ exports.uploadReport = async (req, res) => {
       userId: req.user._id,
       folderName,
       reportDate,
+      domain: req.body.domain || 'General',
       files: uploadedFiles
     });
 
@@ -98,11 +99,12 @@ exports.analyzeReport = async (req, res) => {
     3. Key findings as a list.
     4. Any recommendations based on the report.
     
-    Format the response as JSON with keys: "summary", "detailedAnalysis", "keyFindings" (array of strings), "healthScore" (number 0-100, estimate based on report).
+    Format the response as JSON with keys: "summary", "detailedAnalysis", "keyFindings" (array of strings), "healthScore" (number 0-100), "domain" (String, e.g. "Cardiology", "Endocrinology", "General").
     
     IMPORTANT:
     - Never panic the user.
     - If results are abnormal, explain common causes and next steps calmly.
+    - Suggest a 'domain' if one is apparent (e.g., if glucose -> "Endocrinology").
     - At the end of the "summary" and "detailedAnalysis", you MUST append: "ℹ️ This explanation is meant to help you understand your health better. It does not replace advice from a qualified doctor."
     `;
 
@@ -145,12 +147,39 @@ exports.analyzeReport = async (req, res) => {
 
     analysisData.createdAt = new Date();
     report.aiAnalysis = analysisData;
+    
+    // Update domain if AI found a specific one and current is General
+    if (analysisData.domain && (!report.domain || report.domain === 'General')) {
+      report.domain = analysisData.domain;
+    }
+
     await report.save();
 
     res.json({ success: true, analysis: report.aiAnalysis });
 
   } catch (error) {
     console.error('Analysis error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.updateReport = async (req, res) => {
+  try {
+    const { folderName, reportDate, domain } = req.body;
+    const report = await Report.findOne({ _id: req.params.id, userId: req.user._id });
+
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    if (folderName) report.folderName = folderName;
+    if (reportDate) report.reportDate = reportDate;
+    if (domain) report.domain = domain;
+
+    await report.save();
+    res.json({ success: true, report });
+  } catch (error) {
+    console.error('Update error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

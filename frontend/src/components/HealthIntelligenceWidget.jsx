@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles, Brain, CheckCircle, AlertCircle } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles, Brain, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 import HealthIntelligencePanel from './HealthIntelligencePanel';
 
@@ -69,6 +69,45 @@ const HealthIntelligenceWidget = () => {
     );
   }
 
+  const getSeverityConfig = (severity) => {
+    switch (severity) {
+      case 'high': return { 
+        color: 'text-rose-600 dark:text-rose-400', 
+        bg: 'bg-rose-50 dark:bg-rose-900/20', 
+        border: 'border-rose-200 dark:border-rose-800',
+        icon: AlertTriangle,
+        dot: 'bg-rose-500',
+        blob1: 'bg-rose-500/10 group-hover:bg-rose-500/20',
+        blob2: 'bg-red-500/10 group-hover:bg-red-500/20'
+      };
+      case 'medium': return { 
+        color: 'text-amber-600 dark:text-amber-400', 
+        bg: 'bg-amber-50 dark:bg-amber-900/20', 
+        border: 'border-amber-200 dark:border-amber-800',
+        icon: Activity,
+        dot: 'bg-amber-500',
+        blob1: 'bg-amber-500/10 group-hover:bg-amber-500/20',
+        blob2: 'bg-orange-500/10 group-hover:bg-orange-500/20'
+      };
+      default: return { 
+        color: 'text-emerald-600 dark:text-emerald-400', 
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20', 
+        border: 'border-emerald-200 dark:border-emerald-800',
+        icon: Sparkles,
+        dot: 'bg-emerald-500', 
+        blob1: 'bg-emerald-500/10 group-hover:bg-emerald-500/20',
+        blob2: 'bg-teal-500/10 group-hover:bg-teal-500/20'
+      };
+    }
+  };
+
+  const severityConfig = data?.predictedThreat 
+    ? getSeverityConfig(data.predictedThreat.severity) 
+    : {
+        blob1: 'bg-violet-500/10 group-hover:bg-violet-500/20',
+        blob2: 'bg-indigo-500/10 group-hover:bg-indigo-500/20'
+    };
+
   return (
     <>
       <motion.div
@@ -76,10 +115,10 @@ const HealthIntelligenceWidget = () => {
         animate={{ opacity: 1, y: 0 }}
         className="relative bg-white/80 dark:bg-slate-900/60 backdrop-blur-2xl rounded-[2rem] p-6 shadow-2xl border border-white/20 dark:border-slate-700/30 overflow-hidden min-h-[320px] h-full flex flex-col group"
       >
-        {/* Dynamic Background Gradients */}
+        {/* Dynamic Background Gradients - Ambient Aura */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-violet-500/10 rounded-full blur-[60px] group-hover:bg-violet-500/20 transition-colors duration-700" />
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-[60px] group-hover:bg-indigo-500/20 transition-colors duration-700" />
+          <div className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[60px] transition-colors duration-700 ${severityConfig.blob1}`} />
+          <div className={`absolute -bottom-24 -left-24 w-64 h-64 rounded-full blur-[60px] transition-colors duration-700 ${severityConfig.blob2}`} />
         </div>
 
         {/* Header */}
@@ -147,9 +186,15 @@ const HealthIntelligenceWidget = () => {
                         </div>
                     </div>
                     <div>
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold mb-1 ${getStatusText(data.healthScore).color}`}>
-                            {getStatusText(data.healthScore).text}
-                        </div>
+                        {data.predictedThreat ? (
+                          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold mb-1 border ${severityConfig.bg} ${severityConfig.color} ${severityConfig.border}`}>
+                              {data.predictedThreat.title}
+                          </div>
+                        ) : (
+                          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold mb-1 ${getStatusText(data.healthScore).color}`}>
+                              {getStatusText(data.healthScore).text}
+                          </div>
+                        )}
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
                             {getTrendIcon(data.trend)}
                             <span className="capitalize">{data.trend} Trend</span>

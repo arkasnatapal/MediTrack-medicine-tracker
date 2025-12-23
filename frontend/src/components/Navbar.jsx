@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
+import HealthIntelligencePanel from './HealthIntelligencePanel';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File } from 'lucide-react';
+import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from './NotificationBell';
 import UserAvatar from './UserAvatar';
@@ -15,6 +17,53 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Health Intelligence State
+  const [intelligenceData, setIntelligenceData] = useState(null);
+  const [isHealthPanelOpen, setIsHealthPanelOpen] = useState(false);
+  const [isPillExpanded, setIsPillExpanded] = useState(false);
+
+  // Auto-collapse timer for prediction pill
+  useEffect(() => {
+    if (intelligenceData?.predictedThreat) {
+      setIsPillExpanded(true);
+      const timer = setTimeout(() => {
+        setIsPillExpanded(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [intelligenceData]);
+
+  // Fetch Intelligence for Navbar Alert
+  useEffect(() => {
+    const fetchIntelligence = async () => {
+      // Only fetch if user is logged in
+      if (!user) return;
+      
+      try {
+        const token = localStorage.getItem('token');
+        const API_URL = import.meta.env.VITE_API_URL; // Assuming existing variable
+        // Silence errors if API_URL not defined yet
+        if (!API_URL) return;
+
+        const res = await axios.get(`${API_URL}/dashboard/intelligence`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (res.data.exists && res.data.snapshot?.predictedThreat) {
+           setIntelligenceData(res.data.snapshot);
+        }
+      } catch (err) {
+        // Silent fail for navbar to avoid annoyance
+        console.error("Navbar intelligence check failed", err);
+      }
+    };
+
+    fetchIntelligence();
+    // Poll every 5 minutes
+    const interval = setInterval(fetchIntelligence, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -47,13 +96,47 @@ const Navbar = () => {
     
   ] : [];
 
+  // Helper for dynamic styles
+  const getSeverityConfig = (severity) => {
+    switch (severity) {
+      case 'high': return { 
+        color: 'text-rose-600 dark:text-rose-400', 
+        bg: 'bg-rose-50 dark:bg-rose-900/20', 
+        border: 'border-rose-200 dark:border-rose-800',
+        icon: AlertTriangle,
+        dot: 'bg-rose-500',
+        gradientText: 'bg-gradient-to-r from-rose-600 to-red-600 dark:from-rose-400 dark:to-red-400'
+      };
+      case 'medium': return { 
+        color: 'text-amber-600 dark:text-amber-400', 
+        bg: 'bg-amber-50 dark:bg-amber-900/20', 
+        border: 'border-amber-200 dark:border-amber-800',
+        icon: Activity,
+        dot: 'bg-amber-500',
+        gradientText: 'bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400'
+      };
+      default: return { 
+        color: 'text-emerald-600 dark:text-emerald-400', 
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20', 
+        border: 'border-emerald-200 dark:border-emerald-800',
+        icon: Sparkles,
+        dot: 'bg-emerald-500',
+        gradientText: 'bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400'
+      };
+    }
+  };
+  
+  const severityConfig = intelligenceData?.predictedThreat 
+      ? getSeverityConfig(intelligenceData.predictedThreat.severity) 
+      : null;
+
   return (
     <nav className="bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to={user ? "/dashboard" : "/"} className="flex-shrink-0 flex items-center gap-2">
-              <img src="./src/public/logo.png" className='h-10' alt="" />
+              <img src="/logo.png" className='h-10' alt="MediTrack Logo" />
               <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight">Medi<span className='dark:text-white text-emerald-600'>Track</span></span>
             </Link>
             <div className="hidden md:ml-8 md:flex md:space-x-8">
@@ -80,6 +163,55 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <div className="flex items-center gap-4">
+                
+                {/* Predicted Threat Alert Pill - Dynamic & Auto-Collapsing */}
+                {intelligenceData?.predictedThreat && severityConfig && (
+                  <motion.button
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileTap={{ scale: 0.95 }}
+                    onMouseEnter={() => setIsPillExpanded(true)}
+                    onMouseLeave={() => setIsPillExpanded(false)}
+                    onClick={() => setIsHealthPanelOpen(true)}
+                    className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all cursor-pointer ${severityConfig.bg} ${severityConfig.border}`}
+                  >
+                    <div className="relative flex h-2 w-2 flex-shrink-0">
+                       {intelligenceData.predictedThreat.severity === 'high' && (
+                         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${severityConfig.dot}`}></span>
+                       )}
+                       <span className={`relative inline-flex rounded-full h-2 w-2 ${severityConfig.dot}`}></span>
+                    </div>
+
+                    <AnimatePresence>
+                      {isPillExpanded && (
+                        <motion.span
+                          initial={{ width: 0, opacity: 0 }}
+                          animate={{ width: "auto", opacity: 1 }}
+                          exit={{ width: 0, opacity: 0 }}
+                          className={`text-xs font-bold bg-clip-text text-transparent truncate whitespace-nowrap overflow-hidden ${severityConfig.gradientText}`}
+                        >
+                          {intelligenceData.predictedThreat.title}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                    
+                    {/* Only show icon if expanded, or maybe always? User said "just only the icon/light will be present". 
+                        The "light" is the dot. The icon is extra. Let's keep icon only when expanded for cleaner look? 
+                        User said: "just only the icon will be present I mean the light will be present".
+                        Okay, I'll keep the icon visible only when expanded as well, or maybe just the dot is enough for collapsed state. 
+                        Let's keep the icon visible? No, "collapsed back to just the icon/light". 
+                        I will keep the dot always, and maybe hide the icon when collapsed to make it truly small. 
+                        Actually, keeping the icon helps identify WHAT it is (Sparkles vs Alert). 
+                        I'll keep the icon always visible to be safe, so it collapses to [Dot] [Icon]. 
+                        Wait, user said "only the icon will be present I mean the light". 
+                        I think [Dot] is the "light". 
+                        If I hide the text, it becomes [Dot] [Icon]. That's compact enough. 
+                        I will keep icon always visible. */}
+                    <severityConfig.icon className={`w-3 h-3 flex-shrink-0 ${severityConfig.color}`} />
+                  </motion.button>
+                )}
+
                 <NotificationBell />
                 <button
                   type="button"
@@ -101,7 +233,6 @@ const Navbar = () => {
                         fallbackType="icon"
                       />
                     </div>
-                    {/* <span className="hidden sm:block">{user.name.split(' ')[0]}</span> */}
                   </button>
 
                   <AnimatePresence>
@@ -235,6 +366,15 @@ const Navbar = () => {
       </div>
 
       <AnimatePresence>
+        {isHealthPanelOpen && (
+             <HealthIntelligencePanel 
+                isOpen={isHealthPanelOpen} 
+                onClose={() => setIsHealthPanelOpen(false)} 
+             />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {isOpen && (
           <>
             {/* Backdrop */}
@@ -264,7 +404,45 @@ const Navbar = () => {
                 </button>
               </div>
 
+               {/* Mobile Health Status Card (Inside Menu) */}
+               {intelligenceData?.predictedThreat && severityConfig && (
+                   <div className="p-4 border-b border-gray-100 dark:border-slate-800">
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                           setIsOpen(false);
+                           setIsHealthPanelOpen(true);
+                        }}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl border ${severityConfig.bg} ${severityConfig.border} shadow-sm`}
+                      >
+                         <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg bg-white/50 dark:bg-black/20 ${severityConfig.color}`}>
+                               <severityConfig.icon size={18} />
+                            </div>
+                            <div className="text-left">
+                               <p className={`text-xs font-bold uppercase tracking-wider ${severityConfig.color}`}>
+                                 {intelligenceData.predictedThreat.severity} Risk
+                               </p>
+                               <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
+                                  {intelligenceData.predictedThreat.title}
+                               </p>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-2">
+                            {intelligenceData.predictedThreat.severity === 'high' && (
+                                <span className="relative flex h-2 w-2">
+                                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${severityConfig.dot}`}></span>
+                                  <span className={`relative inline-flex rounded-full h-2 w-2 ${severityConfig.dot}`}></span>
+                                </span>
+                            )}
+                            <ChevronRight className={`w-4 h-4 ${severityConfig.color}`} />
+                         </div>
+                      </motion.button>
+                   </div>
+               )}
+
               <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+
                 <Link
                   to="/dashboard"
                   onClick={() => setIsOpen(false)}

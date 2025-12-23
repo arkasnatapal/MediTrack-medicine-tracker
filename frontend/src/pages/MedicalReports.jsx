@@ -25,6 +25,7 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  Edit2, // Added for Edit Domain
 } from "lucide-react";
 import {
   BarChart,
@@ -36,7 +37,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import Loader from "../components/Loader";
+
 import ConfirmDialog from "../components/ConfirmDialog";
 import MarkdownRenderer from "../components/MarkdownRenderer";
 import api from "../api/api";
@@ -63,6 +64,7 @@ const MedicalReports = () => {
 
   // Upload Form State
   const [folderName, setFolderName] = useState("");
+  const [domain, setDomain] = useState("");
   const [reportDate, setReportDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -96,6 +98,7 @@ const MedicalReports = () => {
     setUploading(true);
     const formData = new FormData();
     formData.append("folderName", folderName);
+    formData.append("domain", domain); // Optional
     formData.append("reportDate", reportDate);
     files.forEach((file) => {
       formData.append("files", file);
@@ -108,6 +111,7 @@ const MedicalReports = () => {
       if (res.data.success) {
         setShowUploadModal(false);
         setFolderName("");
+        setDomain("");
         setFiles([]);
         fetchReports();
       }
@@ -164,7 +168,11 @@ const MedicalReports = () => {
     report.folderName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) return <Loader />;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-[#0B0F17]">
+      <Loader2 className="w-12 h-12 text-teal-600 animate-spin" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F17] p-6 lg:p-10 font-sans">
@@ -293,6 +301,13 @@ const MedicalReports = () => {
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
                     {report.folderName}
                   </h3>
+                  
+                  {/* Domain Badge */}
+                  {report.domain && (
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-700 text-xs font-semibold text-gray-600 dark:text-gray-300 mb-3 border border-gray-200 dark:border-slate-600">
+                      {report.domain}
+                    </span>
+                  )}
 
                   <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
                     <div className="flex items-center gap-1.5">
@@ -388,6 +403,19 @@ const MedicalReports = () => {
                         className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
                       />
                     </div>
+                    
+                    <div className="space-y-2">
+                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
+                         Domain (Optional)
+                       </label>
+                       <input
+                         type="text"
+                         value={domain}
+                         onChange={(e) => setDomain(e.target.value)}
+                         placeholder="e.g. Cardiology, Glucose, General"
+                         className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                       />
+                    </div>
 
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
@@ -435,7 +463,7 @@ const MedicalReports = () => {
                       className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {uploading ? (
-                        <Loader size="sm" color="currentColor" />
+                        <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
                         "Create Report"
                       )}
@@ -477,6 +505,28 @@ const MedicalReports = () => {
                       <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                         {selectedReport.folderName}
                       </h2>
+                      {/* Inline Domain Edit */}
+                      <div className="flex items-center gap-2 mt-1">
+                          <span className="px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/30 text-xs font-bold text-teal-700 dark:text-teal-400 border border-teal-100 dark:border-teal-800">
+                             {selectedReport.domain || 'General'}
+                          </span>
+                          <button 
+                             onClick={() => {
+                                const newDomain = prompt("Edit Domain:", selectedReport.domain || "");
+                                if (newDomain !== null) {
+                                   api.put(`/reports/${selectedReport._id}`, { domain: newDomain }).then(res => {
+                                      if (res.data.success) {
+                                         setSelectedReport(prev => ({ ...prev, domain: res.data.report.domain }));
+                                         fetchReports(); 
+                                      }
+                                   });
+                                }
+                             }}
+                             className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 hover:text-teal-500 transition-colors"
+                          >
+                             <Edit2 className="w-3 h-3" />
+                          </button>
+                      </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
                         <Calendar className="w-4 h-4" />
                         {new Date(selectedReport.reportDate).toLocaleDateString(
@@ -831,11 +881,12 @@ const MedicalReports = () => {
         variant="danger"
       />
 
-      {/* Deleting Loader */}
-      {deleting && <Loader text="Deleting Report..." fullScreen={true} />}
-
-      {/* Uploading Loader */}
-      {uploading && <Loader text="Uploading Files..." fullScreen={true} />}
+      {/* Deleting Overlay */}
+      {deleting && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+           <Loader2 className="w-12 h-12 text-white animate-spin" />
+        </div>
+      )}
     </div>
   );
 };

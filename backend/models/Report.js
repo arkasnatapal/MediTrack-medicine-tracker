@@ -14,6 +14,10 @@ const reportSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  domain: {
+    type: String,
+    default: 'General'
+  },
   files: [{
     url: {
       type: String,

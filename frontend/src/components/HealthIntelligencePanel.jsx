@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { X, RefreshCw, Activity, TrendingUp, TrendingDown, Minus, Brain, Sparkles, Pill, FileText, ChevronRight } from 'lucide-react';
+import { X, RefreshCw, Activity, TrendingUp, TrendingDown, Minus, Brain, Sparkles, Pill, FileText, ChevronRight, CheckCircle, Search, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-4 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-xl ring-1 ring-slate-900/5">
+      <div className="bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg">
         <p className="text-sm font-bold text-slate-900 dark:text-white mb-2">{label}</p>
         {payload.map((entry, index) => (
           <div key={index} className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: entry.color }}>
@@ -80,7 +80,7 @@ const MedicationGraph = ({ logs }) => {
           strokeWidth={3} 
           dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} 
           activeDot={{ r: 6, strokeWidth: 0, fill: '#10B981' }}
-          animationDuration={1500}
+          isAnimationActive={false}
         />
         <Line 
           type="monotone" 
@@ -89,7 +89,7 @@ const MedicationGraph = ({ logs }) => {
           strokeWidth={3} 
           dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} 
           activeDot={{ r: 6, strokeWidth: 0, fill: '#F43F5E' }}
-          animationDuration={1500}
+          isAnimationActive={false}
         />
         <Line 
           type="monotone" 
@@ -99,7 +99,7 @@ const MedicationGraph = ({ logs }) => {
           strokeDasharray="5 5" 
           dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} 
           activeDot={{ r: 6, strokeWidth: 0, fill: '#94a3b8' }}
-          animationDuration={1500}
+          isAnimationActive={false}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -213,18 +213,18 @@ const HealthIntelligencePanel = ({ isOpen, onClose }) => {
 
   return (
     isOpen && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      <div className="fixed inset-x-0 bottom-0 top-20 z-[40] flex items-center justify-center p-4 sm:p-6">
         {/* Backdrop with Blur */}
         <div 
           onClick={onClose}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-all duration-300"
+          className="fixed inset-0 bg-slate-900/40 transition-opacity"
         />
         
         {/* Modal Container */}
-        <div className="relative bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-300">
+        <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800">
           
           {/* Header */}
-          <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 z-10">
             <div className="flex items-center gap-5">
               <div className="p-3.5 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl shadow-lg shadow-indigo-500/20 text-white">
                 <Brain className="w-7 h-7" />
@@ -233,7 +233,6 @@ const HealthIntelligencePanel = ({ isOpen, onClose }) => {
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Health Intelligence</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                   </span>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400">AI-Powered Analysis</p>
@@ -264,8 +263,160 @@ const HealthIntelligencePanel = ({ isOpen, onClose }) => {
               </div>
             ) : data ? (
               <div className="space-y-8 max-w-7xl mx-auto">
-                {/* Hero Section: Score & Trend */}
+                {/* Hero Section: Future Prediction & Domain Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  
+                  {/* Future Health Prediction Layer */}
+                  {data.predictedThreat ? (
+                    <div className="lg:col-span-12 relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-sm transition-all duration-300 hover:shadow-md group">
+                      {/* Severity Indicator Bar */}
+                      <div className={`absolute top-0 left-0 w-1.5 h-full ${
+                        data.predictedThreat.severity === 'high' ? 'bg-rose-500' : 
+                        data.predictedThreat.severity === 'medium' ? 'bg-amber-500' :
+                        data.predictedThreat.severity === 'good' ? 'bg-emerald-500' : 'bg-slate-400'
+                      }`} />
+                      
+                      <div className="p-6 sm:p-8">
+                        <div className="flex flex-col md:flex-row gap-8 items-start">
+                          {/* Left: Headline & Status */}
+                          <div className="flex-1">
+                             <div className="flex items-center gap-3 mb-4">
+                               <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
+                                  data.predictedThreat.severity === 'high' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' :
+                                  data.predictedThreat.severity === 'medium' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
+                                  'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                               }`}>
+                                  {data.predictedThreat.severity === 'high' ? <AlertTriangle className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
+                                  {data.predictedThreat.severity === 'high' ? 'Elevated Risk' : 
+                                   data.predictedThreat.severity === 'medium' ? 'Moderate Risk' : 'Good Trajectory'}
+                               </div>
+                               <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                                  <Activity className="w-3 h-3" />
+                                  {data.predictedThreat.timeframe || "Upcoming"}
+                               </span>
+                             </div>
+
+                             <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-4 leading-tight">
+                               {data.predictedThreat.title || "Health Trajectory Analysis"}
+                             </h3>
+                             
+                             <p className="text-slate-600 dark:text-slate-300 text-lg leading-relaxed mb-6">
+                               {data.predictedThreat.description}
+                             </p>
+
+                             {/* Suggestions (Horizontal) */}
+                             {data.predictedThreat.suggestions?.length > 0 && (
+                               <div className="flex flex-wrap gap-2">
+                                  {data.predictedThreat.suggestions.map((s, i) => (
+                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-700">
+                                      <CheckCircle className="w-3.5 h-3.5 text-indigo-500" />
+                                      {s}
+                                    </span>
+                                  ))}
+                               </div>
+                             )}
+                          </div>
+
+                          {/* Right: Prediction Basis (Explainability) */}
+                          <div className="w-full md:w-72 flex-shrink-0 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-100 dark:border-slate-800/50">
+                             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                               <Brain className="w-3 h-3" />
+                               Prediction Basis
+                             </h4>
+                             <ul className="space-y-2">
+                                {data.predictedThreat.predictionBasis?.map((basis, i) => (
+                                   <li key={i} className="text-xs font-medium text-slate-600 dark:text-slate-400 flex items-start gap-2">
+                                      <span className="mt-1 w-1 h-1 rounded-full bg-slate-400 shrink-0" />
+                                      {basis}
+                                   </li>
+                                )) || (
+                                  <li className="text-xs text-slate-400 italic">Based on current clinical data trends.</li>
+                                )}
+                             </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Fallback Positive State
+                    <div className="lg:col-span-12 relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/10 dark:to-teal-900/10 border border-emerald-100 dark:border-emerald-900/20 shadow-sm p-8">
+                       <div className="flex items-center gap-4">
+                           <div className="p-3 rounded-full bg-white dark:bg-emerald-900/30 text-emerald-500 shadow-sm">
+                             <Sparkles className="w-6 h-6" />
+                           </div>
+                           <div>
+                             <h3 className="text-xl font-bold text-slate-900 dark:text-white">Stable Future Trajectory</h3>
+                             <p className="text-slate-600 dark:text-slate-400">Not enough data changes to predict new risks.</p>
+                           </div>
+                       </div>
+                    </div>
+                  )}
+
+                  {/* Domain Insights Grid */}
+                  {data.domains && Object.keys(data.domains).length > 0 ? (
+                    <div className="lg:col-span-12 space-y-6">
+                      <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-teal-500" />
+                        Domain Analysis
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {Object.entries(data.domains).map(([domainName, domainData], idx) => (
+                           <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex justify-between items-start mb-4">
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white capitalize">{domainName}</h4>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
+                                      domainData.trend === 'improving' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                      domainData.trend === 'declining' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                                      'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                    }`}>
+                                      {domainData.trend}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-400">Updated {getRelativeTime(domainData.lastAnalyzedAt)}</p>
+                                </div>
+                                <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-full border-4 ${getScoreGradient(domainData.healthScore)}`}>
+                                  <span className={`text-sm font-bold ${getScoreColor(domainData.healthScore)}`}>{domainData.healthScore}</span>
+                                </div>
+                              </div>
+                              
+                              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4 min-h-[40px]">
+                                {domainData.summary}
+                              </p>
+
+                              {domainData.keyFindings && domainData.keyFindings.length > 0 && (
+                                <div className="space-y-2">
+                                  {domainData.keyFindings.slice(0, 2).map((finding, i) => (
+                                    <div key={i} className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                      <span className="mt-1 w-1 h-1 rounded-full bg-indigo-400 shrink-0"></span>
+                                      <span>{finding}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    // Fallback / "All Good" if no domains
+                    <div className="lg:col-span-12 relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/10 dark:to-teal-900/10 border border-emerald-100 dark:border-emerald-900/20 shadow-sm">
+                        <div className="relative p-8 flex items-center gap-6">
+                            <div className="p-3 rounded-xl bg-white dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400 shadow-sm">
+                                <Sparkles className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1">
+                                    Ready for Analysis
+                                </h3>
+                                <p className="text-slate-600 dark:text-slate-400 font-medium text-sm">
+                                    Upload medical reports to get domain-specific insights.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                  )}
                   {/* Score Card */}
                   <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-indigo-500/30 transition-all duration-300 group relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-all duration-500 group-hover:bg-indigo-500/10"></div>
@@ -280,7 +431,7 @@ const HealthIntelligencePanel = ({ isOpen, onClose }) => {
                             fill="transparent" 
                             strokeDasharray={527} 
                             strokeDashoffset={527 - (527 * data.healthScore) / 100} 
-                            className={`${getScoreGradient(data.healthScore)} transition-all duration-1000 ease-out`}
+                            className={`${getScoreGradient(data.healthScore)}`}
                             strokeLinecap="round" 
                           />
                         </svg>

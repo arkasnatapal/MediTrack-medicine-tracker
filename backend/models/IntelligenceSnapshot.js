@@ -34,6 +34,24 @@ const intelligenceSnapshotSchema = new mongoose.Schema({
     lifestyle: { type: Object },
     stability: { type: Object }
   },
+  // New Domain-Aware Architecture
+  domains: {
+    type: Map,
+    of: new mongoose.Schema({
+      summary: String,
+      healthScore: Number,
+      lastAnalyzedAt: Date,
+      trend: String,
+      keyFindings: [String]
+    }, { _id: false }),
+    default: {}
+  },
+  globalAdherence: {
+    summary: String,
+    score: Number,
+    issues: [String],
+    lastAnalyzedAt: Date
+  },
   confidence: {
     type: String,
     enum: ['high', 'medium', 'low'],
@@ -46,6 +64,15 @@ const intelligenceSnapshotSchema = new mongoose.Schema({
   },
   progressionNote: {
     type: String
+  },
+  predictedThreat: {
+    title: { type: String },
+    severity: { type: String, enum: ['high', 'medium', 'low'] },
+    timeframe: { type: String }, // e.g., "Next 6 days"
+    description: { type: String },
+    suggestions: [{ type: String }],
+    reasoning: [{ type: String }],
+    predictionBasis: [{ type: String }] // [NEW] Stores context like "Glucose (Stable), Cardiac (Declining)"
   },
   dataVersion: {
     type: String,
