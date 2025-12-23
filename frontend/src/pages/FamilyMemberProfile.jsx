@@ -376,10 +376,10 @@ const FamilyMemberProfile = () => {
                           
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                              {new Date(item.scheduledTime).toLocaleTimeString("en-US", { 
+                              {new Date(item.scheduledTime).toLocaleTimeString("en-IN", { 
                                 hour: "2-digit", 
                                 minute: "2-digit", 
-                                timeZone: "Asia/Kolkata" 
+                                timeZone: "UTC" 
                               })}
                             </p>
                             <h4 className="font-bold text-slate-900 dark:text-white truncate transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">

@@ -105,14 +105,26 @@ router.get('/status', authMiddleware, async (req, res) => {
     // Force allow for testing if not reviewed
     // if (!activeYesterday) console.log("TEST MODE: Allowing inactive user"); 
 
+    const rangeStart = new Date(yesterdayIST);
+    const rangeEnd = new Date(yesterdayIST);
+    rangeEnd.setDate(rangeEnd.getDate() + 1);
+
+    console.log(`[DailyReview] Checking existence for User ${userId}`);
+    console.log(`[DailyReview] Target Date (IST Midnight): ${yesterdayIST.toISOString()}`);
+    console.log(`[DailyReview] Query Range: ${rangeStart.toISOString()} - ${rangeEnd.toISOString()}`);
+
     // RULE 3: User has NOT already submitted a review for that day
+    // Use range query to be safe against minor offsets, though exact match should work
     const existingReview = await DailyHealthReview.findOne({
         userId,
-        reviewForDate: yesterdayIST
+        reviewForDate: { $gte: rangeStart, $lt: rangeEnd }
     });
-
+    
     if (existingReview) {
+        console.log(`[DailyReview] Found existing review: ${existingReview._id}`);
         return res.json({ showReview: false, reason: "Already reviewed" });
+    } else {
+        console.log(`[DailyReview] No review found.`);
     }
 
     // ELIGIBLE
@@ -153,11 +165,22 @@ router.post('/', authMiddleware, async (req, res) => {
     const yesterdayIST = new Date(todayIST);
     yesterdayIST.setDate(yesterdayIST.getDate() - 1);
 
+    const rangeStart = new Date(yesterdayIST);
+    const rangeEnd = new Date(yesterdayIST);
+    rangeEnd.setDate(rangeEnd.getDate() + 1);
+
     // Check for duplicate again
-    const existing = await DailyHealthReview.findOne({ userId, reviewForDate: yesterdayIST });
+    const existing = await DailyHealthReview.findOne({ 
+        userId, 
+        reviewForDate: { $gte: rangeStart, $lt: rangeEnd }
+    });
+    
     if (existing) {
+        console.log(`[DailyReview POST] Duplicate detected for ${yesterdayIST.toISOString()}`);
         return res.status(409).json({ message: "Review already submitted for yesterday" });
     }
+
+    console.log(`[DailyReview POST] Saving review for ${yesterdayIST.toISOString()}`);
 
     const newReview = new DailyHealthReview({
         userId,
