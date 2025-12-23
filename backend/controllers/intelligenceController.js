@@ -13,7 +13,7 @@ const genAI = process.env.GEMINI_API_CHAT_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_CHAT_KEY)
   : null;
 
-const MODEL_NAME = "gemini-2.5-flash-lite";
+const MODEL_NAME = "gemini-2.5-flash";
 
 // --- Helper: Generate Data Version Hash (Global Change Detection) ---
 async function generateDataVersion(userId) {
