@@ -46,6 +46,11 @@ const intelligenceSnapshotSchema = new mongoose.Schema({
     }, { _id: false }),
     default: {}
   },
+  selfReportedTrend: {
+    trend: { type: String, enum: ['improving', 'stable', 'declining'] },
+    summary: { type: String },
+    lastProcessedReviewDate: { type: Date }
+  },
   globalAdherence: {
     summary: String,
     score: Number,

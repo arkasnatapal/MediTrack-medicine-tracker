@@ -23,7 +23,18 @@
 - **Automatic Refresh**: Restricted to once every **24 hours** (previously 5 minutes) to save AI credits.
 - **Manual Refresh**: Users can still trigger an immediate update via the "Refresh" button in the panel.
 
-## 4. Bug Fixes
+## 4. Daily Health Review (New Feature)
+- **Goal**: Collect subjective patient feedback ("How did you feel yesterday?").
+- **Visibility**:
+  - Only shown if user was active yesterday.
+  - Not shown for new users (first day).
+  - One review per day max.
+- **Intelligence Integration**:
+  - Reviews are processed as **subjective context**.
+  - They generate a "Self-Reported Trend" (Improving/Stable/Declining).
+  - **Crucially**: They do NOT cause medical reports to be re-analyzed.
+
+## 5. Bug Fixes
 - Fixed `ReferenceError: mimeType` in OCR route.
 - Fixed `SyntaxError` (missing braces and commas) in Controller and Scheme files.
 
@@ -32,3 +43,4 @@
 - [x] **Separation**: Future prediction is a distinct visual layer from Domain Cards.
 - [x] **Transparency**: Users can see *why* a prediction was made via the "Prediction Basis" sidebar.
 - [x] **Rate Limiting**: Automatic AI calls limited to 24h interval.
+- [x] **Daily Review**: Widget appears correctly for active users, handles duplicates gracefully.

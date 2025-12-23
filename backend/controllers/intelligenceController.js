@@ -4,6 +4,7 @@ const Medicine = require('../models/Medicine');
 const FoodItem = require('../models/FoodItem');
 const MedicineLog = require('../models/MedicineLog');
 const Reminder = require('../models/Reminder');
+const DailyHealthReview = require('../models/DailyHealthReview');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const crypto = require('crypto');
 
@@ -32,11 +33,17 @@ async function generateDataVersion(userId) {
       MedicineLog.findOne({ userId }).sort({ updatedAt: -1 }).select('updatedAt')
     ]);
 
+    const [reviewCount, reviewLast] = await Promise.all([
+        DailyHealthReview.countDocuments({ userId }),
+        DailyHealthReview.findOne({ userId }).sort({ createdAt: -1 }).select('createdAt')
+    ]);
+
     // Simple string to hash
     const dataString = `
       R:${reportCount}-${reportLast?.createdAt?.getTime() || 0}
       M:${medCount}-${medLast?.updatedAt?.getTime() || 0}
       L:${logCount}-${logLast?.updatedAt?.getTime() || 0}
+      Rev:${reviewCount}-${reviewLast?.createdAt?.getTime() || 0}
     `;
 
     return crypto.createHash('md5').update(dataString).digest('hex');
@@ -276,7 +283,86 @@ async function generateHealthIntelligence(userId, force = false) {
     domainCount++;
   }
   const avgDomainScore = domainCount > 0 ? (totalScore / domainCount) : 80;
-  const globalScore = Math.round((avgDomainScore * 0.7) + (adherenceAnalysis.score * 0.3));
+
+  // 5.4 Daily Health Review Analysis (Subjective Layer)
+  // Logic: Check if there are NEW reviews since last processed date.
+  let selfReportedTrend = lastSnapshot?.selfReportedTrend || null;
+  
+  try {
+      const lastProcessedReviewDate = lastSnapshot?.selfReportedTrend?.lastProcessedReviewDate 
+            ? new Date(lastSnapshot.selfReportedTrend.lastProcessedReviewDate) 
+            : new Date(0);
+
+      const recentReviews = await DailyHealthReview.find({ 
+          userId, 
+          reviewForDate: { $gt: lastProcessedReviewDate }
+      }).sort({ reviewForDate: 1 });
+
+      if (recentReviews.length > 0) {
+          console.log(`[AI] Analyzing ${recentReviews.length} new daily reviews...`);
+          
+          const model = genAI.getGenerativeModel({ model: MODEL_NAME, generationConfig: { responseMimeType: "application/json" } });
+          
+          // Contextualize with existing trend
+          const prevTrend = selfReportedTrend?.trend || "unknown";
+
+          const reviewText = recentReviews.map(r => 
+              `Date: ${new Date(r.reviewForDate).toLocaleDateString()}, Mood: ${r.mood}, Note: ${r.reviewText || "N/A"}`
+          ).join('\n');
+
+          const prompt = `
+            Analyze these new daily patient self-reports.
+            Previous Trend: ${prevTrend}
+            
+            NEW REVIEWS:
+            ${reviewText}
+            
+            TASK:
+            1. Determine the subjective health trend based ONLY on these new insights.
+            2. Summarize the patient's self-reported feeling.
+            
+            OUTPUT JSON:
+            {
+               "trend": "improving" | "stable" | "declining",
+               "summary": "Short summary of patient feelings (max 1 sentence)."
+            }
+          `;
+
+          const result = await model.generateContent(prompt);
+          const aiRes = JSON.parse(result.response.text());
+
+          selfReportedTrend = {
+              trend: aiRes.trend,
+              summary: aiRes.summary,
+              lastProcessedReviewDate: recentReviews[recentReviews.length - 1].reviewForDate // Move pointer
+          };
+          
+          atLeastOneDomainUpdated = true; // Trigger future prediction update
+      }
+  } catch (err) {
+      console.error("Error analyzing daily reviews:", err);
+  }
+
+  // --- SCORE CALCULATION (Updated with Subjective Weight) ---
+  // Weights: Domains (60%), Adherence (30%), Subjective (10%)
+  // If no subjective data yet, fallback to 70/30.
+  
+  let globalScore;
+  let subjectiveScore = 80; // Default Neutral
+
+  if (selfReportedTrend) {
+      switch (selfReportedTrend.trend) {
+          case 'improving': subjectiveScore = 95; break;
+          case 'stable': subjectiveScore = 85; break;
+          case 'declining': subjectiveScore = 65; break;
+          default: subjectiveScore = 80;
+      }
+      globalScore = Math.round((avgDomainScore * 0.6) + (adherenceAnalysis.score * 0.3) + (subjectiveScore * 0.1));
+      console.log(`[Score] Domains: ${avgDomainScore} (60%), Adherence: ${adherenceAnalysis.score} (30%), Subjective: ${subjectiveScore} (10%) -> Total: ${globalScore}`);
+  } else {
+      globalScore = Math.round((avgDomainScore * 0.7) + (adherenceAnalysis.score * 0.3));
+      console.log(`[Score] Domains: ${avgDomainScore} (70%), Adherence: ${adherenceAnalysis.score} (30%) -> Total: ${globalScore}`);
+  }
 
   // 5.5 Future Prediction Layer (Managed)
   // Logic: Regenerate ONLY if (Domains Updated OR Adherence Changed OR No previous prediction)
@@ -299,6 +385,8 @@ async function generateHealthIntelligence(userId, force = false) {
     highlights: adherenceAnalysis.issues,
     medicationInsights: adherenceAnalysis.issues,
     domains: domains,
+    domains: domains,
+    selfReportedTrend: selfReportedTrend, // [NEW] Subjective Layer
     predictedThreat: futurePrediction, // [NEW] Separate Layer
     globalAdherence: {
       summary: adherenceAnalysis.summary,
