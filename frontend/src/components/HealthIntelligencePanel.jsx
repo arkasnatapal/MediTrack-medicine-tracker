@@ -450,6 +450,32 @@ const HealthIntelligencePanel = ({ isOpen, onClose }) => {
 
                   {/* Summary & Progression */}
                   <div className="lg:col-span-8 flex flex-col gap-6">
+                    {/* Self-Reported Health Trend Card */}
+                    {data.selfReportedTrend && (
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-6">
+                            <div className={`p-4 rounded-2xl ${
+                                data.selfReportedTrend.trend === 'improving' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400' :
+                                data.selfReportedTrend.trend === 'declining' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400' :
+                                'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+                            }`}>
+                                {data.selfReportedTrend.trend === 'improving' ? <TrendingUp className="w-8 h-8" /> : 
+                                 data.selfReportedTrend.trend === 'declining' ? <TrendingDown className="w-8 h-8" /> : 
+                                 <Minus className="w-8 h-8" />}
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                                    Self-Reported Trend
+                                </h3>
+                                <p className="text-slate-600 dark:text-slate-300 text-sm font-medium">
+                                    {data.selfReportedTrend.summary || "No subjective data yet."}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-2">
+                                    Based on your daily reviews • {data.selfReportedTrend.trend.toUpperCase()}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {data.progressionNote && (
                       <div className="flex-1 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-slate-900 border border-indigo-100 dark:border-indigo-900/30 rounded-3xl p-8 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300">
                         <div className="flex items-center gap-4 mb-4">

@@ -14,6 +14,7 @@ import EditMedicineModal from '../components/EditMedicineModal';
 import HealthTipWidget from '../components/HealthTipWidget';
 import SearchModal from '../components/SearchModal';
 import HealthIntelligenceWidget from '../components/HealthIntelligenceWidget';
+import DailyHealthReviewWidget from '../components/DailyHealthReviewWidget';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -112,6 +113,7 @@ const Dashboard = () => {
           animate="visible"
         >
           {/* Header */}
+
           <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6">
             <div>
               <h1 className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-white mb-1 md:mb-2 tracking-tight">
@@ -146,6 +148,7 @@ const Dashboard = () => {
 
 
           {/* Stats Grid */}
+          <DailyHealthReviewWidget />
           <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
             <div className="col-span-2 md:col-span-1">
                 <StatCard 
