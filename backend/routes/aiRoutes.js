@@ -457,6 +457,29 @@ router.post("/health-chat", auth, async (req, res) => {
       }
     }
 
+
+    // --- Upcoming Reminders Context Integration ---
+    const upcomingReminders = await Reminder.find({
+      targetUser: userId,
+      active: true,
+      // Simple filter for active reminders; detailed time filtering can be done in prompt or helper if needed
+      // ensuring we get the user's schedule.
+    }).select("medicineName times daysOfWeek");
+
+    let reminderContext = "";
+    if (upcomingReminders.length > 0) {
+      const now = new Date();
+      const options = { timeZone: "Asia/Kolkata", hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'long' };
+      const currentTimeStr = new Intl.DateTimeFormat('en-US', options).format(now);
+      const currentDay = new Intl.DateTimeFormat('en-US', { timeZone: "Asia/Kolkata", weekday: 'long' }).format(now);
+
+      reminderContext = `Current Time: ${currentTimeStr} (${currentDay})\n`;
+      reminderContext += upcomingReminders.map(r => {
+        const days = r.daysOfWeek.length > 0 ? r.daysOfWeek.join(", ") : "Every Day";
+        return `- ${r.medicineName}: Scheduled at [${r.times.join(", ")}] on ${days}`;
+      }).join("\n");
+    }
+
     let finalSystemInstruction = SYSTEM_INSTRUCTION;
     
     // Append the enhanced instructions and data
@@ -465,6 +488,9 @@ router.post("/health-chat", auth, async (req, res) => {
 ---
 ### 🍎 USER'S FOOD ROUTINE DATA (Context)
 ${foodSummary ? foodSummary : "No food routine data available yet."}
+
+### 🔔 USER'S UPCOMING MEDICINE REMINDERS (Context)
+${reminderContext ? reminderContext : "No active reminders found."}
 
 ### 🩺 MEDICAL REPORTS ANALYSIS & GRAPH
 ${reportContext ? reportContext : "No medical reports available yet."}
@@ -485,14 +511,38 @@ If the user asks about a medicine (e.g., "What are the side effects of Pan 40?",
      ---
      ℹ️ <small>_This explanation is meant to help you understand your health better. It does not replace advice from a qualified doctor._</small>
 
-#### 2. 💊 MEDICINE INTERACTION QUERIES
-If the user asks about taking a specific medicine (e.g., "Can I take Pan 40?"):
-   - **STEP 1: SIDE EFFECTS**: List common side effects first.
-   - **STEP 2: FOOD CHART ANALYSIS**: Cross-reference with the User's Food Routine.
-   - **STEP 3: DIRECT ADVICE**: Answer clearly.
-   - **MANDATORY FOOTER**: End with:
-     ---
-     ℹ️ <small>_This explanation is meant to help you understand your health better. It does not replace advice from a qualified doctor._</small>
+#### 2. 💊 MEDICINE INTERACTION & FORGOTTEN MEDICINE PROTOCOL
+**SCENARIO**: User forgot to take a medicine (e.g., "I forgot Pan 40 before breakfast, I just ate. Can I take it now?").
+
+**YOUR STEP-BY-STEP PROCESS:**
+1.  **🔍 ANALYZE THE SITUATION**:
+    -   Identify the **Medicine** the user skipped.
+    -   Identify the **Meal** they just had and the **Time** they had it (Ask if not provided).
+    -   **CRITICAL STEP**: Look at the **USER'S UPCOMING MEDICINE REMINDERS** list above.
+        -   Identify any medicines scheduled in the next **4-6 hours**.
+
+2.  **🌐 CHECK SOURCES (SIMULATED)**: 
+    -   You MUST explicitly state that you are checking generally accepted data from sources like **Tata 1mg**, **Apollo Pharmacy**, and **Pharmeasy**.
+    -   *Reasoning Example*: "Checking properties of Pantoprazole on Tata 1mg..." (You don't need to actually browse, just use your internal training data which covers this).
+
+3.  **🧠 EVALUATE SAFETY (Dual Check)**:
+    -   **Check A: Drug-Food Interaction**: Is this medicine strictly "Empty Stomach" (like PPIs)? Or "With Food" (like NSAIDs)?
+        -   *If PRE-MEAL strictly (e.g. Thyroid meds, PPIs)*: Taking it post-meal might reduce absorption by 50%+. Warn the user.
+    -   **Check B: Upcoming Drug-Drug Interaction**:
+        -   Compare the **Skipped Medicine** with **EACH** upcoming medicine found in Step 1.
+        -   *Example*: "If you take [Skipped Med] now, and [Upcoming Med] is due in 1 hour, is there a major interaction?" (e.g., Antacids vs Antibiotics, or Sedatives vs Anti-histamines).
+
+4.  **💬 GENERATE RESPONSE**:
+    -   **Verdict**: "You can take it now" OR "Better to skip this dose".
+    -   **Reasoning**: 
+        -   Explain the Food Interaction result.
+        -   **Explicitly mention**: "I also checked your upcoming medicines..." and state if there is a conflict or if it is safe.
+    -   **Warnings**: "Taking it now might cause [Side Effect]..."
+    -   **Citation**: "Based on data regarding [Medicine Name] from standard catalogs (Tata 1mg, Apollo)..."
+
+    - **MANDATORY FOOTER**: End with:
+      ---
+      ℹ️ <small>_This explanation is meant to help you understand your health better. It does not replace advice from a qualified doctor._</small>
 
 #### 3. 🥗 NUTRITION & DIET ANALYSIS
 If the user asks about their food (e.g., "Is my diet good?", "What should I eat?"):
