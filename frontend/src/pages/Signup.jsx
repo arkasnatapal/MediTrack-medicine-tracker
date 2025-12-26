@@ -11,6 +11,7 @@ import SEO from "../components/SEO";
 const Signup = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [gender, setGender] = useState(''); // New State
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -66,7 +67,7 @@ const Signup = () => {
       return;
     }
     setIsSubmitting(true);
-    const result = await signup(name, email, password);
+    const result = await signup(name, email, password, gender); // Pass gender
     if (result.success) {
       if (result.requireVerification) {
         navigate('/verify-email', { state: { email } });
@@ -152,6 +153,37 @@ const Signup = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+          </div>
+        </div>
+
+        {/* Gender Field */}
+        <div>
+          <label htmlFor="gender" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
+            Gender
+          </label>
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+              <User className="h-5 w-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+            </div>
+            <select
+              id="gender"
+              name="gender"
+              required
+              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10 appearance-none"
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+            >
+              <option value="" disabled className="text-slate-500 bg-slate-800">Select Gender</option>
+              <option value="male" className="bg-white dark:bg-slate-800 text-black dark:text-white">Male</option>
+              <option value="female" className="bg-white dark:bg-slate-800 text-black dark:text-white">Female</option>
+              <option value="other" className="bg-white dark:bg-slate-800 text-black dark:text-white">Other</option>
+            </select>
+            {/* Custom arrow icon since appearance-none hides default */}
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
+               <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                 <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd" />
+               </svg>
+            </div>
           </div>
         </div>
 

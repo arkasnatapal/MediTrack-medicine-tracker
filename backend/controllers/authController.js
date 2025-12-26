@@ -9,7 +9,7 @@ const generateToken = (id) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, gender } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -25,6 +25,7 @@ exports.register = async (req, res) => {
       email,
       password,
       role: role || 'user',
+      gender: gender || '', // Save gender if provided
       otp,
       otpExpires,
       isVerified: false
@@ -95,6 +96,7 @@ exports.verifyEmail = async (req, res) => {
         email: user.email,
         role: user.role,
         profilePictureUrl: user.profilePictureUrl,
+        gender: user.gender, // Include gender in user object
         settings: user.settings,
         google: user.google,
       },
@@ -216,6 +218,7 @@ exports.login = async (req, res) => {
         email: user.email,
         role: user.role,
         profilePictureUrl: user.profilePictureUrl,
+        gender: user.gender,
         settings: user.settings,
         twoFactorEnabled: user.twoFactorEnabled,
         google: user.google
@@ -253,6 +256,7 @@ exports.verifyLoginOtp = async (req, res) => {
         email: user.email,
         role: user.role,
         profilePictureUrl: user.profilePictureUrl,
+        gender: user.gender,
         settings: user.settings,
         twoFactorEnabled: user.twoFactorEnabled,
         google: user.google
@@ -298,6 +302,38 @@ exports.toggleTwoFactor = async (req, res) => {
     });
   } catch (error) {
     console.error('Toggle 2FA error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { gender } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (gender) {
+      user.gender = gender;
+    }
+    
+    // Add other profile updates here if needed in future
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profilePictureUrl: user.profilePictureUrl,
+        gender: user.gender,
+        settings: user.settings,
+        google: user.google
+      }
+    });
+  } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
