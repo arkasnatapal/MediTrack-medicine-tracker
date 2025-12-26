@@ -1280,4 +1280,112 @@ router.delete('/health-reports/:id', auth, async (req, res) => {
   }
 });
 
+// --- Drug Interaction Check ---
+const DrugInteraction = require('../models/DrugInteraction');
+
+// ... existing code ...
+
+// --- Drug Interaction Check ---
+router.post("/check-interaction", auth, async (req, res) => {
+  try {
+    if (!genAI) {
+      return res.status(500).json({ success: false, message: "AI service not configured." });
+    }
+
+    const { medicines } = req.body; // Array of { name, time (optional) }
+
+    if (!medicines || !Array.isArray(medicines) || medicines.length < 2) {
+      return res.status(400).json({ success: false, message: "Please provide at least two medicines." });
+    }
+
+    const medicineListStr = medicines.map(m => {
+      const timeStr = m.time ? ` (Taken at: ${m.time})` : "";
+      return `- ${m.name}${timeStr}`;
+    }).join("\n");
+
+    const prompt = `
+      You are an expert clinical pharmacist and AI medical assistant.
+      
+      **TASK**: Analyze the following list of medicines for potential drug-drug interactions.
+      
+      **MEDICINES LIST**:
+      ${medicineListStr}
+      
+      **INSTRUCTIONS**:
+      **INSTRUCTIONS**:
+      1. **Simulate a detailed check** based on general pharmaceutical interactions knowledge. DO NOT cite specific third-party websites or databases in the final output.
+      2. **Identify Conflicts**:
+         - Analyze if any two or more drugs have a known interaction.
+         - Consider the "Time" of intake if provided.
+      3. **Verdict**:
+         - If NO interaction is found: Explicitly state "No known serious interactions found."
+         - If INTERACTIONS are found: Detail them clearly. Explain *why* they conflict and *what* could happen.
+      
+      **OUTPUT FORMAT**:
+      - Return a structured, easy-to-read response in **Markdown**.
+      - Use **Bold** for medicine names and critical warnings.
+      - Use bullet points for clarity.
+      - **Sections**:
+        - **Summary Verdict**: Clear "Safe" or "Caution" or "Danger".
+        - **Detailed Analysis**: Go through the pairs/groups.
+        - **Recommendation**: What should the user do? (e.g., "Space them out", "Consult doctor", "Safe to proceed").
+      
+      **MANDATORY DISCLAIMER**:
+      End with this footer:
+      ---
+      🤖 _This is an AI-generated analysis based on general pharmaceutical patterns. It is NOT a substitute for professional medical advice. Please consult your doctor or pharmacist for a definitive answer._
+    `;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Save to DB
+    const interaction = new DrugInteraction({
+      user: req.user.id,
+      medicines: medicines,
+      analysis: text
+    });
+    await interaction.save();
+
+    res.json({ success: true, analysis: text, id: interaction._id });
+
+  } catch (error) {
+    console.error("Error in check-interaction:", error);
+    res.status(500).json({ success: false, message: "Failed to analyze interactions." });
+  }
+});
+
+// --- Get Interaction History ---
+router.get("/interaction-history", auth, async (req, res) => {
+  try {
+    const history = await DrugInteraction.find({ user: req.user.id })
+      .sort({ createdAt: -1 })
+      .limit(20); // Limit to last 20 checks
+    res.json({ success: true, history });
+  } catch (error) {
+    console.error("Error fetching interaction history:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch history." });
+  }
+});
+// --- Delete Interaction History ---
+router.delete("/interaction-history/:id", auth, async (req, res) => {
+  try {
+    const deleted = await DrugInteraction.findOneAndDelete({ 
+      _id: req.params.id, 
+      user: req.user.id 
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Record not found or unauthorized." });
+    }
+
+    res.json({ success: true, message: "Deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting interaction history:", error);
+    res.status(500).json({ success: false, message: "Failed to delete history." });
+  }
+});
+
 module.exports = router;

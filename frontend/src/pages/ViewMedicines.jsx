@@ -12,6 +12,7 @@ import {
 import EditMedicineModal from '../components/EditMedicineModal';
 import OrganizeWithAIButton from '../components/OrganizeWithAIButton';
 import OrganizationPreviewModal from '../components/OrganizationPreviewModal';
+import DrugInteractionModal from '../components/DrugInteractionModal';
 import api from '../api/api';
 
 const ViewMedicines = () => {
@@ -21,6 +22,7 @@ const ViewMedicines = () => {
   const [organizationLoading, setOrganizationLoading] = useState(false);
   const [organizationData, setOrganizationData] = useState(null);
   const [showOrganizationModal, setShowOrganizationModal] = useState(false);
+  const [showInteractionModal, setShowInteractionModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
 
@@ -157,6 +159,14 @@ const ViewMedicines = () => {
           </div>
           
           <div className="flex items-center gap-3 w-full md:w-auto">
+             <button
+              onClick={() => setShowInteractionModal(true)}
+              className="flex items-center gap-2 px-4 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl font-bold border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors shadow-sm"
+            >
+              <Activity className="w-5 h-5" />
+              <span className="hidden sm:inline">Check Interaction</span>
+            </button>
+
             <div className="relative flex items-center bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 px-4 py-3 shadow-sm min-w-[180px]">
               <Filter className="w-4 h-4 text-teal-500 mr-2" />
               <select
@@ -236,6 +246,12 @@ const ViewMedicines = () => {
           onClose={() => setShowOrganizationModal(false)}
           organizationData={organizationData}
           onAccept={handleAcceptOrganization}
+        />
+
+        <DrugInteractionModal
+          isOpen={showInteractionModal}
+          onClose={() => setShowInteractionModal(false)}
+          medicines={medicines}
         />
       </div>
     </div>
