@@ -28,8 +28,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem("token");
-      // Optional: Redirect to login
-      // window.location.href = '/login';
+      // Redirect to login to prevent zombie session state
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

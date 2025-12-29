@@ -74,6 +74,7 @@ app.use('/api/medicine-catalog', require('./routes/medicineCatalogRoutes'));
 app.use('/api/daily-review', require('./routes/dailyReviewRoutes'));
 app.use('/api/medicine-logs', require('./routes/medicineLogRoutes'));
 app.use('/api/cron', require('./routes/cronRoutes'));
+app.use('/api/women-health', require('./routes/womenHealth.routes'));
 
 const googleRoutes = require("./routes/googleRoutes");
 app.use("/api/google", googleRoutes);

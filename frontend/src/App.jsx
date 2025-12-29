@@ -38,6 +38,9 @@ import HealthReview from './pages/HealthReview'
 import MedicalReports from './pages/MedicalReports'
 import MedicationStatus from './pages/MedicationStatus'
 import NotFound from './pages/NotFound'
+import WomenHealth from './pages/WomenHealth'
+import WomenHealthHistoryDetail from './pages/WomenHealthHistoryDetail'
+import WomenHealthHistoryList from './pages/WomenHealthHistoryList'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 
@@ -229,6 +232,24 @@ function AppContent() {
               <Route path="/reminders" element={
                 <PrivateRoute>
                   <Reminders />
+                </PrivateRoute>
+              } />
+
+              <Route path="/women-health/:id" element={
+                <PrivateRoute>
+                  <WomenHealth />
+                </PrivateRoute>
+              } />
+
+              <Route path="/women-health/history" element={
+                <PrivateRoute>
+                  <WomenHealthHistoryList />
+                </PrivateRoute>
+              } />
+
+              <Route path="/women-health/previous/:index" element={
+                <PrivateRoute>
+                  <WomenHealthHistoryDetail />
                 </PrivateRoute>
               } />
 

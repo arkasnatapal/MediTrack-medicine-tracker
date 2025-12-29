@@ -263,6 +263,50 @@ const HealthIntelligencePanel = ({ isOpen, onClose }) => {
               </div>
             ) : data ? (
               <div className="space-y-8 max-w-7xl mx-auto">
+                {/* Women's Health Card (Top Priority if Exists) */}
+                {data.womenHealth && (
+                   <div className="lg:col-span-12 relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 dark:from-rose-900/10 dark:to-pink-900/10 border border-rose-100 dark:border-rose-900/20 shadow-sm transition-all duration-300 hover:shadow-md group p-6 sm:p-8">
+                      <div className="flex flex-col md:flex-row gap-8 items-start">
+                         <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-4">
+                               <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
+                                  data.womenHealth.status === 'Critical Alert' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                                  data.womenHealth.status === 'High Irregularity' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
+                                  data.womenHealth.status === 'Monitor' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+                                  'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                               }`}>
+                                  <Sparkles className="w-3 h-3" />
+                                  {data.womenHealth.status || "Women's Health"}
+                               </div>
+                               <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                                  <Activity className="w-3 h-3" />
+                                  Cycle Trend
+                               </span>
+                            </div>
+
+                            <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2 leading-tight">
+                               Reproductive Health Insight
+                            </h3>
+                            
+                            <p className="text-slate-600 dark:text-slate-300 text-lg leading-relaxed mb-6">
+                               {data.womenHealth.recommendation || "Tracking your cycle patterns for health insights."}
+                            </p>
+
+                            <div className="flex items-center gap-4 text-sm font-medium text-slate-500 dark:text-slate-400">
+                               <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                                   <div className="w-2 h-2 rounded-full bg-rose-400" />
+                                   Avg Length: <span className="text-slate-900 dark:text-white font-bold">{data.womenHealth.averageLength || '?'} Days</span>
+                               </div>
+                               <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-lg border border-indigo-100 dark:border-indigo-900/30">
+                                   <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                                   History: <span className="text-slate-900 dark:text-white font-bold">{data.womenHealth.historyCount || 0} Cycles</span>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                )}
+
                 {/* Hero Section: Future Prediction & Domain Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                   

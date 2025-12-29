@@ -5,6 +5,9 @@ const FoodItem = require('../models/FoodItem');
 const MedicineLog = require('../models/MedicineLog');
 const Reminder = require('../models/Reminder');
 const DailyHealthReview = require('../models/DailyHealthReview');
+const WomenHealth = require('../models/WomenHealth.model');
+const { decryptWomenHealth } = require('../utils/womenHealthCrypto');
+const { analyzeHealth } = require('../services/womenHealthAI.service');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const crypto = require('crypto');
 
@@ -13,7 +16,7 @@ const genAI = process.env.GEMINI_API_CHAT_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_CHAT_KEY)
   : null;
 
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = "gemini-2.5-flash-lite"; // Use lighter model for dashboard efficiency
 
 // --- Helper: Generate Data Version Hash (Global Change Detection) ---
 async function generateDataVersion(userId) {
@@ -200,11 +203,12 @@ async function generateHealthIntelligence(userId, force = false) {
   }
 
   // 2. Fetch All Data
-  const [allReports, medicines, medicineLogs, reminders] = await Promise.all([
+  const [allReports, medicines, medicineLogs, reminders, womenHealthRecord] = await Promise.all([
     Report.find({ userId }).sort({ reportDate: -1 }), // Fetch all to categorize
     Medicine.find({ userId }),
     MedicineLog.find({ userId }).sort({ scheduledTime: -1 }).limit(50),
-    Reminder.find({ targetUser: userId, active: true })
+    Reminder.find({ targetUser: userId, active: true }),
+    WomenHealth.findOne({ userId })
   ]);
 
   // 3. Adherence Analysis (Rule-Based, Always Runs if Version Changed)
@@ -376,6 +380,28 @@ async function generateHealthIntelligence(userId, force = false) {
       console.log("[AI] Skipping Future Prediction (Stable)");
   }
 
+  // 5.5 Women Health Analysis (Lightweight Integration)
+  let womenHealthSnapshot = lastSnapshot?.womenHealth || null;
+  if (womenHealthRecord && process.env.WOMEN_HEALTH_HASH) {
+     try {
+        const decryptedPC = decryptWomenHealth(womenHealthRecord.encryptedBlob, process.env.WOMEN_HEALTH_HASH);
+        // We reuse the analyzeHealth service but lightly
+        const analysis = await analyzeHealth(decryptedPC, userId, decryptedPC.cachedAIResponse, decryptedPC.lastAnalysisTime);
+        if (analysis.cycleTrends) {
+            womenHealthSnapshot = {
+                status: analysis.cycleTrends.status,
+                recommendation: analysis.cycleTrends.recommendation,
+                averageLength: analysis.cycleTrends.averageLength,
+                historyCount: analysis.cycleTrends.historyCount,
+                flagged: analysis.cycleTrends.flagged,
+                lastAnalyzedAt: new Date()
+            };
+        }
+     } catch (e) {
+        console.error("Women Health Intelligence Error:", e);
+     }
+  }
+
   // 6. Create & Save Snapshot
   const newSnapshot = new IntelligenceSnapshot({
     userId,
@@ -388,6 +414,7 @@ async function generateHealthIntelligence(userId, force = false) {
     domains: domains,
     selfReportedTrend: selfReportedTrend, // [NEW] Subjective Layer
     predictedThreat: futurePrediction, // [NEW] Separate Layer
+    womenHealth: womenHealthSnapshot,
     globalAdherence: {
       summary: adherenceAnalysis.summary,
       score: adherenceAnalysis.score,

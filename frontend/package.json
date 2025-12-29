@@ -10,8 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
     "axios": "^1.6.8",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "framer-motion": "^11.1.7",
     "gsap": "^3.13.0",
     "html2canvas": "^1.4.1",

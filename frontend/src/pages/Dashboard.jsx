@@ -15,6 +15,7 @@ import HealthTipWidget from '../components/HealthTipWidget';
 import SearchModal from '../components/SearchModal';
 import HealthIntelligenceWidget from '../components/HealthIntelligenceWidget';
 import DailyHealthReviewWidget from '../components/DailyHealthReviewWidget';
+import WomenHealthWidget from '../components/dashboard/WomenHealthWidget';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -148,6 +149,9 @@ const Dashboard = () => {
 
 
           {/* Stats Grid */}
+          <motion.div variants={itemVariants}>
+              <WomenHealthWidget />
+          </motion.div>
           <DailyHealthReviewWidget />
           <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
             <div className="col-span-2 md:col-span-1">

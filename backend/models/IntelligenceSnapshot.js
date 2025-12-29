@@ -79,6 +79,14 @@ const intelligenceSnapshotSchema = new mongoose.Schema({
     reasoning: [{ type: String }],
     predictionBasis: [{ type: String }] // [NEW] Stores context like "Glucose (Stable), Cardiac (Declining)"
   },
+  womenHealth: {
+    status: { type: String },
+    recommendation: { type: String },
+    averageLength: { type: Number },
+    historyCount: { type: Number },
+    flagged: { type: Boolean },
+    lastAnalyzedAt: { type: Date }
+  },
   dataVersion: {
     type: String,
     required: true
