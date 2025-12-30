@@ -6,8 +6,9 @@ import api from '../api/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Calendar, Droplet, Heart, Info, ShieldCheck, Moon, Sun, Wind, Brain, Activity, Plus, 
-    ArrowRight, Check, X, Clock, History, AlertTriangle, Sparkles
+    ArrowRight, Check, X, Clock, History, AlertTriangle, Sparkles, Loader2
 } from 'lucide-react';
+
 import { AreaChart, Area, Tooltip, ResponsiveContainer, ReferenceLine, Label } from 'recharts';
 import { 
     differenceInDays, addDays, format, isPast, formatDistanceToNow,
@@ -25,6 +26,7 @@ const WomenHealth = () => {
     
     // UI States
     const [logOpen, setLogOpen] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false);
     
     // Inputs
     const [estimateDate, setEstimateDate] = useState('');
@@ -142,7 +144,13 @@ const WomenHealth = () => {
     };
 
     if (!user || user.gender !== 'female') return null;
-    if (loading) return <div className="min-h-screen bg-rose-50 dark:bg-[#020617] flex items-center justify-center text-rose-500 font-medium">Synced & Encrypted...</div>;
+
+    if (loading) return (
+        <div className="min-h-screen bg-rose-50 dark:bg-[#020617] flex flex-col gap-3 items-center justify-center text-rose-500 font-medium">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            Synced & Encrypted...
+        </div>
+    );
 
     const cycleData = data?.data?.cycleData || {};
     const analysis = data?.analysis || {};
@@ -532,6 +540,113 @@ const WomenHealth = () => {
                 )}
              </AnimatePresence>
 
+             {/* INFO MODAL */}
+             <AnimatePresence>
+                {infoOpen && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }} 
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                        onClick={() => setInfoOpen(false)}
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.95, y: 20 }} 
+                            animate={{ scale: 1, y: 0 }} 
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="bg-white dark:bg-[#0b0c15] w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/10"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Hero Header */}
+                            <div className="relative p-8 bg-gradient-to-br from-indigo-900 to-slate-900 overflow-hidden text-center sticky top-0 z-10">
+                                <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/20 rounded-full blur-[100px] translate-x-1/3 -translate-y-1/2 pointer-events-none" />
+                                <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] -translate-x-1/3 translate-y-1/2 pointer-events-none" />
+                                
+                                <div className="relative z-10 flex flex-col items-center">
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30 mb-6">
+                                        <Brain className="w-8 h-8 text-white" />
+                                    </div>
+                                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">Unlock Your Body's Wisdom</h2>
+                                    <p className="text-indigo-200 text-lg max-w-2xl mx-auto leading-relaxed">
+                                        Your cycle is a vital sign. Our Health Intelligence Engine decoding your unique rhythm to provide actionable, daily guidance.
+                                    </p>
+                                </div>
+
+                                <button onClick={() => setInfoOpen(false)} className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white/70 hover:text-white">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            {/* 4 Pillars Grid */}
+                            <div className="p-6 grid md:grid-cols-2 gap-4 bg-slate-50 dark:bg-[#0b0c15]">
+                                {/* 1. Cycle Analysis */}
+                                <div className="p-5 rounded-3xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-rose-200 dark:hover:border-rose-500/30 transition-colors group">
+                                    <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                        <Calendar className="w-6 h-6 text-rose-500" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Cycle Phase Tracking</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm">
+                                        We predict your upcoming phases—Menstrual, Follicular, Ovulation, and Luteal—so you can plan your life around your energy levels.
+                                    </p>
+                                </div>
+
+                                {/* 2. Smart Movement */}
+                                <div className="p-5 rounded-3xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-teal-200 dark:hover:border-teal-500/30 transition-colors group">
+                                    <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                        <Wind className="w-6 h-6 text-teal-500" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Phase-Sync Exercises</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm">
+                                        Get daily movement recommendations. From high-intensity cardio during ovulation to restorative yoga for menstrual relief.
+                                    </p>
+                                </div>
+
+                                {/* 3. Nutrition */}
+                                <div className="p-5 rounded-3xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-colors group">
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                        <Heart className="w-6 h-6 text-emerald-500" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Hormonal Nutrition</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm">
+                                        Discover foods that support your changing hormone levels, helping to reduce bloating, cravings, and fatigue naturally.
+                                    </p>
+                                </div>
+
+                                {/* 4. Symptom Intelligence */}
+                                <div className="p-5 rounded-3xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors group">
+                                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                        <Sparkles className="w-6 h-6 text-indigo-500" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Symptom Decoding</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm">
+                                        Log daily symptoms to train the AI. It learns your unique patterns to warn you of irregularities before they happen.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Footer Call to Action */}
+                            <div className="p-8 bg-white dark:bg-[#0b0c15] border-t border-slate-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                        <Activity className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-900 dark:text-white text-sm">Accuracy increases with logs</p>
+                                        <p className="text-xs text-slate-500">The more you track, the smarter it gets.</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setInfoOpen(false)}
+                                    className="w-full md:w-auto px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
+                                >
+                                    Start Exploring
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+             </AnimatePresence>
+
             <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
                 
                 {/* Header */}
@@ -544,7 +659,12 @@ const WomenHealth = () => {
                     </div>
                     
                     <div className="flex gap-2">
-
+                        <button 
+                            onClick={() => setInfoOpen(true)}
+                            className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                        >
+                            <Info className="w-5 h-5" />
+                        </button>
                         <button 
                             onClick={() => navigate('/women-health/history')}
                             className="px-4 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 text-sm font-semibold"
@@ -989,10 +1109,11 @@ const ExerciseCarousel = ({ images, name }) => {
 
     return (
         <div className="relative w-full h-full group">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#030014]/80 z-10" />
             <img 
                 src={images[index]}
                 alt={`${name} view ${index + 1}`}
-                className="w-full h-full object-contain p-4 transition-all duration-500"
+                className="w-full h-full object-contain p-4 transition-all duration-500 relative z-0"
                 onError={(e) => {
                         e.target.onerror = null; 
                         e.target.src = "https://images.unsplash.com/photo-1544367563-12123d895951?q=80&w=800&auto=format&fit=crop";
@@ -1003,21 +1124,21 @@ const ExerciseCarousel = ({ images, name }) => {
                 <>
                     <button 
                         onClick={prev}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/5 hover:bg-white/10 text-white rounded-full backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover:opacity-100 z-20"
                     >
                         <ArrowRight className="w-5 h-5 rotate-180" />
                     </button>
                     <button 
                         onClick={next}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/5 hover:bg-white/10 text-white rounded-full backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover:opacity-100 z-20"
                     >
                         <ArrowRight className="w-5 h-5" />
                     </button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
                         {images.map((_, idx) => (
                             <div 
                                 key={idx} 
-                                className={`w-1.5 h-1.5 rounded-full transition-all ${index === idx ? 'bg-white w-4' : 'bg-white/50'}`} 
+                                className={`h-1.5 rounded-full transition-all duration-300 ${index === idx ? 'bg-rose-500 w-6 shadow-[0_0_10px_rgba(244,63,94,0.6)]' : 'bg-white/20 w-1.5'}`} 
                             />
                         ))}
                     </div>
@@ -1032,13 +1153,23 @@ const RecommendationCard = ({ icon: Icon, title, desc, color, delay }) => (
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: delay || 0 }}
-        className="p-6 rounded-[2rem] bg-white dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700/50 hover:border-rose-100 dark:hover:border-rose-900/50 hover:shadow-xl hover:-translate-y-1 transition-all group"
+        className="p-6 rounded-[2rem] bg-white/5 backdrop-blur-md border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all group min-h-[160px] flex flex-col justify-between relative overflow-hidden"
     >
-        <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
-            <Icon className="w-6 h-6 text-white" />
+        <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${color} opacity-10 blur-[50px] rounded-full pointer-events-none group-hover:opacity-20 transition-opacity`} />
+        
+        <div className="flex justify-between items-start mb-4 relative z-10">
+            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                <Icon className="w-6 h-6 text-white" />
+            </div>
+            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:text-white group-hover:bg-white/10 transition-all">
+                 <ArrowRight className="w-4 h-4 -rotate-45" />
+            </div>
         </div>
-        <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{title}</h4>
-        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{desc || "No specific recommendation."}</p>
+        
+        <div className="relative z-10">
+            <h4 className="text-lg font-bold text-white mb-2 tracking-wide">{title}</h4>
+            <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3 group-hover:text-slate-300 transition-colors">{desc || "No active data."}</p>
+        </div>
     </motion.div>
 );
 
@@ -1068,37 +1199,9 @@ function CycleCalendar({ cycleData, logs, history }) {
         const dateTime = date.getTime();
         
         // 1. Check History (Past Cycles) - Continuous Rendering
-        // Sort history by date descending to find the relevant cycle segment
         if (history && history.length > 0) {
-            // Find the history entry that *starts* on or before this date
-            // But we also need to respect the *next* history entry to bound this cycle
-            // Actually, simpler: Iterate all history entries.
             
-            for (let i = 0; i < history.length; i++) {
-                const h = history[i];
-                const hStart = new Date(h.start);
-                const hStartT = hStart.getTime();
-
-                // If this date is BEFORE this history entry, it might belong to a previous one.
-                // If this date is AFTER or ON this history entry start...
-                if (dateTime >= hStartT) {
-                    // Check if it belongs to *this* cycle segment.
-                    // It belongs if it's < the NEXT history start (or < current active start if this is the latest history)
-                    
-                    let nextStartT = null;
-                    if (i < history.length - 1) {
-                         // Next history entry (assuming sorted descending? No, data might be unsorted. Safety sort needed usually, but assuming push order)
-                         // Wait, array order isn't guaranteed if we just push. Ideally we sort first.
-                         // Let's assume standard time flow for now or just check all suitable ranges.
-                         // Better Strategy: Find the CLOSEST start date <= date.
-                    }
-                }
-            }
-            
-            // Robust Strategy: Find the specific Cycle this date belongs to.
-            // A date belongs to Cycle X if: X.start <= date < (NextCycle.start OR Current.start)
-            
-            // 1. Collect all "Start Dates" (History + Current)
+            // Collect all "Start Dates" (History + Current)
             const allStarts = history.map(h => ({ date: new Date(h.start), type: 'history', end: h.end ? new Date(h.end) : null }));
             if (lastStart) allStarts.push({ date: lastStart, type: 'active', end: null });
             
@@ -1120,14 +1223,11 @@ function CycleCalendar({ cycleData, logs, history }) {
                          if (cycle.type === 'history' && cycle.end) {
                              if (dateTime <= cycle.end.getTime()) {
                                  // It is within the RECORDED bleeding range -> RED
-                                 return { type: 'menstrual', color: 'bg-rose-500 text-white shadow-rose-500/50', isHistory: true };
+                                 return { type: 'menstrual', color: 'bg-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.4)]', isHistory: true };
                              }
                              // Else: It is past bleeding, calculate Phase
                          } else if (cycle.type === 'active') {
                              // Active Cycle Logic
-                             // If active bleeding is ON? (Assuming active cycle means currently tracking)
-                             // Use 'isPeriodActive' logic if date < today? 
-                             // Simply: Standard Phase Calc.
                          }
 
                          // B. Calculate Phase & Cycle Index
@@ -1148,7 +1248,7 @@ function CycleCalendar({ cycleData, logs, history }) {
                          if (dayOfCycle <= 5) {
                              if (isFutureCycle) {
                                   // Future Month Prediction -> Dotted
-                                  return { type: 'menstrual', color: 'border-2 border-dotted border-rose-500 text-rose-500' };
+                                  return { type: 'menstrual', color: 'border border-rose-500/50 text-rose-400 bg-rose-500/10' };
                              }
 
                              if (cycle.type === 'active' && cycleData.isPeriodActive) {
@@ -1158,29 +1258,28 @@ function CycleCalendar({ cycleData, logs, history }) {
                                  
                                  if (date > todayStart) {
                                      // Predicted Bleeding (Index 0) -> Light Rose
-                                     return { type: 'menstrual', color: 'bg-rose-200 dark:bg-rose-900/40 text-rose-700 dark:text-rose-200' };
+                                     return { type: 'menstrual', color: 'bg-rose-900/40 text-rose-200 border border-rose-500/20' };
                                  } else {
                                      // Confirmed Bleeding (Index 0) -> Solid Rose
-                                     return { type: 'menstrual', color: 'bg-rose-600 text-white shadow-md shadow-rose-600/40' };
+                                     return { type: 'menstrual', color: 'bg-rose-600 text-white shadow-[0_0_15px_rgba(225,29,72,0.5)]' };
                                  }
                              }
                              
                              // Fallback (History early stop OR Active stopped)
-                             return { type: 'follicular', color: 'bg-rose-50 dark:bg-rose-900/10 text-rose-400' };
+                             return { type: 'follicular', color: 'bg-rose-500/10 text-rose-300' };
                          } 
                          else if (dayOfCycle >= 14 && dayOfCycle <= 15) {
                              // Ovulation
-                             if (isFutureCycle) return { type: 'ovulation', color: 'border-2 border-dotted border-rose-500 text-rose-500' };
-                             return { type: 'ovulation', color: 'bg-rose-500 text-white shadow-rose-500/50' };
+                             if (isFutureCycle) return { type: 'ovulation', color: 'border border-indigo-400/50 text-indigo-300 bg-indigo-500/10' };
+                             return { type: 'ovulation', color: 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' };
                          }
                          else if (dayOfCycle > 5 && dayOfCycle < 14) {
                              // Follicular
-                             if (isFutureCycle) return { type: 'follicular', color: 'border-2 border-dotted border-rose-300 text-rose-400' };
-                             return { type: 'follicular', color: 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300' };
+                             return { type: 'follicular', color: 'text-rose-200' };
                          }
                          else {
                              // Luteal
-                             return { type: 'luteal', color: 'text-slate-700 dark:text-slate-300' }; 
+                             return { type: 'luteal', color: 'text-slate-400' }; 
                          }
                     }
                 }
@@ -1188,21 +1287,16 @@ function CycleCalendar({ cycleData, logs, history }) {
         }
 
         // 2. Future Prediction (If no cycle owns it aka Future)
-        // Check if it's future relative to LAST start
         if (lastStart && dateTime > lastStart.getTime()) {
             const diff = differenceInDays(date, lastStart);
             const cycleIndex = Math.floor(diff / cycleLength);
             
             if (cycleIndex > 0) {
                  const dayOfCycle = (diff % cycleLength) + 1;
-                 let colorClass = '';
                  
-                 if (dayOfCycle <= 5) colorClass = 'border-2 border-dotted border-rose-500 text-rose-500';
-                 else if (dayOfCycle >= 14 && dayOfCycle <= 15) colorClass = 'border-2 border-dotted border-rose-500 text-rose-500';
-                 else if (dayOfCycle > 5 && dayOfCycle < 14) colorClass = 'border-2 border-dotted border-rose-300 text-rose-400';
-                 else colorClass = 'text-slate-700 dark:text-slate-300';
-                 
-                 return { type: 'future', color: colorClass, isFuture: true };
+                 if (dayOfCycle <= 5) return { type: 'future', color: 'border border-rose-500/30 text-rose-500/70 bg-rose-500/5', isFuture: true };
+                 else if (dayOfCycle >= 14 && dayOfCycle <= 15) return { type: 'future', color: 'border border-indigo-400/30 text-indigo-400/70 bg-indigo-500/5', isFuture: true };
+                 else return { type: 'luteal', color: 'text-slate-600' };
             }
         }
         
@@ -1223,15 +1317,15 @@ function CycleCalendar({ cycleData, logs, history }) {
             days.push(
                 <div 
                     key={day} 
-                    className={`h-10 w-10 flex items-center justify-center rounded-full text-sm font-medium relative mb-2
-                        ${!isCurrentMonth ? 'opacity-30' : ''}
-                        ${phase ? phase.color : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}
-                        ${isToday ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900' : ''}
+                    className={`h-9 w-9 flex items-center justify-center rounded-xl text-xs font-bold relative mb-2 transition-all duration-300
+                        ${!isCurrentMonth ? 'opacity-20' : ''}
+                        ${phase ? phase.color : 'text-slate-700 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5'}
+                        ${isToday ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-[0_0_15px_rgba(0,0,0,0.3)] dark:shadow-[0_0_15px_rgba(255,255,255,0.3)]' : ''}
                     `}
                 >
                     {formattedDate}
                     {isLog && (
-                        <div className="absolute -bottom-1 w-1.5 h-1.5 bg-indigo-500 rounded-full border border-white dark:border-slate-900" />
+                        <div className="absolute -bottom-1 w-1 h-1 bg-emerald-400 rounded-full shadow-[0_0_5px_rgba(52,211,153,0.8)]" />
                     )}
                 </div>
             );
@@ -1246,37 +1340,32 @@ function CycleCalendar({ cycleData, logs, history }) {
     }
 
     return (
-        <div className="bg-white dark:bg-slate-900/50 rounded-3xl p-6 border border-slate-200 dark:border-slate-800">
-             <div className="flex items-center justify-between mb-6">
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Cycle Calendar</h3>
+        <div className="bg-white dark:bg-[#0b0c15] rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/5 relative overflow-hidden backdrop-blur-md shadow-xl dark:shadow-none">
+             {/* Decor */}
+             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[40px] rounded-full pointer-events-none" />
+             <div className="absolute bottom-0 left-0 w-32 h-32 bg-rose-500/10 blur-[40px] rounded-full pointer-events-none" />
+
+             <div className="flex items-center justify-between mb-8 relative z-10">
+                <span className="font-bold text-slate-900 dark:text-white text-lg tracking-tight pl-2">{format(currentMonth, 'MMMM yyyy')}</span>
                 <div className="flex gap-2">
-                    <button onClick={onPrevMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><ArrowRight className="w-5 h-5 rotate-180" /></button>
-                    <span className="font-semibold w-24 text-center">{format(currentMonth, 'MMMM yyyy')}</span>
-                    <button onClick={onNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><ArrowRight className="w-5 h-5" /></button>
+                    <button onClick={onPrevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-indigo-600 dark:text-indigo-300 transition-colors"><ArrowRight className="w-4 h-4 rotate-180" /></button>
+                    <button onClick={onNextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-indigo-600 dark:text-indigo-300 transition-colors"><ArrowRight className="w-4 h-4" /></button>
                 </div>
              </div>
              
-             <div className="flex justify-between text-xs font-bold text-slate-400 mb-4 px-2">
-                 {['S','M','T','W','T','F','S'].map((d,i) => <span key={i} className="w-10 text-center">{d}</span>)}
+             <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-6 px-2 tracking-widest uppercase">
+                 {['S','M','T','W','T','F','S'].map((d,i) => <span key={i} className="w-9 text-center">{d}</span>)}
              </div>
 
-             <div className="space-y-1">
+             <div className="space-y-1 relative z-10">
                 {rows}
              </div>
 
-             <div className="flex gap-4 mt-4 text-xs font-medium text-slate-500 justify-center">
-                 <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" /> Key Dats</div>
-                 <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-200" /> Prep Phase</div>
-                 <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500" /> Logged</div>
+             <div className="flex gap-4 mt-8 text-[10px] font-bold text-slate-500 justify-center uppercase tracking-wider">
+                 <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.8)]" /> Period</div>
+                 <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" /> Ovulation</div>
+                 <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" /> Logged</div>
              </div>
-             <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
-                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-xs font-semibold mb-2">
-                    <Info className="w-3 h-3" /> Medical Info
-                 </div>
-                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-                    "A complete menstrual cycle usually lasts between 21 and 35 days. Variations can occur due to lifestyle or health factors."
-                 </p>
-            </div>
         </div>
     );
 };
