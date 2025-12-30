@@ -91,7 +91,7 @@ const WomenHealth = () => {
                 return;
             }
 
-            const res = await api.post('/women-health/log', {
+            const res = await api.post(`/women-health/${user._id}/log`, {
                 date: new Date(),
                 flow: logFlow,
                 mood: logMood,
