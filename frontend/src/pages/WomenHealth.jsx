@@ -42,6 +42,9 @@ const WomenHealth = () => {
     const [selectedExercise, setSelectedExercise] = useState(null);
     const [feedbackGivenToday, setFeedbackGivenToday] = useState([]); // New Feedback State
 
+    // Recommendation Expansion State
+    const [selectedRecommendation, setSelectedRecommendation] = useState(null);
+
     useEffect(() => {
         if (user && user.gender !== 'female') navigate('/dashboard');
     }, [user, navigate]);
@@ -179,7 +182,18 @@ const WomenHealth = () => {
     // Chart Data (Visual Standard: 28 days, or current day if longer)
     const backendCycleLength = cycleData.cycleLength || 28;
     const effectiveCycleLength = Math.max(backendCycleLength, 28);
-    const cycleDay = analysis.cycleDay || 1;
+    
+    // Correct Cycle Day Logic: differenceInDays returns 0 for same day, so add 1
+    // Also handle timezone offsets to ensure day-level accuracy
+    const startOfCurrentCycle = new Date(cycleData.lastPeriodStart);
+    startOfCurrentCycle.setHours(0,0,0,0);
+    
+    const todayStart = new Date();
+    todayStart.setHours(0,0,0,0);
+
+    const calculatedDay = differenceInDays(todayStart, startOfCurrentCycle) + 1;
+    const cycleDay = Math.max(1, calculatedDay); // Ensure at least day 1
+
     const visualLength = Math.max(cycleDay + 5, effectiveCycleLength); // Show at least 28 (or effective), or current + buffer
     
     const chartData = [];
@@ -647,6 +661,64 @@ const WomenHealth = () => {
                 )}
              </AnimatePresence>
 
+             {/* RECOMMENDATION DETAIL MODAL */}
+             <AnimatePresence>
+                {selectedRecommendation && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }} 
+                        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+                        onClick={() => setSelectedRecommendation(null)}
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 30 }} 
+                            animate={{ scale: 1, y: 0 }} 
+                            exit={{ scale: 0.9, y: 30 }}
+                            className="relative bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl border border-white/20"
+                            onClick={e => e.stopPropagation()}
+                        >
+                             {/* Header Background */}
+                             <div className={`absolute top-0 left-0 w-full h-40 bg-gradient-to-br ${selectedRecommendation.color} opacity-20`} />
+                             
+                             <div className="relative p-10">
+                                <button 
+                                    onClick={() => setSelectedRecommendation(null)}
+                                    className="absolute top-6 right-6 p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors z-20 shadow-sm"
+                                >
+                                    <X className="w-5 h-5 text-slate-500" />
+                                </button>
+
+                                <div className="flex items-center gap-6 mb-12">
+                                    <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${selectedRecommendation.color} flex items-center justify-center shadow-xl flex-shrink-0`}>
+                                        <selectedRecommendation.icon className="w-10 h-10 text-white" />
+                                    </div>
+                                    
+                                    <h3 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                                        {selectedRecommendation.title}
+                                    </h3>
+                                </div>
+                                
+                                <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-4">
+                                    <p className="text-slate-600 dark:text-slate-300 text-lg leading-loose whitespace-pre-line">
+                                        {selectedRecommendation.desc || "No detailed insights available for this category yet."}
+                                    </p>
+                                </div>
+
+                                <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                    <button 
+                                        onClick={() => setSelectedRecommendation(null)}
+                                        className="w-full py-4 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-2xl font-bold text-lg hover:opacity-90 transition-opacity shadow-lg"
+                                    >
+                                        Close Insight
+                                    </button>
+                                </div>
+                             </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+             </AnimatePresence>
+
             <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
                 
                 {/* Header */}
@@ -850,6 +922,9 @@ const WomenHealth = () => {
                                                         fill="url(#energyGradient2)" 
                                                         animationDuration={2000}
                                                     />
+                                                    <ReferenceLine x={1} stroke="#94a3b8" strokeDasharray="3 3">
+                                                        <Label value="START" position="insideBottom" fill="#94a3b8" fontSize={10} fontWeight="bold" dy={-10} />
+                                                    </ReferenceLine>
                                                     <ReferenceLine x={cycleDay} stroke="#e11d48" strokeDasharray="3 3">
                                                         <Label value="TODAY" position="top" fill="#e11d48" fontSize={12} fontWeight="bold" />
                                                     </ReferenceLine>
@@ -875,11 +950,60 @@ const WomenHealth = () => {
                                          )}
                                      </div>
                                      
-                                     <div className="grid md:grid-cols-2 gap-4">
-                                        <RecommendationCard icon={Heart} title="Nutrition & Diet" desc={analysis?.recommendations?.nutrition} color="from-emerald-400 to-teal-500" delay={0.1} />
-                                        <RecommendationCard icon={Wind} title="Movement" desc={analysis?.recommendations?.exercise} color="from-blue-400 to-indigo-500" delay={0.2} />
-                                        <RecommendationCard icon={Droplet} title="Hygiene Care" desc={analysis?.recommendations?.hygiene} color="from-pink-400 to-rose-500" delay={0.3} />
-                                        <RecommendationCard icon={Sun} title="Emotional State" desc={analysis?.recommendations?.mood} color="from-amber-400 to-orange-500" delay={0.4} />
+                                     <div className="grid md:grid-cols-2 gap-4 ">
+
+                                        <RecommendationCard 
+                                            icon={Heart} 
+                                            title="Nutrition & Diet" 
+                                            desc={analysis?.recommendations?.nutrition} 
+                                            color="from-emerald-400 to-teal-500" 
+                                            delay={0.1} 
+                                            onExpand={() => setSelectedRecommendation({
+                                                icon: Heart,
+                                                title: "Nutrition & Diet",
+                                                desc: analysis?.recommendations?.nutrition,
+                                                color: "from-emerald-400 to-teal-500"
+                                            })}
+                                        />
+                                        <RecommendationCard 
+                                            icon={Wind} 
+                                            title="Movement" 
+                                            desc={analysis?.recommendations?.exercise} 
+                                            color="from-blue-400 to-indigo-500" 
+                                            delay={0.2} 
+                                            onExpand={() => setSelectedRecommendation({
+                                                icon: Wind,
+                                                title: "Movement",
+                                                desc: analysis?.recommendations?.exercise,
+                                                color: "from-blue-400 to-indigo-500"
+                                            })}
+                                        />
+                                        <RecommendationCard 
+                                            icon={Droplet} 
+                                            title="Hygiene Care" 
+                                            desc={analysis?.recommendations?.hygiene} 
+                                            color="from-pink-400 to-rose-500" 
+                                            delay={0.3} 
+                                            onExpand={() => setSelectedRecommendation({
+                                                icon: Droplet,
+                                                title: "Hygiene Care",
+                                                desc: analysis?.recommendations?.hygiene,
+                                                color: "from-pink-400 to-rose-500"
+                                            })}
+                                        />
+                                        <RecommendationCard 
+                                            icon={Sun} 
+                                            title="Emotional State" 
+                                            desc={analysis?.recommendations?.mood} 
+                                            color="from-amber-400 to-orange-500" 
+                                            delay={0.4} 
+                                            onExpand={() => setSelectedRecommendation({
+                                                icon: Sun,
+                                                title: "Emotional State",
+                                                desc: analysis?.recommendations?.mood,
+                                                color: "from-amber-400 to-orange-500"
+                                            })}
+                                        />
                                      </div>
 
                                      {/* IMPORTANT NOTICES (Warnings/Discrepancies) */}
@@ -1148,7 +1272,7 @@ const ExerciseCarousel = ({ images, name }) => {
     );
 };
 
-const RecommendationCard = ({ icon: Icon, title, desc, color, delay }) => (
+const RecommendationCard = ({ icon: Icon, title, desc, color, delay, onExpand }) => (
     <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1161,14 +1285,22 @@ const RecommendationCard = ({ icon: Icon, title, desc, color, delay }) => (
             <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
                 <Icon className="w-6 h-6 text-white" />
             </div>
-            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:text-white group-hover:bg-white/10 transition-all">
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (onExpand) onExpand();
+                }}
+                className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:text-white group-hover:bg-white/10 transition-all hover:scale-110 cursor-pointer"
+            >
                  <ArrowRight className="w-4 h-4 -rotate-45" />
-            </div>
+            </button>
         </div>
         
         <div className="relative z-10">
             <h4 className="text-lg font-bold text-white mb-2 tracking-wide">{title}</h4>
-            <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3 group-hover:text-slate-300 transition-colors">{desc || "No active data."}</p>
+            <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3 group-hover:text-slate-300 transition-colors cursor-pointer" onClick={onExpand}>
+                {desc || "No active data."}
+            </p>
         </div>
     </motion.div>
 );
