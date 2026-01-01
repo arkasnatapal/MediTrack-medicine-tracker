@@ -87,3 +87,64 @@ exports.deleteEmergency = async (req, res) => {
         res.status(500).json({ message: "Failed to delete record" });
     }
 };
+
+exports.broadcastEmergency = async (req, res) => {
+    try {
+        const { description, location } = req.body;
+        const userId = req.user.id;
+        
+        // 1. Get User's Emergency Contacts
+        const User = require('../../models/User'); // Ensure correct path
+        const user = await User.findById(userId).select('name email emergencyContacts');
+        
+        if (!user || !user.emergencyContacts || user.emergencyContacts.length === 0) {
+            return res.status(400).json({ message: "No emergency contacts found. Please add them in Settings." });
+        }
+
+        const { sendEmail } = require('../../utils/sendEmail');
+        
+        // 2. Prepare Email Content
+        const googleMapsLink = location ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}` : 'Location unavailable';
+        const time = new Date().toLocaleString();
+        
+        const emailSubject = `🚨 SOS: EMERGENCY ALERT from ${user.name}`;
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                <h1 style="color: #dc2626; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">🚨 EMERGENCY ALERT</h1>
+                <p style="font-size: 16px;"><strong>${user.name}</strong> has triggered an emergency alert.</p>
+                
+                <div style="background-color: #fef2f2; border: 1px solid #fee2e2; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #991b1b;">Emergency Details</h3>
+                    <p><strong>Description:</strong> ${description || "No description provided."}</p>
+                    <p><strong>Time:</strong> ${time}</p>
+                    <p><strong>Location:</strong> <a href="${googleMapsLink}" style="color: #dc2626; font-weight: bold;">View on Google Maps</a></p>
+                </div>
+                
+                <p>Please contact them or emergency services immediately.</p>
+                <p style="font-size: 12px; color: #666; margin-top: 30px;">Sent via MediTrack Emergency System</p>
+            </div>
+        `;
+
+        // 3. Send Emails in Parallel
+        const emailPromises = user.emergencyContacts.map(contact => 
+            sendEmail({
+                to: contact.email,
+                subject: emailSubject,
+                html: emailHtml
+            })
+        );
+
+        const results = await Promise.all(emailPromises);
+        const successCount = results.filter(r => r && r.success).length;
+
+        res.json({ 
+            success: true, 
+            message: `Alert sent to ${successCount}/${user.emergencyContacts.length} contacts`,
+            sentCount: successCount
+        });
+
+    } catch (error) {
+        console.error("Broadcast Emergency Error:", error);
+        res.status(500).json({ message: "Failed to broadcast emergency alert" });
+    }
+};

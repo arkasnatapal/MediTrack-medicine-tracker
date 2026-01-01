@@ -8,6 +8,7 @@ router.post('/ai-recommendation', protect, emergencyController.getAIRecommendati
 router.get('/hospitals', protect, emergencyController.getNearbyHospitals);
 router.post('/assign-doctor', protect, emergencyController.assignDoctor);
 router.get('/history', protect, emergencyController.getHistory);
+router.post('/broadcast', protect, emergencyController.broadcastEmergency);
 router.delete('/:id', protect, emergencyController.deleteEmergency);
 
 module.exports = router;

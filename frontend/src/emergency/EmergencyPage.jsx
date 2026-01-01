@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchNearbyHospitals, getAIRecommendation } from './emergency.service';
+import { fetchNearbyHospitals, getAIRecommendation, broadcastEmergency } from './emergency.service';
 import EmergencyMap from './EmergencyMap';
 // import EmergencyDialog from './EmergencyDialog'; // Removed
 // import './emergency.css'; // Removed
@@ -21,6 +21,34 @@ const EmergencyPage = () => {
     const [loadingAI, setLoadingAI] = useState(false);
     const [bestHospital, setBestHospital] = useState(null);
     const [errorMsg, setErrorMsg] = useState(null);
+
+    // Broadcast State
+    const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
+    const [broadcastMessage, setBroadcastMessage] = useState('');
+    const [broadcasting, setBroadcasting] = useState(false);
+
+    const handleBroadcastEmergency = async () => {
+        if (!userLocation) {
+            alert("Location is needed to send an alert.");
+            return;
+        }
+        
+        setBroadcasting(true);
+        try {
+            await broadcastEmergency({
+                description: broadcastMessage,
+                location: userLocation
+            });
+            alert("Emergency alert sent to all contacts!");
+            setShowBroadcastDialog(false);
+            setBroadcastMessage('');
+        } catch (error) {
+            console.error("Broadcast failed:", error);
+            alert("Failed to send alert. Please try again.");
+        } finally {
+            setBroadcasting(false);
+        }
+    };
 
     const getLocation = (retryLowAccuracy = false) => {
         if (!navigator.geolocation) {
@@ -231,6 +259,129 @@ const EmergencyPage = () => {
                             Not a medical diagnosis • Call Ambulance for critical cases
                         </span>
                     </div>
+
+                    {/* Emergency Action Section */}
+                    <div className="mt-8 relative overflow-hidden rounded-3xl p-1 bg-gradient-to-br from-red-500/20 via-orange-500/10 to-transparent backdrop-blur-3xl border border-white/10 shadow-2xl">
+                        <div className="absolute inset-0 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl" />
+                        
+                        <div className="relative p-6 flex flex-col items-center justify-center text-center">
+                            <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/10 rounded-full ring-1 ring-red-500/20 shadow-inner">
+                                <ShieldAlert size={28} className="text-red-500 animate-pulse" />
+                            </div>
+                            
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                                In Immediate Danger?
+                            </h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 max-w-sm mx-auto mb-6 leading-relaxed">
+                                Instantly broadcast your location and SOS message to your trusted contacts.
+                            </p>
+                            
+                            <button
+                                onClick={() => setShowBroadcastDialog(true)}
+                                className="group relative w-full sm:w-auto min-w-[200px] overflow-hidden rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 p-[1px] shadow-lg shadow-red-500/25 transition-all hover:shadow-red-500/40 hover:scale-[1.02] active:scale-95"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                                <div className="relative flex items-center justify-center gap-2 bg-transparent px-8 py-3.5 text-white font-bold h-full w-full rounded-2xl">
+                                    <Send size={18} className="transition-transform group-hover:translate-x-1" />
+                                    <span>BROADCAST ALERT</span>
+                                </div>
+                            </button>
+                            
+                            <div className="mt-4 flex items-center gap-2 text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Live Location Tracking Active
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Broadcast Dialog */}
+                    <AnimatePresence>
+                        {showBroadcastDialog && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                                <motion.div 
+                                    initial={{ opacity: 0 }} 
+                                    animate={{ opacity: 1 }} 
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                                    onClick={() => setShowBroadcastDialog(false)}
+                                />
+                                <motion.div 
+                                    initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+                                    animate={{ scale: 1, opacity: 1, y: 0 }} 
+                                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                                    className="relative bg-white dark:bg-slate-900 rounded-[2rem] p-8 max-w-lg w-full shadow-2xl border border-white/10 ring-1 ring-black/5"
+                                >
+                                    <button 
+                                        onClick={() => setShowBroadcastDialog(false)}
+                                        className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        <ChevronRight size={20} className="rotate-90" />
+                                    </button>
+
+                                    <div className="text-center mb-8">
+                                        <div className="w-20 h-20 bg-gradient-to-tr from-red-500 to-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-red-500/30 rotate-3 transform transition-transform hover:rotate-6">
+                                            <ShieldAlert size={36} className="text-white" />
+                                        </div>
+                                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Broadcast SOS</h3>
+                                        <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed max-w-xs mx-auto">
+                                            We will send an urgent email with your live location to your <span className="text-slate-800 dark:text-slate-200 font-semibold">Emergency Contacts</span>.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-red-500/50 transition-all">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Emergency Message (Optional)</label>
+                                            <textarea
+                                                value={broadcastMessage}
+                                                onChange={(e) => setBroadcastMessage(e.target.value)}
+                                                className="w-full h-24 bg-transparent outline-none resize-none text-slate-900 dark:text-white placeholder:text-slate-400 text-sm font-medium"
+                                                placeholder="e.g. I need help, I'm at..."
+                                                autoFocus
+                                            />
+                                            {/* Quick Suggestions */}
+                                            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700/50">
+                                                {['Chest Pain', 'Difficulty Breathing', 'Severe Injury', 'Unconscious', 'Car Accident', 'Fell Down'].map((text) => (
+                                                    <button
+                                                        key={text}
+                                                        onClick={() => setBroadcastMessage(prev => prev ? `${prev}, ${text}` : text)}
+                                                        className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-slate-600 hover:border-red-200 dark:hover:border-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                                    >
+                                                        {text}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3 mt-8">
+                                        <button
+                                            onClick={() => setShowBroadcastDialog(false)}
+                                            className="flex-1 py-3.5 px-6 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleBroadcastEmergency}
+                                            disabled={broadcasting}
+                                            className="flex-[2] py-3.5 px-6 rounded-xl font-bold bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-500/30 hover:shadow-red-500/50 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                                        >
+                                            {broadcasting ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                                                    Searching & Sending...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Send size={18} />
+                                                    Send Panic Alert
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

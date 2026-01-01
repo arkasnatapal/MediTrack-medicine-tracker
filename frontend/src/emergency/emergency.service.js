@@ -94,3 +94,12 @@ export const deleteEmergency = async (id) => {
         throw error.response?.data?.message || 'Failed to delete emergency record';
     }
 };
+
+export const broadcastEmergency = async (data) => {
+    try {
+        const response = await axios.post(`${API_URL}/emergency/broadcast`, data, getHeaders());
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to broadcast emergency';
+    }
+};
