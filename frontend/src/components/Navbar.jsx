@@ -4,7 +4,7 @@ import HealthIntelligencePanel from './HealthIntelligencePanel';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles } from 'lucide-react';
+import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from './NotificationBell';
 import UserAvatar from './UserAvatar';
@@ -212,6 +212,14 @@ const Navbar = () => {
                   </motion.button>
                 )}
 
+                <button
+                  type="button"
+                  onClick={() => navigate("/emergency")}
+                  className="p-2 mr-2 rounded-full bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 transition-all active:scale-95"
+                  title="Emergency Assist"
+                >
+                  <ShieldAlert className="h-6 w-6" />
+                </button>
                 <NotificationBell />
                 <button
                   type="button"
@@ -530,6 +538,14 @@ const Navbar = () => {
                 >
                   <User className="h-5 w-5 mr-3" />
                   Contact Us
+                </Link>
+                <Link
+                  to="/emergency"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center px-4 py-3 text-base font-medium text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 transition-colors"
+                >
+                  <ShieldAlert className="h-5 w-5 mr-3" />
+                  Emergency Assist
                 </Link>
               </div>
 

@@ -41,6 +41,8 @@ import NotFound from './pages/NotFound'
 import WomenHealth from './pages/WomenHealth'
 import WomenHealthHistoryDetail from './pages/WomenHealthHistoryDetail'
 import WomenHealthHistoryList from './pages/WomenHealthHistoryList'
+import EmergencyPage from './emergency/EmergencyPage'
+import HospitalDetailsPage from './emergency/HospitalDetailsPage'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 
@@ -250,6 +252,18 @@ function AppContent() {
               <Route path="/women-health/previous/:index" element={
                 <PrivateRoute>
                   <WomenHealthHistoryDetail />
+                </PrivateRoute>
+              } />
+
+              <Route path="/emergency" element={
+                <PrivateRoute>
+                  <EmergencyPage />
+                </PrivateRoute>
+              } />
+
+              <Route path="/hospital-details/:id" element={
+                <PrivateRoute>
+                  <HospitalDetailsPage />
                 </PrivateRoute>
               } />
 
