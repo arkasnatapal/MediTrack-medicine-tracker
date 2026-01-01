@@ -178,7 +178,7 @@ const EmergencyContactModal = ({ isOpen, onSuccess, onClose }) => {
                     </>
                   ) : (
                     <>
-                      Complete Setup
+                      Next Step
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}

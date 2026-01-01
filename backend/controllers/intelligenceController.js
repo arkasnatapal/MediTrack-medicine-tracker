@@ -98,7 +98,7 @@ function analyzeAdherence(medicines, logs, reminders) {
 }
 
 // --- Helper: Future Prediction Layer (AI - Only on Trigger) ---
-async function calculateFuturePrediction(userId, domains, adherenceAnalysis, lastSnapshot) {
+async function calculateFuturePrediction(userId, domains, adherenceAnalysis, lastSnapshot, familyHistory = []) {
   if (!genAI) return null;
 
   const currentAdherenceScore = adherenceAnalysis.score;
@@ -130,7 +130,10 @@ async function calculateFuturePrediction(userId, domains, adherenceAnalysis, las
     Predict health trajectory for the next 7-14 days.
     - If adherence is poor, risk increases.
     - If domains are stable types (e.g. skin) vs critical (cardio), weigh accordingly.
+    - If adherence is poor, risk increases.
+    - If domains are stable types (e.g. skin) vs critical (cardio), weigh accordingly.
     - Cross-reference: Poor adherence + High Risk Domain = HIGH ALERT.
+    - FAMILY HISTORY CONTEXT: ${familyHistory.length > 0 ? familyHistory.join(', ') : "None"}. (Note: This is background risk ONLY. Do not diagnose based on this.)
     
     OUTPUT JSON:
     {
@@ -203,13 +206,17 @@ async function generateHealthIntelligence(userId, force = false) {
   }
 
   // 2. Fetch All Data
-  const [allReports, medicines, medicineLogs, reminders, womenHealthRecord] = await Promise.all([
+  const [allReports, medicines, medicineLogs, reminders, womenHealthRecord, userProfile] = await Promise.all([
     Report.find({ userId }).sort({ reportDate: -1 }), // Fetch all to categorize
     Medicine.find({ userId }),
     MedicineLog.find({ userId }).sort({ scheduledTime: -1 }).limit(50),
+    MedicineLog.find({ userId }).sort({ scheduledTime: -1 }).limit(50),
     Reminder.find({ targetUser: userId, active: true }),
-    WomenHealth.findOne({ userId })
+    WomenHealth.findOne({ userId }),
+    User.findById(userId).select('familyMedicalHistory')
   ]);
+  
+  const familyHistory = userProfile?.familyMedicalHistory || [];
 
   // 3. Adherence Analysis (Rule-Based, Always Runs if Version Changed)
   const adherenceAnalysis = analyzeAdherence(medicines, medicineLogs, reminders);
@@ -375,7 +382,7 @@ async function generateHealthIntelligence(userId, force = false) {
   
   if (atLeastOneDomainUpdated || adherenceChanged || !futurePrediction) {
       console.log("[AI] Regenerating Future Prediction...");
-      futurePrediction = await calculateFuturePrediction(userId, domains, adherenceAnalysis, lastSnapshot);
+      futurePrediction = await calculateFuturePrediction(userId, domains, adherenceAnalysis, lastSnapshot, familyHistory);
   } else {
       console.log("[AI] Skipping Future Prediction (Stable)");
   }

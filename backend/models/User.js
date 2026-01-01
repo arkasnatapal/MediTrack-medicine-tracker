@@ -118,6 +118,10 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true },
     relation: { type: String, default: "" }
   }],
+  familyMedicalHistory: {
+    type: [String],
+    default: []
+  },
   createdAt: {
     type: Date,
     default: Date.now,

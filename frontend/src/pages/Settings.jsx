@@ -19,7 +19,8 @@ import {
   Sun,
   Monitor,
   Calendar,
-  Siren
+  Siren,
+  Activity
 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import UserAvatar from '../components/UserAvatar';
@@ -48,7 +49,9 @@ const Settings = () => {
       calendarConnected: false,
       email: ''
     },
-    emergencyContacts: []
+
+    emergencyContacts: [],
+    familyMedicalHistory: []
   });
 
   const [settings, setSettings] = useState({
@@ -163,7 +166,9 @@ const Settings = () => {
           timezone: user.timezone || 'Asia/Kolkata',
           profilePictureUrl: user.profilePictureUrl,
           google: user.google || { calendarConnected: false, email: '' },
-          emergencyContacts: user.emergencyContacts || []
+
+          emergencyContacts: user.emergencyContacts || [],
+          familyMedicalHistory: user.familyMedicalHistory || []
         });
 
         if (user.settings) {
@@ -325,6 +330,7 @@ const Settings = () => {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'notifications', label: 'Reminders', icon: Bell },
     { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'medical', label: 'Medical History', icon: Activity },
     { id: 'emergency', label: 'Emergency', icon: Siren },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle }
@@ -738,6 +744,95 @@ const Settings = () => {
                     >
                       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       Save Changes
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Medical History Tab */}
+              {activeTab === 'medical' && (
+                <div className="rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl p-8 space-y-6">
+                  <div className="border-b border-slate-200 dark:border-slate-700 pb-4">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Activity className="h-6 w-6 text-emerald-500" />
+                      Family & Genetic Medical History
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Optional: This information helps our AI provide better context for your health insights. It is never used for diagnosis.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[
+                      "Diabetes",
+                      "Hypertension",
+                      "Heart Disease",
+                      "Thyroid Disorders",
+                      "Kidney Disease",
+                      "Asthma",
+                      "Cancer"
+                    ].map((condition) => (
+                      <label key={condition} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors group">
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={profile.familyMedicalHistory?.includes(condition)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setProfile(prev => {
+                                const current = prev.familyMedicalHistory || [];
+                                return {
+                                  ...prev,
+                                  familyMedicalHistory: checked 
+                                    ? [...current, condition]
+                                    : current.filter(c => c !== condition)
+                                };
+                              });
+                            }}
+                            className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 transition-all"
+                          />
+                        </div>
+                        <span className="font-medium text-slate-700 dark:text-slate-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                          {condition}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* Other Conditions */}
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      Other Conditions (Comma separated)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Migraine, Arthritis"
+                      className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                      value={profile.familyMedicalHistory?.filter(c => 
+                        !["Diabetes", "Hypertension", "Heart Disease", "Thyroid Disorders", "Kidney Disease", "Asthma", "Cancer"].includes(c)
+                      ).join(', ') || ''}
+                      onChange={(e) => {
+                        const standardList = ["Diabetes", "Hypertension", "Heart Disease", "Thyroid Disorders", "Kidney Disease", "Asthma", "Cancer"];
+                        const currentStandard = (profile.familyMedicalHistory || []).filter(c => standardList.includes(c));
+                        
+                        const newCustom = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                        
+                        setProfile(prev => ({
+                          ...prev,
+                          familyMedicalHistory: [...currentStandard, ...newCustom]
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <button 
+                      onClick={saveSettings} 
+                      disabled={saving}
+                      className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Save Updates
                     </button>
                   </div>
                 </div>

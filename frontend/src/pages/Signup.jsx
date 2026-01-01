@@ -11,7 +11,7 @@ import SEO from "../components/SEO";
 const Signup = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [gender, setGender] = useState(''); // New State
+  const [gender, setGender] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -66,8 +66,9 @@ const Signup = () => {
       });
       return;
     }
+
     setIsSubmitting(true);
-    const result = await signup(name, email, password, gender); // Pass gender
+    const result = await signup(name, email, password, gender); 
     if (result.success) {
       if (result.requireVerification) {
         navigate('/verify-email', { state: { email } });

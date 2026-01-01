@@ -95,9 +95,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (name, email, password, gender) => {
+  const signup = async (name, email, password, gender, familyMedicalHistory) => {
     try {
-      const response = await api.post('/auth/register', { name, email, password, gender });
+      const response = await api.post('/auth/register', { name, email, password, gender, familyMedicalHistory });
       if (response.data.requireVerification) {
         notify.success('Registration successful. Please verify your email.');
         return { success: true, requireVerification: true, email };

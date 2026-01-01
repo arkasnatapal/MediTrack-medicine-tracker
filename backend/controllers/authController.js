@@ -9,7 +9,7 @@ const generateToken = (id) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, gender } = req.body;
+    const { name, email, password, role, gender, familyMedicalHistory } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -25,7 +25,8 @@ exports.register = async (req, res) => {
       email,
       password,
       role: role || 'user',
-      gender: gender || '', // Save gender if provided
+      gender: gender || '',
+      familyMedicalHistory: familyMedicalHistory || [], // Save family history
       otp,
       otpExpires,
       isVerified: false
@@ -308,11 +309,15 @@ exports.toggleTwoFactor = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { gender } = req.body;
+    const { gender, familyMedicalHistory } = req.body;
     const user = await User.findById(req.user.id);
 
     if (gender) {
       user.gender = gender;
+    }
+
+    if (familyMedicalHistory) {
+      user.familyMedicalHistory = familyMedicalHistory;
     }
     
     // Add other profile updates here if needed in future

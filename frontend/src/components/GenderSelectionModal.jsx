@@ -74,7 +74,7 @@ const GenderSelectionModal = ({ isOpen, onClose, onSuccess, user }) => {
               Actually, let's make it robust. */}
              
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
-            One last thing!
+            A few more details
           </h2>
           <p className="text-slate-600 dark:text-slate-400">
             Please select your gender to personalize your experience.
@@ -157,7 +157,7 @@ const GenderSelectionModal = ({ isOpen, onClose, onSuccess, user }) => {
                   Saving...
                 </>
               ) : (
-                'Continue to Dashboard'
+                'Next Step'
               )}
             </div>
           </button>

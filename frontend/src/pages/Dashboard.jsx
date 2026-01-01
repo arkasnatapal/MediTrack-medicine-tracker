@@ -16,6 +16,7 @@ import SearchModal from '../components/SearchModal';
 import HealthIntelligenceWidget from '../components/HealthIntelligenceWidget';
 import DailyHealthReviewWidget from '../components/DailyHealthReviewWidget';
 import WomenHealthWidget from '../components/dashboard/WomenHealthWidget';
+import CompleteProfileManager from '../components/CompleteProfileManager';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -75,6 +76,7 @@ const Dashboard = () => {
 
   return (
     <div className="relative min-h-screen w-full bg-gray-50 dark:bg-[#020617] overflow-x-hidden transition-colors duration-500">
+      <CompleteProfileManager />
       {/* Dynamic Background - Optimized */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/5 via-gray-50 to-gray-50 dark:from-emerald-900/10 dark:via-[#020617] dark:to-[#020617]" />
