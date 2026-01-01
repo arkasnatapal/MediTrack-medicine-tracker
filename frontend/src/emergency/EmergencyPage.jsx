@@ -26,6 +26,9 @@ const EmergencyPage = () => {
     const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
     const [broadcastMessage, setBroadcastMessage] = useState('');
     const [broadcasting, setBroadcasting] = useState(false);
+    
+    // Info State
+    const [showInfoDialog, setShowInfoDialog] = useState(false);
 
     const handleBroadcastEmergency = async () => {
         if (!userLocation) {
@@ -237,6 +240,108 @@ const EmergencyPage = () => {
             <div className="absolute top-0 left-0 w-full h-[600px] bg-gradient-to-b from-blue-50 to-gray-50 dark:from-[#1e1b4b] dark:to-slate-900 pointer-events-none transition-colors duration-300" />
             
             <div className="max-w-[1400px] mx-auto px-6 relative z-10">
+                
+                {/* Info Button */}
+                <button 
+                    onClick={() => setShowInfoDialog(true)}
+                    className="absolute top-0 right-6 p-3 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:bg-white dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all z-20 group"
+                    title="How to use"
+                >
+                    <Info size={20} className="group-hover:scale-110 transition-transform" />
+                </button>
+
+                {/* Info Dialog */}
+                <AnimatePresence>
+                    {showInfoDialog && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                            <motion.div 
+                                initial={{ opacity: 0 }} 
+                                animate={{ opacity: 1 }} 
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                                onClick={() => setShowInfoDialog(false)}
+                            />
+                            <motion.div 
+                                initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+                                animate={{ scale: 1, opacity: 1, y: 0 }} 
+                                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                                className="relative bg-white dark:bg-slate-900 rounded-[2rem] max-w-2xl w-full shadow-2xl border border-white/10 overflow-hidden max-h-[85vh] flex flex-col"
+                            >
+                                {/* Header */}
+                                <div className="p-8 pb-0 relative">
+                                    <button 
+                                        onClick={() => setShowInfoDialog(false)}
+                                        className="absolute top-6 right-6 p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        <ChevronRight size={24} className="rotate-90" />
+                                    </button>
+                                    
+                                    <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 mb-2">
+                                        System Capabilities
+                                    </h2>
+                                    <p className="text-slate-500 dark:text-slate-400 text-lg">
+                                        Understanding your AI Emergency Advisor.
+                                    </p>
+                                </div>
+
+                                {/* Scrollable Content */}
+                                <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
+                                    
+                                    {/* Feature 1: AI Triage */}
+                                    <div className="flex gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400">
+                                            <Bot size={24} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">1. Intelligent Triage</h3>
+                                            <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
+                                                Simply describe your symptoms (e.g., "Severe chest pain on left side"). Our AI analyzes your inputs against thousands of medical profiles to recommend the <span className="font-semibold text-blue-600 dark:text-blue-400">most suitable hospital</span> based on specialization, not just distance.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Feature 2: SOS Broadcast */}
+                                    <div className="flex gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0 text-red-600 dark:text-red-400">
+                                            <ShieldAlert size={24} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">2. Panic Broadcast</h3>
+                                            <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
+                                                In critical situations, use the <span className="font-bold text-red-500">"Broadcast Alert"</span> button. This instantly sends a priority email to all your configured emergency contacts, containing your message and a live Google Maps link to your current coordinates.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Feature 3: Smart Navigation */}
+                                    <div className="flex gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
+                                            <Navigation size={24} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">3. Live Navigation</h3>
+                                            <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
+                                                Get real-time directions to any recommended facility. The map highlights the AI's top choice, but you can explore alternatives. It also provides estimated travel times and hospital contact info.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+
+                                {/* Footer */}
+                                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
+                                    <button 
+                                        onClick={() => setShowInfoDialog(false)}
+                                        className="w-full py-3.5 bg-slate-900 dark:bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 hover:bg-slate-800 dark:hover:bg-blue-500 transition-all transform active:scale-95"
+                                    >
+                                        Got it, I'm ready
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-indigo-500 dark:from-blue-400 dark:to-indigo-400 flex justify-center items-center gap-3 drop-shadow-xl mb-3">
                         <Bot size={42} className="text-blue-600 dark:text-blue-400" /> 
