@@ -112,6 +112,12 @@ const userSchema = new mongoose.Schema({
     refreshToken: { type: String },
     calendarConnected: { type: Boolean, default: false },
   },
+  emergencyContacts: [{
+    name: { type: String, required: true },
+    phoneNumber: { type: String, required: true },
+    email: { type: String, required: true },
+    relation: { type: String, default: "" }
+  }],
   createdAt: {
     type: Date,
     default: Date.now,

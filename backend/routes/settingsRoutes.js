@@ -56,6 +56,7 @@ router.put("/", auth, async (req, res) => {
       address,
       timezone,
       settings,
+      emergencyContacts
     } = req.body;
 
     const user = await User.findById(req.user._id);
@@ -70,6 +71,7 @@ router.put("/", auth, async (req, res) => {
     if (dateOfBirth) user.dateOfBirth = dateOfBirth;
     if (address !== undefined) user.address = address;
     if (timezone) user.timezone = timezone;
+    if (emergencyContacts) user.emergencyContacts = emergencyContacts;
 
     // Ensure settings objects exist
     if (!user.settings) user.settings = {};

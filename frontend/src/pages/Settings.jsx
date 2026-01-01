@@ -18,7 +18,8 @@ import {
   Moon,
   Sun,
   Monitor,
-  Calendar
+  Calendar,
+  Siren
 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import UserAvatar from '../components/UserAvatar';
@@ -46,7 +47,8 @@ const Settings = () => {
     google: {
       calendarConnected: false,
       email: ''
-    }
+    },
+    emergencyContacts: []
   });
 
   const [settings, setSettings] = useState({
@@ -160,7 +162,8 @@ const Settings = () => {
           address: user.address || '',
           timezone: user.timezone || 'Asia/Kolkata',
           profilePictureUrl: user.profilePictureUrl,
-          google: user.google || { calendarConnected: false, email: '' }
+          google: user.google || { calendarConnected: false, email: '' },
+          emergencyContacts: user.emergencyContacts || []
         });
 
         if (user.settings) {
@@ -199,6 +202,24 @@ const Settings = () => {
         [field]: value
       }
     }));
+  };
+
+  const handleEmergencyContactChange = (index, field, value) => {
+    const updatedContacts = [...profile.emergencyContacts];
+    updatedContacts[index][field] = value;
+    setProfile(prev => ({ ...prev, emergencyContacts: updatedContacts }));
+  };
+
+  const addEmergencyContact = () => {
+    setProfile(prev => ({
+      ...prev,
+      emergencyContacts: [...prev.emergencyContacts, { name: '', phoneNumber: '', email: '', relation: '' }]
+    }));
+  };
+
+  const removeEmergencyContact = (index) => {
+    const updatedContacts = profile.emergencyContacts.filter((_, i) => i !== index);
+    setProfile(prev => ({ ...prev, emergencyContacts: updatedContacts }));
   };
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -304,6 +325,7 @@ const Settings = () => {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'notifications', label: 'Reminders', icon: Bell },
     { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'emergency', label: 'Emergency', icon: Siren },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle }
   ];
@@ -716,6 +738,111 @@ const Settings = () => {
                     >
                       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       Save Changes
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Emergency Tab */}
+              {activeTab === 'emergency' && (
+                <div className="rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl p-8 space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Siren className="h-6 w-6 text-red-500" />
+                        Emergency Contacts
+                      </h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Loved ones to be notified in case of emergency
+                      </p>
+                    </div>
+                    <button
+                      onClick={addEmergencyContact}
+                      className="px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium text-sm transition-all"
+                    >
+                      + Add Contact
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {profile.emergencyContacts.length === 0 ? (
+                      <div className="text-center py-10 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                        <p className="text-slate-500 dark:text-slate-400">No emergency contacts added yet.</p>
+                        <button
+                          onClick={addEmergencyContact}
+                          className="mt-2 text-emerald-600 hover:underline text-sm font-medium"
+                        >
+                          Add your first contact
+                        </button>
+                      </div>
+                    ) : (
+                      profile.emergencyContacts.map((contact, index) => (
+                        <div key={index} className="p-5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 space-y-4 relative group">
+                          <button
+                            onClick={() => removeEmergencyContact(index)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Remove Contact"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wider">Name</label>
+                              <input
+                                type="text"
+                                value={contact.name}
+                                onChange={(e) => handleEmergencyContactChange(index, 'name', e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
+                                placeholder="e.g. John Doe"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wider">Relationship</label>
+                              <input
+                                type="text"
+                                value={contact.relation}
+                                onChange={(e) => handleEmergencyContactChange(index, 'relation', e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
+                                placeholder="e.g. Spouse"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wider">Phone</label>
+                              <input
+                                type="tel"
+                                value={contact.phoneNumber}
+                                onChange={(e) => handleEmergencyContactChange(index, 'phoneNumber', e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
+                                placeholder="+1 234 567 8900"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wider">Email</label>
+                              <input
+                                type="email"
+                                value={contact.email}
+                                onChange={(e) => handleEmergencyContactChange(index, 'email', e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
+                                placeholder="john@example.com"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <button
+                      onClick={saveSettings}
+                      disabled={saving}
+                      className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      {saving ? 'Saving...' : 'Save Contacts'}
                     </button>
                   </div>
                 </div>
