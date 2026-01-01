@@ -54,6 +54,7 @@ router.get('/:userId', async (req, res) => {
             // Save Cache
             const { phase, cycleDay, status, isCached, ...aiOnly } = freshAnalysis;
             
+
             // Explicitly ensure timestamp is inside cached response
             aiOnly.analysisTimestamp = freshAnalysis.analysisTimestamp;
 
@@ -73,10 +74,45 @@ router.get('/:userId', async (req, res) => {
         } else {
              // Not time yet, or already done.
              // If AI analysis is missing entirely (new user), we might want a fast initial one?
-             // Prompt implies rigorous "24 hour" rule. But for empty, maybe ok?
-             // Lets stick to "If cached exists, use it". 
              if (!aiAnalysis) aiAnalysis = { summary: "Analysis pending next scheduled cycle." };
         }
+
+        // --- DYNAMIC RECALCULATION (ALWAYS RUN) ---
+        // Ensure CycleDay and Phase are always fresh relative to NOW, not when the AI ran.
+        if (decryptedData.cycleData?.lastPeriodStart) {
+            const today = new Date();
+            const start = new Date(decryptedData.cycleData.lastPeriodStart);
+            
+            // Calculate Day (1-based)
+            const diffTime = Math.abs(today - start);
+            const cycleDay = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            
+            // Calculate Phase
+            const cycleLength = decryptedData.cycleData.cycleLength || 28;
+            const effectiveCycleLength = Math.max(cycleLength, 28);
+            const currentCycleDay = ((cycleDay - 1) % effectiveCycleLength) + 1; // Wrap around if needed, though usually linear for current cycle
+            
+            let phase = "Unknown";
+            if (currentCycleDay <= 5) phase = "Menstrual";
+            else if (currentCycleDay <= 13) phase = "Follicular";
+            else if (currentCycleDay <= 15) phase = "Ovulation";
+            else phase = "Luteal";
+
+            // Recalculate basic status
+            // (Simple version of evaluateCycleStatus logic)
+            let status = { status: "Normal", message: "No irregularities detected" };
+            if (cycleLength < 21) status = { status: "Short Cycle", message: "Cycle is shorter than 21 days." };
+            else if (cycleLength > 35) status = { status: "Long Cycle", message: "Cycle is longer than 35 days." };
+            
+            // Inject into aiAnalysis object so frontend sees it
+            aiAnalysis = {
+                ...aiAnalysis,
+                cycleDay: cycleDay, // Raw linear day
+                phase: phase,
+                status: status 
+            };
+        }
+        // ------------------------------------------
 
         // Filter Feedback for Today
         const startOfToday = new Date();
