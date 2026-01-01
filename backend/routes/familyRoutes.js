@@ -6,6 +6,8 @@ const FamilyConnection = require("../models/FamilyConnection");
 const Message = require("../models/Message");
 const PendingReminder = require("../models/PendingReminder");
 const { sendFamilyInviteEmail } = require("../utils/email");
+const { generateHealthIntelligence } = require("../controllers/intelligenceController");
+
 
 // GET /api/family - my connections (as inviter or invitee)
 router.get("/", auth, async (req, res) => {
@@ -339,6 +341,41 @@ router.get("/:id", auth, async (req, res) => {
   } catch (err) {
     console.error("Error fetching family member profile:", err);
     res.status(500).json({ success: false, message: "Failed to load profile" });
+  }
+});
+
+// GET /api/family/:id/health-review - Get health intelligence for a family member
+router.get("/:id/health-review", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const memberId = req.params.id;
+
+    // Verify connection exists
+    const connection = await FamilyConnection.findOne({
+      $or: [
+        { inviter: userId, invitee: memberId },
+        { inviter: memberId, invitee: userId },
+      ],
+      status: "active",
+    });
+
+    if (!connection) {
+      return res.status(403).json({ success: false, message: "Not connected to this user" });
+    }
+
+    // Reuse the intelligence generator logic
+    // This will fetch or generate the snapshot for the MEMBER ID
+    const result = await generateHealthIntelligence(memberId, false);
+    
+    // If no snapshot exists (and none could be generated), return empty
+    if (!result || !result.snapshot) {
+       return res.status(200).json({ success: true, exists: false, message: "No intelligence data available" });
+    }
+
+    res.json({ success: true, exists: true, data: result.snapshot });
+  } catch (err) {
+    console.error("Error fetching family health review:", err);
+    res.status(500).json({ success: false, message: "Failed to load health review" });
   }
 });
 

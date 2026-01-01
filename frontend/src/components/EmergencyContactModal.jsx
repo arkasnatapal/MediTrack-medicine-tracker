@@ -63,7 +63,6 @@ const EmergencyContactModal = ({ isOpen, onSuccess, onClose }) => {
                 <ShieldAlert className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-2xl font-bold">Emergency Contact</h2>
-              <p className="text-white/80 text-sm font-medium">Step 2 of 2</p>
             </div>
           </div>
 

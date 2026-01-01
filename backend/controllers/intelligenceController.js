@@ -1,5 +1,7 @@
 const IntelligenceSnapshot = require('../models/IntelligenceSnapshot');
 const Report = require('../models/Report');
+const User = require('../models/User');
+
 const Medicine = require('../models/Medicine');
 const FoodItem = require('../models/FoodItem');
 const MedicineLog = require('../models/MedicineLog');
@@ -439,6 +441,8 @@ async function generateHealthIntelligence(userId, force = false) {
 }
 
 // --- Controller Exports ---
+
+exports.generateHealthIntelligence = generateHealthIntelligence;
 
 exports.getIntelligence = async (req, res) => {
   try {

@@ -237,7 +237,7 @@ const EmergencyPage = () => {
     return (
         <div className="min-h-screen pt-20 pb-8 relative overflow-hidden bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
             {/* Background Gradients */}
-            <div className="absolute top-0 left-0 w-full h-[600px] bg-gradient-to-b from-blue-50 to-gray-50 dark:from-[#1e1b4b] dark:to-slate-900 pointer-events-none transition-colors duration-300" />
+            <div className="absolute top-0 left-0 w-full h-[600px] bg-white dark:bg-[#0F172A] pointer-events-none transition-colors duration-300" />
             
             <div className="max-w-[1400px] mx-auto px-6 relative z-10">
                 
