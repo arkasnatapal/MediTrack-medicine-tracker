@@ -435,3 +435,49 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+exports.addEmergencyContact = async (req, res) => {
+  try {
+    const { name, email, relation, phoneNumber } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!name || !email || !phoneNumber) {
+      return res.status(400).json({ message: 'Name, email and phone number are required' });
+    }
+
+    // Add to emergency contacts array
+    user.emergencyContacts.push({
+      name,
+      email,
+      relation: relation || 'Family',
+      phoneNumber
+    });
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Emergency contact added successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profilePictureUrl: user.profilePictureUrl,
+        gender: user.gender,
+        settings: user.settings,
+        google: user.google,
+        emergencyContacts: user.emergencyContacts
+      }
+    });
+
+  } catch (error) {
+    console.error('Add Emergency Contact Error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
