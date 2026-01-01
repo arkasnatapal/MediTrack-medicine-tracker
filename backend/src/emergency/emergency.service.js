@@ -37,7 +37,7 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return d;
 };
 
-exports.getAIRecommendation = async (problemDescription, userLocation, hospitals) => {
+exports.getAIRecommendation = async (problemDescription, userLocation, hospitals, userId) => {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
@@ -94,12 +94,31 @@ Output strictly in this JSON format (no markdown, just raw JSON):
             };
         }
 
+        // SAVE HISTORY TO DB
+        if (userId) {
+             const newEmergency = new Emergency({
+                 userId,
+                 latitude: userLocation.latitude,
+                 longitude: userLocation.longitude,
+                 emergencyType: 'default', 
+                 description: problemDescription,
+                 aiAnalysis: recommendationData,
+                 assignedHospital: recommendationData.best,
+                 status: 'completed'
+             });
+             await newEmergency.save();
+        }
+
         return recommendationData;
 
     } catch (error) {
         console.error("Gemini AI Error:", error);
         throw new Error("AI Assistant unavailable");
     }
+};
+
+exports.getEmergencyHistory = async (userId) => {
+    return await Emergency.find({ userId }).sort({ createdAt: -1 });
 };
 
 exports.triggerEmergency = async (userId, data) => {
@@ -170,4 +189,8 @@ exports.assignDoctor = async (emergencyId) => {
   emergency.status = 'assigned';
   await emergency.save();
   return emergency;
+};
+
+exports.deleteEmergency = async (emergencyId, userId) => {
+    return await Emergency.findOneAndDelete({ _id: emergencyId, userId });
 };

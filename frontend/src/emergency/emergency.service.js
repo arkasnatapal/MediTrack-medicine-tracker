@@ -75,3 +75,22 @@ export const refreshHospitalDetails = async (id, name, lat, lon) => {
         throw error;
     }
 };
+
+export const getEmergencyHistory = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/emergency/history`, getHeaders());
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching emergency history:", error);
+        return [];
+    }
+};
+
+export const deleteEmergency = async (id) => {
+    try {
+        const response = await axios.delete(`${API_URL}/emergency/${id}`, getHeaders());
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to delete emergency record';
+    }
+};

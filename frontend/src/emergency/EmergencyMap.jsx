@@ -75,9 +75,17 @@ const Routing = ({ userLocation, destination }) => {
   return null;
 };
 
+const MapBackgroundClick = ({ onMapClick }) => {
+  useMapEvents({
+      click: (e) => {
+           // We could handle background clicks here if needed to deselect
+      },
+  });
+  return null;
+};
+
 const EmergencyMap = ({ userLocation, hospitals, selectedHospital, onHospitalClick }) => {
     const defaultCenter = [51.505, -0.09]; // Default fallback
-
     const center = userLocation ? [userLocation.latitude, userLocation.longitude] : defaultCenter;
 
     return (
@@ -105,7 +113,10 @@ const EmergencyMap = ({ userLocation, hospitals, selectedHospital, onHospitalCli
                             You are here
                         </Popup>
                     </Marker>
-                    <RecenterMap lat={userLocation.latitude} lon={userLocation.longitude} />
+                    {/* Only re-center if NO hospital is selected, to avoid fighting with routing */}
+                    {!selectedHospital && (
+                         <RecenterMap lat={userLocation.latitude} lon={userLocation.longitude} />
+                    )}
                 </>
             )}
 
@@ -134,7 +145,7 @@ const EmergencyMap = ({ userLocation, hospitals, selectedHospital, onHospitalCli
             ))}
 
             {selectedHospital && userLocation && (
-                <Routing userLocation={userLocation} destination={selectedHospital} />
+                <Routing key={selectedHospital.id} userLocation={userLocation} destination={selectedHospital} />
             )}
         </MapContainer>
     );

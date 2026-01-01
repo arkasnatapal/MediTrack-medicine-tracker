@@ -3,6 +3,7 @@ const emergencyService = require('./emergency.service');
 exports.getAIRecommendation = async (req, res) => {
     try {
         const { problemDescription, userLocation, nearbyHospitals } = req.body;
+        const userId = req.user.id; // Get ID from auth middleware
         
         // If frontend didn't send hospitals, we could fetch them here too, but frontend usually has them.
         // Let's assume frontend sends them or we fetch them if missing.
@@ -11,11 +12,22 @@ exports.getAIRecommendation = async (req, res) => {
             hospitalsData = await emergencyService.fetchNearbyHospitals(userLocation.latitude, userLocation.longitude);
         }
 
-        const aiResponse = await emergencyService.getAIRecommendation(problemDescription, userLocation, hospitalsData);
+        const aiResponse = await emergencyService.getAIRecommendation(problemDescription, userLocation, hospitalsData, userId);
         res.json(aiResponse);
     } catch (error) {
         console.error('AI Recommendation Error:', error);
         res.status(500).json({ message: 'Failed to get AI recommendation' });
+    }
+};
+
+exports.getHistory = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const history = await emergencyService.getEmergencyHistory(userId);
+        res.json(history);
+    } catch (error) {
+        console.error('Fetch History Error:', error);
+        res.status(500).json({ message: 'Failed to fetch emergency history' });
     }
 };
 
@@ -59,4 +71,19 @@ exports.assignDoctor = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Failed to assign doctor' });
   }
+};
+
+exports.deleteEmergency = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        
+        const result = await emergencyService.deleteEmergency(id, userId);
+        if (!result) return res.status(404).json({ message: "Emergency record not found" });
+        
+        res.json({ message: "Record deleted successfully" });
+    } catch (error) {
+        console.error("Delete Emergency Error:", error);
+        res.status(500).json({ message: "Failed to delete record" });
+    }
 };

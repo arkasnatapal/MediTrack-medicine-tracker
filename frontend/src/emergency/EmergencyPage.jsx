@@ -147,6 +147,22 @@ const EmergencyPage = () => {
         }
     };
 
+    const handleDirectionClick = (hospitalName, e) => {
+        e.stopPropagation();
+        if (!hospitalName) return;
+        const hospital = hospitals.find(h => 
+            h.name.toLowerCase().includes(hospitalName.toLowerCase()) || 
+            hospitalName.toLowerCase().includes(h.name.toLowerCase())
+        );
+        if (hospital) {
+            setSelectedHospital(hospital);
+            // Scroll to map on mobile/desktop to ensure user sees the route
+            document.querySelector('.leaflet-container')?.scrollIntoView({ behavior: 'smooth' });
+        } else {
+             alert("Location data not available for directions.");
+        }
+    };
+
     // Card Component for Recommendation Types
     const RecommendationCard = ({ type, data, colorClass, icon: Icon }) => {
         if (!data) return null;
@@ -162,15 +178,25 @@ const EmergencyPage = () => {
                         </div>
                         <span className="font-bold text-xs uppercase tracking-wider opacity-70">{type}</span>
                     </div>
-                    <span className="text-xs font-mono bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-500 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
-                        {data.distance}
-                    </span>
+                    
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={(e) => handleDirectionClick(data.name, e)}
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors z-10"
+                            title="Show Directions on Map"
+                        >
+                            <Navigation size={14} className="fill-current" />
+                        </button>
+                        <span className="text-xs font-mono bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-500 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
+                            {data.distance}
+                        </span>
+                    </div>
                  </div>
                  <h4 className="font-bold text-lg text-slate-900 dark:text-white mb-1 line-clamp-1 group-hover:text-current transition-colors">{data.name}</h4>
                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {data.reason}
                  </p>
-                 <div className="absolute right-0 bottom-0 opacity-0 group-hover:opacity-10 transition-opacity">
+                 <div className="absolute right-0 bottom-0 opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none">
                     <Icon size={64} />
                  </div>
             </div>
@@ -188,12 +214,23 @@ const EmergencyPage = () => {
                         <Bot size={42} className="text-blue-600 dark:text-blue-400" /> 
                         <span>AI EMERGENCY ADVISOR</span>
                     </h1>
-                    <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
-                        Instant, AI-powered guidance for medical emergencies. <br/>
+
+                    <div className="flex items-center justify-center gap-4 mb-3">
+                         <p className="text-slate-600 dark:text-slate-400 text-lg">
+                            Instant, AI-powered guidance for medical emergencies.
+                        </p>
+                        <button 
+                            onClick={() => navigate('/emergency/history')}
+                            className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-4 py-1.5 rounded-full text-sm font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
+                        >
+                            <Clock size={16} /> History
+                        </button>
+                    </div>
+                    <div className="text-center">
                         <span className="text-xs font-bold text-red-500 uppercase tracking-widest border border-red-500/20 px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/10">
                             Not a medical diagnosis • Call Ambulance for critical cases
                         </span>
-                    </p>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -326,7 +363,7 @@ const EmergencyPage = () => {
                                      <EmergencyMap 
                                         userLocation={userLocation} 
                                         hospitals={hospitals}
-                                        bestHospital={bestHospital} 
+                                        selectedHospital={selectedHospital} 
                                         onHospitalClick={handleHospitalClick}
                                      />
                                  ) : (

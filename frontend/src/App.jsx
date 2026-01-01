@@ -43,6 +43,7 @@ import WomenHealthHistoryDetail from './pages/WomenHealthHistoryDetail'
 import WomenHealthHistoryList from './pages/WomenHealthHistoryList'
 import EmergencyPage from './emergency/EmergencyPage'
 import HospitalDetailsPage from './emergency/HospitalDetailsPage'
+import EmergencyHistoryPage from './emergency/EmergencyHistoryPage'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 
@@ -264,6 +265,12 @@ function AppContent() {
               <Route path="/hospital-details/:id" element={
                 <PrivateRoute>
                   <HospitalDetailsPage />
+                </PrivateRoute>
+              } />
+
+              <Route path="/emergency/history" element={
+                <PrivateRoute>
+                  <EmergencyHistoryPage />
                 </PrivateRoute>
               } />
 

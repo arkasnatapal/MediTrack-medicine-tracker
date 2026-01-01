@@ -19,6 +19,14 @@ const emergencySchema = new mongoose.Schema({
     enum: ['chest_pain', 'accident', 'breathing', 'pregnancy', 'seizure', 'default'],
     default: 'default'
   },
+  description: {
+    type: String, // User's description of the problem
+    default: ''
+  },
+  aiAnalysis: {
+    type: Object, // Summary/Recommendation from AI
+    default: null
+  },
   assignedHospital: {
     type: Object, // Store simplified hospital data (name, lat, lon)
     default: null
@@ -29,13 +37,13 @@ const emergencySchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['initiated', 'assigned', 'completed'],
+    enum: ['initiated', 'assigned', 'completed', 'cancelled'],
     default: 'initiated'
   },
   createdAt: {
     type: Date,
-    default: Date.now,
-    expires: 86400 // TTL 24 hours
+    default: Date.now
+    // Removed expires/TTL to keep history permanent
   }
 });
 
