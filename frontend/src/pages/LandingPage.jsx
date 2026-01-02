@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Pill, Menu, X } from "lucide-react";
+import { Pill, Menu, X, ChevronRight, ChevronLeft } from "lucide-react";
 import HeroSection from "../components/landing/HeroSection";
 import TrustedBySection from "../components/landing/TrustedBySection";
 import FeaturesSection from "../components/landing/FeaturesSection";
@@ -16,12 +16,15 @@ import CTASection from "../components/landing/CTASection";
 import HealthAnalysisSection from "../components/landing/HealthAnalysisSection";
 import ReportThesisSection from "../components/landing/ReportThesisSection";
 import SEO from "../components/SEO";
+import SmartWomenHealthSection from "../components/landing/SmartWomenHealthSection";
+import AIEmergencyAdvisorSection from "../components/landing/AIEmergencyAdvisorSection";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const LandingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNavbar, setShowNavbar] = useState(false);
+  const [navExpanded, setNavExpanded] = useState(false);
 
   const navLinks = [
     { name: "Features", href: "#features" },
@@ -29,6 +32,8 @@ const LandingPage = () => {
     { name: "Report Decoder", href: "#report-decoder" },
     { name: "Family", href: "#family" },
     { name: "AI Assistant", href: "#ai-showcase" },
+    { name: "Women's Health", href: "#women-health" },
+    { name: "Emergency", href: "#emergency" },
   ];
 
   useEffect(() => {
@@ -111,34 +116,62 @@ const LandingPage = () => {
                 </Link>
 
                 {/* Desktop Navigation */}
-                <div className="hidden md:flex items-center gap-8">
-                  {navLinks.map((link, index) => (
-                    <button
-                      key={link.name}
-                      onClick={() => scrollToSection(link.href)}
-                      className="text-sm font-medium text-slate-400 hover:text-white transition-colors relative group"
+                <div className="hidden md:flex items-center gap-4">
+                  {/* Collapsible Trigger */}
+                  <button
+                    onClick={() => setNavExpanded(!navExpanded)}
+                    className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-emerald-400 transition-colors mr-2"
+                  >
+                    <motion.div
+                      animate={{ rotate: navExpanded ? 180 : 0 }}
+                      transition={{ duration: 0.3 }}
                     >
-                      {link.name}
-                      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-500 group-hover:w-full transition-all duration-300 ease-out" />
-                    </button>
-                  ))}
+                      <ChevronLeft size={20} />
+                    </motion.div>
+                  </button>
 
-                  <div className="h-6 w-px bg-white/10 mx-2" />
+                  {/* Expandable Links */}
+                  <div className="overflow-hidden">
+                    <AnimatePresence mode="wait">
+                      {navExpanded && (
+                        <motion.div
+                          initial={{ width: 0, opacity: 0 }}
+                          animate={{ width: "auto", opacity: 1 }}
+                          exit={{ width: 0, opacity: 0 }}
+                          transition={{ duration: 0.4, ease: "easeInOut" }}
+                          className="flex items-center gap-8 whitespace-nowrap overflow-hidden pr-4 border-r border-white/10 mr-4"
+                        >
+                          {navLinks.map((link) => (
+                            <button
+                              key={link.name}
+                              onClick={() => scrollToSection(link.href)}
+                              className="text-sm font-medium text-slate-400 hover:text-white transition-colors relative group"
+                            >
+                              {link.name}
+                              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-500 group-hover:w-full transition-all duration-300 ease-out" />
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
                   {/* CTA Buttons */}
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    to="/signup"
-                    className="group relative px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-xl overflow-hidden shadow-lg shadow-emerald-900/20 transition-all hover:scale-105 hover:shadow-emerald-500/30"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <span className="relative z-10">Get Started</span>
-                  </Link>
+                  <div className="flex items-center gap-4">
+                    <Link
+                      to="/login"
+                      className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors"
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      to="/signup"
+                      className="group relative px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-xl overflow-hidden shadow-lg shadow-emerald-900/20 transition-all hover:scale-105 hover:shadow-emerald-500/30"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <span className="relative z-10">Get Started</span>
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Mobile Menu Button */}
@@ -215,7 +248,7 @@ const LandingPage = () => {
           <HeroSection />
         </div>
         
-        <div className="relative z-20 bg-[#020617]">
+        <div className="relative z-20">
           <TrustedBySection />
           <div id="features">
             <FeaturesSection />
@@ -229,6 +262,9 @@ const LandingPage = () => {
           <div id="ai-showcase">
             <AIShowcaseSection />
           </div>
+          <div id="women-health">
+            <SmartWomenHealthSection />
+          </div>
           <div id="body-thesis">
             <HealthAnalysisSection />
           </div>
@@ -238,6 +274,9 @@ const LandingPage = () => {
           <StatsSection />
           <div id="testimonials">
             <TestimonialsSection />
+          </div>
+          <div id="emergency">
+            <AIEmergencyAdvisorSection />
           </div>
           <CTASection />
         </div>
