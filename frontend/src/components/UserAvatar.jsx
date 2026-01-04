@@ -24,6 +24,7 @@ const UserAvatar = ({ user, className = "", fallbackType = "initial" }) => {
         alt={user.name || "User"} 
         className={`object-cover ${className}`}
         onError={() => setImgError(true)}
+        crossOrigin="anonymous"
       />
     );
   }

@@ -26,6 +26,7 @@ const IdentityCard = ({ user }) => {
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
         pixelRatio: 3,
+        useCORS: true,
         filter: (node) => {
             // Exclude elements with the ignore class or data attribute
             if (node.classList && node.classList.contains('download-ignore')) return false;
@@ -91,7 +92,7 @@ const IdentityCard = ({ user }) => {
         {/* Card Container - Fixed Large Size for Clarity */}
         <div 
           ref={cardRef}
-          className="relative w-[500px] h-[315px] rounded-[32px] overflow-hidden shadow-2xl transition-transform duration-300 md:group-hover:scale-[1.02] flex flex-col transform-gpu"
+          className="relative w-[500px] h-[315px] rounded-[32px] overflow-hidden shadow-2xl transition-transform duration-300 md:group-hover:scale-[1.02] flex flex-col transform-gpu scale-[0.68] md:scale-100 origin-top -mb-24 md:mb-0"
           style={{
              background: 'linear-gradient(135deg, #022c22 0%, #065f46 40%, #10b981 100%)',
              boxShadow: '0 25px 50px -12px rgba(6, 95, 70, 0.5)'
@@ -184,11 +185,11 @@ const IdentityCard = ({ user }) => {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="flex flex-col gap-4 text-center md:text-left min-w-[200px]"
+        className="relative z-20 flex flex-col gap-4 text-center md:text-left min-w-[200px] w-full max-w-[340px] md:max-w-none"
       >
         <div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white">Your Identity</h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+            <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-wrap mt-1">
                 Share this card with healthcare providers for quick access to your medical history.
             </p>
         </div>
@@ -198,7 +199,7 @@ const IdentityCard = ({ user }) => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleShare}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-slate-900 dark:bg-emerald-500 text-white rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-emerald-500/20 font-semibold transition-all"
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 md:px-6 md:py-4 bg-slate-900 dark:bg-emerald-500 text-white rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-emerald-500/20 font-semibold transition-all"
             >
                 <Share2 className="w-5 h-5" />
                 <span className='text-white'>Share Card</span>
@@ -211,7 +212,7 @@ const IdentityCard = ({ user }) => {
                     const dataUrl = await generateImage();
                     if (dataUrl) downloadCard(dataUrl);
                 }}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl font-semibold transition-all hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300"
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 md:px-6 md:py-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl font-semibold transition-all hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300"
             >
                 <Download className="w-5 h-5" />
                 <span>Download PNG</span>
