@@ -511,7 +511,15 @@ const IntelligenceSnapshot = require('../models/IntelligenceSnapshot');
 exports.getPublicProfile = async (req, res) => {
   try {
     const { memberId } = req.params;
-    const user = await User.findOne({ memberId }).select('name email profilePictureUrl createdAt memberId gender dateOfBirth familyMedicalHistory');
+    
+    // Search by memberId with flexibility for "MT-" prefix
+    const user = await User.findOne({ 
+        $or: [
+            { memberId: memberId },
+            { memberId: `MT-${memberId.replace('MT-', '')}` },
+            { memberId: memberId.replace('MT-', '') }
+        ]
+    }).select('name email profilePictureUrl createdAt memberId gender dateOfBirth familyMedicalHistory');
 
     if (!user) {
       return res.status(404).json({ message: 'Identity not found' });

@@ -31,12 +31,14 @@ import {
 import { getUnreadByUser } from "../api/chat";
 import UserAvatar from "../components/UserAvatar";
 import ConfirmDialog from "../components/ConfirmDialog";
+import MemberSearch from "../components/MemberSearch";
 
 const Family = () => {
   const [connections, setConnections] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteMethod, setInviteMethod] = useState('email');
   const [inviteData, setInviteData] = useState({
     email: "",
     name: "",
@@ -598,12 +600,9 @@ const Family = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white dark:bg-slate-900 rounded-[2.5rem] max-w-md w-full p-8 shadow-2xl overflow-hidden"
+              className="relative bg-white dark:bg-slate-900 rounded-[2.5rem] max-w-lg w-full p-8 shadow-2xl overflow-hidden"
             >
-              {/* Subtle Header Accent */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-slate-200 dark:bg-slate-800" />
-
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
                   Invite Member
                 </h2>
@@ -615,66 +614,93 @@ const Family = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleInviteSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={inviteData.email}
-                    onChange={(e) =>
-                      setInviteData({ ...inviteData, email: e.target.value })
-                    }
-                    className="w-full px-5 py-4 rounded-2xl dark:text-white text-black bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
-                    placeholder="name@example.com"
-                  />
-                </div>
+              {/* Tabs */}
+              <div className="flex p-1 mb-8 bg-slate-100 dark:bg-slate-800 rounded-xl relative">
+                   <button 
+                     onClick={() => setInviteMethod('email')}
+                     className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all z-10 ${inviteMethod === 'email' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                   >
+                     By Email
+                   </button>
+                   <button 
+                     onClick={() => setInviteMethod('id')}
+                     className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all z-10 ${inviteMethod === 'id' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                   >
+                     By Member ID
+                   </button>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Name (Opt)
-                    </label>
-                    <input
-                      type="text"
-                      value={inviteData.name}
-                      onChange={(e) =>
-                        setInviteData({ ...inviteData, name: e.target.value })
-                      }
-                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
-                      placeholder="e.g. Mom"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Relation
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={inviteData.relationship}
-                      onChange={(e) =>
-                        setInviteData({
-                          ...inviteData,
-                          relationship: e.target.value,
-                        })
-                      }
-                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:text-white text-black dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
-                      placeholder="e.g. Mother"
-                    />
-                  </div>
-                </div>
+              {inviteMethod === 'email' ? (
+                  <form onSubmit={handleInviteSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Email Address
+                        </label>
+                        <input
+                            type="email"
+                            required
+                            value={inviteData.email}
+                            onChange={(e) =>
+                            setInviteData({ ...inviteData, email: e.target.value })
+                            }
+                            className="w-full px-5 py-4 rounded-2xl dark:text-white text-black bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
+                            placeholder="name@example.com"
+                        />
+                    </div>
 
-                <button
-                  type="submit"
-                  disabled={inviteLoading}
-                  className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {inviteLoading ? "Sending..." : "Send Invitation"}
-                </button>
-              </form>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Name (Optional)
+                            </label>
+                            <input
+                            type="text"
+                            value={inviteData.name}
+                            onChange={(e) =>
+                                setInviteData({ ...inviteData, name: e.target.value })
+                            }
+                            className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
+                            placeholder="e.g. Mom"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Relationship
+                            </label>
+                            <input
+                            type="text"
+                            required
+                            value={inviteData.relationship}
+                            onChange={(e) =>
+                                setInviteData({
+                                ...inviteData,
+                                relationship: e.target.value,
+                                })
+                            }
+                            className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:text-white text-black dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all outline-none font-medium"
+                            placeholder="e.g. Mother"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={inviteLoading}
+                        className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {inviteLoading ? "Sending..." : "Send Invitation"}
+                    </button>
+                  </form>
+              ) : (
+                  <div className="py-2">
+                      <MemberSearch 
+                        onInviteSuccess={() => {
+                            setShowInviteModal(false);
+                            fetchData();
+                        }}
+                      />
+                  </div>
+              )}
             </motion.div>
           </div>
         )}

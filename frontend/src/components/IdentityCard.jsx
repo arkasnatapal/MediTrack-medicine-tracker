@@ -11,7 +11,6 @@ const IdentityCard = ({ user }) => {
   const cardRef = useRef(null);
 
   // Generate a unique member ID based on user ID or random string if check fails
-  // Generate a unique member ID based on user ID or random string if check fails
   const memberId = user?.memberId || (user?._id 
     ? `MT-${user._id.slice(-6).toUpperCase()}` 
     : `MT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
@@ -202,7 +201,7 @@ const IdentityCard = ({ user }) => {
                 className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-slate-900 dark:bg-emerald-500 text-white rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-emerald-500/20 font-semibold transition-all"
             >
                 <Share2 className="w-5 h-5" />
-                <span>Share Card</span>
+                <span className='text-white'>Share Card</span>
             </motion.button>
 
             <motion.button

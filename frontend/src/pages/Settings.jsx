@@ -170,7 +170,6 @@ const Settings = () => {
           google: user.google || { calendarConnected: false, email: '' },
 
           emergencyContacts: user.emergencyContacts || [],
-          emergencyContacts: user.emergencyContacts || [],
           familyMedicalHistory: user.familyMedicalHistory || [],
           memberId: user.memberId
         });
