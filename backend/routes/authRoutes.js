@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, verifyEmail, resendOtp, forgotPassword, verifyResetOtp, resetPassword, updatePassword, toggleTwoFactor, verifyLoginOtp, updateProfile, addEmergencyContact } = require('../controllers/authController');
+const { register, login, getMe, verifyEmail, resendOtp, forgotPassword, verifyResetOtp, resetPassword, updatePassword, toggleTwoFactor, verifyLoginOtp, updateProfile, addEmergencyContact, getPublicProfile } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 router.post('/register', register);
@@ -16,5 +16,6 @@ router.put('/toggle-2fa', authMiddleware, toggleTwoFactor);
 router.put('/update-profile', authMiddleware, updateProfile);
 router.put('/emergency-contact', authMiddleware, addEmergencyContact);
 router.get('/me', authMiddleware, getMe);
+router.get('/public/:memberId', getPublicProfile);
 
 module.exports = router;

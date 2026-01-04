@@ -46,6 +46,7 @@ import HospitalDetailsPage from './emergency/HospitalDetailsPage'
 import EmergencyHistoryPage from './emergency/EmergencyHistoryPage'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import PublicProfile from './pages/PublicProfile'
 
 import Loader from './components/Loader'
 import Onboarding from './components/Onboarding'
@@ -141,6 +142,7 @@ function AppContent() {
                   <Signup />
                 </PublicRoute>
               } />
+              <Route path="/identify/:memberId" element={<PublicProfile />} />
               <Route path="/auth/google-success" element={<GoogleAuthSuccess />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/verify-login" element={<VerifyLogin />} />

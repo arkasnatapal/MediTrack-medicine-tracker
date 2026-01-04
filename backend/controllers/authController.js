@@ -7,6 +7,10 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
+const generateMemberId = () => {
+  return `MT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+};
+
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role, gender, familyMedicalHistory } = req.body;
@@ -26,6 +30,7 @@ exports.register = async (req, res) => {
       password,
       role: role || 'user',
       gender: gender || '',
+      memberId: generateMemberId(),
       familyMedicalHistory: familyMedicalHistory || [], // Save family history
       otp,
       otpExpires,
@@ -160,6 +165,12 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       console.log('Password mismatch');
       return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Ensure memberId exists (lazy migration)
+    if (!user.memberId) {
+      user.memberId = generateMemberId();
+      await user.save();
     }
 
     // Check verification status
@@ -346,6 +357,13 @@ exports.updateProfile = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
+    
+    // Ensure memberId exists (lazy migration for getMe)
+    if (!user.memberId) {
+       user.memberId = generateMemberId();
+       await user.save();
+    }
+    
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -482,6 +500,82 @@ exports.addEmergencyContact = async (req, res) => {
 
   } catch (error) {
     console.error('Add Emergency Contact Error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const Medicine = require('../models/Medicine');
+const WomenHealth = require('../models/WomenHealth.model');
+const IntelligenceSnapshot = require('../models/IntelligenceSnapshot');
+
+exports.getPublicProfile = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    const user = await User.findOne({ memberId }).select('name email profilePictureUrl createdAt memberId gender dateOfBirth familyMedicalHistory');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Identity not found' });
+    }
+
+    // 1. Fetch Active Medicines
+    const medicines = await Medicine.find({ userId: user._id })
+      .select('name dosage form')
+      .limit(5);
+
+    // 2. Fetch Latest Intelligence Snapshot (For Daily Status & Prediction)
+    const snapshot = await IntelligenceSnapshot.findOne({ userId: user._id }).sort({ generatedAt: -1 });
+
+    // 3. Fetch Women Health Data (if applicable)
+    let cycleContext = null;
+    if (user.gender === 'female') {
+        const healthData = await WomenHealth.findOne({ userId: user._id });
+        if (healthData && healthData.encryptedBlob) {
+             cycleContext = {
+                phase: 'Follicular Phase', // Mock placeholder until unencrypted summary available
+                day: 14,
+                symptoms: ['High Energy'],
+                nextPeriod: 'In 14 days'
+            };
+        }
+    }
+
+    // 4. Construct Medical Data
+    const medicalData = {
+        summary: snapshot?.summary || "Patient profile active. No specific intelligence data available yet.",
+        healthScore: snapshot?.healthScore || null,
+        trend: snapshot?.trend || 'stable',
+        predictedThreat: snapshot?.predictedThreat || null, // 7-14 Day Prediction
+        
+        risks: (user.familyMedicalHistory || []).map(condition => ({
+            level: 'Moderate',
+            title: condition,
+            desc: `Family history of ${condition}`
+        })),
+        
+        medicines: medicines.map(m => ({
+            name: m.name,
+            dosage: m.dosage || 'As prescribed',
+            freq: 'Daily',
+            time: 'Varied'
+        })),
+        cycleContext: cycleContext
+    };
+
+    res.json({
+      success: true,
+      user: {
+        name: user.name,
+        email: user.email,
+        profilePictureUrl: user.profilePictureUrl,
+        joinDate: user.createdAt,
+        memberId: user.memberId,
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth,
+        medicalData: medicalData
+      }
+    });
+  } catch (error) {
+    console.error("Public Profile Error:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

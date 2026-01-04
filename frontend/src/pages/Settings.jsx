@@ -20,13 +20,15 @@ import {
   Monitor,
   Calendar,
   Siren,
-  Activity
+  Activity,
+  CreditCard
 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import UserAvatar from '../components/UserAvatar';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Onboarding from '../components/Onboarding';
 import AIChatOnboarding from '../components/AIChatOnboarding';
+import IdentityCard from '../components/IdentityCard';
 
 const Settings = () => {
   const { user, updatePassword, toggleTwoFactor } = useAuth();
@@ -168,7 +170,9 @@ const Settings = () => {
           google: user.google || { calendarConnected: false, email: '' },
 
           emergencyContacts: user.emergencyContacts || [],
-          familyMedicalHistory: user.familyMedicalHistory || []
+          emergencyContacts: user.emergencyContacts || [],
+          familyMedicalHistory: user.familyMedicalHistory || [],
+          memberId: user.memberId
         });
 
         if (user.settings) {
@@ -328,6 +332,7 @@ const Settings = () => {
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
+    { id: 'identity', label: 'Identity Card', icon: CreditCard },
     { id: 'notifications', label: 'Reminders', icon: Bell },
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'medical', label: 'Medical History', icon: Activity },
@@ -522,6 +527,25 @@ const Settings = () => {
                       Save Changes
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Identity Tab */}
+              {activeTab === 'identity' && (
+                <div className="rounded-3xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl p-8 space-y-6">
+                    <div className="border-b border-slate-200 dark:border-slate-700 pb-4">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <CreditCard className="h-6 w-6 text-emerald-500" />
+                            Identity Card
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            Your digital MediTrack identity card.
+                        </p>
+                    </div>
+                    
+                    <div className="flex justify-center">
+                        <IdentityCard user={profile} />
+                    </div>
                 </div>
               )}
 

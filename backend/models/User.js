@@ -14,6 +14,11 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
   },
+  memberId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   password: {
     type: String,
     // required: true, // Removed to support Google-only login
