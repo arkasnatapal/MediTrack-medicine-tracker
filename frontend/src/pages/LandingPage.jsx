@@ -9,6 +9,7 @@ import TrustedBySection from "../components/landing/TrustedBySection";
 import FeaturesSection from "../components/landing/FeaturesSection";
 import HowItWorksSection from "../components/landing/HowItWorksSection";
 import FamilySection from "../components/landing/FamilySection";
+import IdentityShowcaseSection from "../components/landing/IdentityShowcaseSection";
 import AIShowcaseSection from "../components/landing/AIShowcaseSection";
 import StatsSection from "../components/landing/StatsSection";
 import TestimonialsSection from "../components/landing/TestimonialsSection";
@@ -258,6 +259,9 @@ const LandingPage = () => {
           </div>
           <div id="how-it-works">
             <HowItWorksSection />
+          </div>
+          <div id="identity-showcase">
+            <IdentityShowcaseSection />
           </div>
           <div id="ai-showcase">
             <AIShowcaseSection />
