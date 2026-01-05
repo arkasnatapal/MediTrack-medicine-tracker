@@ -62,6 +62,9 @@ const MedicalReports = () => {
   const [zoom, setZoom] = useState(1);
   const [imageLoading, setImageLoading] = useState(true);
 
+  // PDF Viewer State
+  const [selectedPdf, setSelectedPdf] = useState(null);
+
   // Upload Form State
   const [folderName, setFolderName] = useState("");
   const [domain, setDomain] = useState("");
@@ -69,6 +72,8 @@ const MedicalReports = () => {
     new Date().toISOString().split("T")[0]
   );
   const [files, setFiles] = useState([]);
+  const [pdfFiles, setPdfFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0); // Added Progress State
 
   useEffect(() => {
     fetchReports();
@@ -91,11 +96,16 @@ const MedicalReports = () => {
     setFiles([...e.target.files]);
   };
 
+  const handlePdfChange = (e) => {
+    setPdfFiles([...e.target.files]);
+  };
+
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!folderName || files.length === 0) return;
+    if (!folderName || (files.length === 0 && pdfFiles.length === 0)) return;
 
     setUploading(true);
+    setUploadProgress(0); // Reset progress
     const formData = new FormData();
     formData.append("folderName", folderName);
     formData.append("domain", domain); // Optional
@@ -103,22 +113,34 @@ const MedicalReports = () => {
     files.forEach((file) => {
       formData.append("files", file);
     });
+    pdfFiles.forEach((file) => {
+      formData.append("files", file);
+    });
 
     try {
       const res = await api.post("/reports/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percentCompleted);
+        },
       });
       if (res.data.success) {
         setShowUploadModal(false);
         setFolderName("");
         setDomain("");
         setFiles([]);
+        setPdfFiles([]);
+        setUploadProgress(0);
         fetchReports();
       }
     } catch (error) {
       console.error("Upload error:", error);
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -369,12 +391,12 @@ const MedicalReports = () => {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white dark:bg-slate-800 rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden"
+                className="relative bg-white dark:bg-slate-800 rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
               >
-                <div className="p-8">
-                  <div className="flex justify-between items-center mb-8">
+                <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar">
+                  <div className="flex justify-between items-center mb-6 md:mb-8">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                         New Report
                       </h2>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -383,13 +405,13 @@ const MedicalReports = () => {
                     </div>
                     <button
                       onClick={() => setShowUploadModal(false)}
-                      className="p-2 bg-gray-50 dark:bg-slate-700 rounded-full hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
+                      className="p-2 bg-gray-50 dark:bg-slate-700 rounded-full hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors flex-shrink-0"
                     >
                       <X className="w-5 h-5 text-gray-500 dark:text-gray-300" />
                     </button>
                   </div>
 
-                  <form onSubmit={handleUpload} className="space-y-6">
+                  <form onSubmit={handleUpload} className="space-y-5 md:space-y-6">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
                         Report Name
@@ -400,7 +422,7 @@ const MedicalReports = () => {
                         value={folderName}
                         onChange={(e) => setFolderName(e.target.value)}
                         placeholder="e.g., Annual Checkup Results"
-                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium text-sm md:text-base"
                       />
                     </div>
                     
@@ -413,7 +435,7 @@ const MedicalReports = () => {
                          value={domain}
                          onChange={(e) => setDomain(e.target.value)}
                          placeholder="e.g. Cardiology, Glucose, General"
-                         className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium"
+                         className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none font-medium text-sm md:text-base"
                        />
                     </div>
 
@@ -426,48 +448,102 @@ const MedicalReports = () => {
                         required
                         value={reportDate}
                         onChange={(e) => setReportDate(e.target.value)}
-                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white transition-all outline-none font-medium"
+                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 border-2 border-transparent focus:border-teal-500/20 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white transition-all outline-none font-medium text-sm md:text-base"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
-                        Documents
-                      </label>
-                      <div className="border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-2xl p-8 text-center hover:border-teal-500 dark:hover:border-teal-400 hover:bg-teal-50/50 dark:hover:bg-teal-900/10 transition-all cursor-pointer relative group">
-                        <input
-                          type="file"
-                          multiple
-                          accept=".jpg,.jpeg,.png"
-                          onChange={handleFileChange}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        />
-                        <div className="w-16 h-16 bg-white dark:bg-slate-700 rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                          <Upload className="w-8 h-8 text-teal-500" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Image Upload */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
+                          Report Images
+                        </label>
+                        <div className="border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-2xl p-6 text-center hover:border-teal-500 dark:hover:border-teal-400 hover:bg-teal-50/50 dark:hover:bg-teal-900/10 transition-all cursor-pointer relative group h-32 md:h-48 flex flex-col items-center justify-center">
+                          <input
+                            type="file"
+                            multiple
+                            accept=".jpg,.jpeg,.png"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          />
+                          <div className="w-10 h-10 md:w-12 md:h-12 bg-white dark:bg-slate-700 rounded-2xl shadow-sm flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform">
+                            <ImageIcon className="w-5 h-5 md:w-6 md:h-6 text-teal-500" />
+                          </div>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">
+                            {files.length > 0
+                              ? `${files.length} images`
+                              : "Upload Images"}
+                          </p>
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            JPG, PNG
+                          </p>
                         </div>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">
-                          {files.length > 0
-                            ? `${files.length} files selected`
-                            : "Drop files here or click to upload"}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-2">
-                          JPG, PNG up to 10MB
-                        </p>
+                      </div>
+
+                      {/* PDF Upload */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
+                          Report Documents
+                        </label>
+                        <div className="border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-2xl p-6 text-center hover:border-purple-500 dark:hover:border-purple-400 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-all cursor-pointer relative group h-32 md:h-48 flex flex-col items-center justify-center">
+                          <input
+                            type="file"
+                            multiple
+                            accept=".pdf"
+                            onChange={handlePdfChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          />
+                          <div className="w-10 h-10 md:w-12 md:h-12 bg-white dark:bg-slate-700 rounded-2xl shadow-sm flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform">
+                            <FileText className="w-5 h-5 md:w-6 md:h-6 text-purple-500" />
+                          </div>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">
+                            {pdfFiles.length > 0
+                              ? `${pdfFiles.length} docs`
+                              : "Upload PDF"}
+                          </p>
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            PDF only
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={uploading}
-                      className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {uploading ? (
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                      ) : (
-                        "Create Report"
-                      )}
-                    </button>
+                    {uploading ? (
+                      <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-2xl p-1 overflow-hidden relative h-14 md:h-16 flex items-center justify-center">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ 
+                            width: uploadProgress === 100 ? "100%" : `${uploadProgress}%`,
+                            opacity: uploadProgress === 100 ? [1, 0.8, 1] : 1
+                          }}
+                          transition={{ 
+                            width: { duration: 0.5 },
+                            opacity: { repeat: Infinity, duration: 1.5 } 
+                          }}
+                          className={`absolute left-0 top-0 bottom-0 rounded-xl transition-colors duration-500 ${
+                            uploadProgress === 100 
+                              ? "bg-gradient-to-r from-purple-500 to-indigo-600" 
+                              : "bg-gradient-to-r from-teal-500 to-emerald-500"
+                          }`}
+                        />
+                        <span className="relative z-10 font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {uploadProgress === 100 ? (
+                            <span className="animate-pulse">Finalizing & Analyzing...</span>
+                          ) : (
+                            `Uploading ${uploadProgress}%`
+                          )}
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        type="submit"
+                        className="w-full py-3.5 md:py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                      >
+                         "Create Report"
+                      </button>
+                    )}
                   </form>
                 </div>
               </motion.div>
@@ -476,7 +552,63 @@ const MedicalReports = () => {
           document.body
         )}
 
-      {/* Report Details Portal - Full Screen Overlay Style */}
+      {/* PDF Viewer Modal */}
+      {selectedPdf &&
+        createPortal(
+          <AnimatePresence>
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-8">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedPdf(null)}
+                className="absolute inset-0 bg-black/90 backdrop-blur-md"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="relative w-full h-full max-w-6xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-center p-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 z-10">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-500" />
+                    Document Viewer
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={selectedPdf}
+                      download
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg text-gray-500 dark:text-gray-400 transition-colors"
+                      title="Download PDF"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <img src="https://api.iconify.design/lucide:download.svg" alt="download" className="w-5 h-5" />
+                    </a>
+                    <button
+                      onClick={() => setSelectedPdf(null)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg text-gray-500 dark:text-gray-400 transition-colors"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* PDF Content */}
+                <div className="flex-1 bg-gray-50 dark:bg-slate-900 relative">
+                  <iframe
+                    src={`${selectedPdf}#toolbar=0`}
+                    className="w-full h-full border-none"
+                    title="PDF Viewer"
+                  />
+                </div>
+              </motion.div>
+            </div>
+          </AnimatePresence>,
+          document.body
+        )}
       {selectedReport &&
         createPortal(
           <AnimatePresence>
@@ -563,21 +695,29 @@ const MedicalReports = () => {
                             <div
                               key={idx}
                               onClick={() => {
-                                setSelectedImage(file.url);
-                                setZoom(1);
-                                setImageLoading(true);
+                                if (file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf')) {
+                                  setSelectedPdf(file.url);
+                                } else {
+                                  setSelectedImage(file.url);
+                                  setZoom(1);
+                                  setImageLoading(true);
+                                }
                               }}
                               className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-all group border border-transparent hover:border-teal-200 dark:hover:border-teal-800 cursor-pointer"
                             >
                               <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                <ImageIcon className="w-6 h-6 text-blue-500" />
+                                {file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf') ? (
+                                  <FileText className="w-6 h-6 text-purple-500" />
+                                ) : (
+                                  <ImageIcon className="w-6 h-6 text-blue-500" />
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
                                   {file.originalName}
                                 </p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  Click to view
+                                  {file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf') ? 'Click to open PDF' : 'Click to view image'}
                                 </p>
                               </div>
                             </div>
@@ -849,6 +989,11 @@ const MedicalReports = () => {
                     src={selectedImage}
                     alt="Medical Report"
                     onLoad={() => setImageLoading(false)}
+                    onError={() => {
+                      setImageLoading(false);
+                      console.error("Failed to load image:", selectedImage);
+                      alert("Failed to load image. secure_url might be missing or invalid.");
+                    }}
                     animate={{ scale: zoom }}
                     transition={{ type: "spring", stiffness: 200, damping: 20 }}
                     className={`max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300 ${

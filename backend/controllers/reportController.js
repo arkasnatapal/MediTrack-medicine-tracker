@@ -1,5 +1,6 @@
 const Report = require('../models/Report');
 const { cloudinary } = require('../config/cloudinary');
+const { uploadToSupabase, deleteFromSupabase } = require('../utils/supabaseHelper');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Initialize Gemini
@@ -14,13 +15,57 @@ exports.uploadReport = async (req, res) => {
       return res.status(400).json({ message: 'No files uploaded' });
     }
 
-    const uploadedFiles = files.map(file => ({
-      url: file.path,
-      publicId: file.filename,
-      fileType: 'image',
-      originalName: file.originalname
-    }));
+    console.log(`[Upload] Processing ${files.length} files...`);
+    
+    files.forEach((f, idx) => {
+       console.log(`[Upload] File [${idx}]: name='${f.originalname}', mime='${f.mimetype}', size=${f.size}, buffer=${f.buffer ? f.buffer.length : 'MISSING'}`);
+    });
 
+    console.log(`[Upload] Processing ${files.length} files...`);
+    
+    files.forEach((f, idx) => {
+       console.log(`[Upload] File [${idx}]: name='${f.originalname}', mime='${f.mimetype}', size=${f.size}`);
+    });
+
+    const uploadedFiles = [];
+
+    for (const file of files) {
+      console.log(`[Upload] Processing sequential: ${file.originalname}`);
+      try {
+        if (file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf')) {
+          console.log('[Upload] Sending to Supabase...');
+          const result = await uploadToSupabase(file);
+          console.log('[Upload] Supabase Success');
+          uploadedFiles.push(result);
+        } else {
+          console.log('[Upload] Sending to Cloudinary...');
+          const result = await new Promise((resolve, reject) => {
+             const stream = cloudinary.uploader.upload_stream(
+               { folder: 'meditrack_reports', resource_type: 'auto' },
+               (error, result) => {
+                 if (error) reject(error);
+                 else resolve(result);
+               }
+             );
+             stream.end(file.buffer);
+          });
+          console.log('[Upload] Cloudinary Success');
+          uploadedFiles.push({
+            url: result.secure_url,
+            publicId: result.public_id,
+            fileType: 'image',
+            originalName: file.originalname
+          });
+        }
+      } catch (innerError) {
+        console.error(`[Upload] Failed for file ${file.originalname}:`);
+        console.error(innerError);
+        // Fail the whole request if one fails? Or continue? For now fail to see error.
+        throw new Error(`Upload failed for ${file.originalname}: ${innerError.message || JSON.stringify(innerError)}`);
+      }
+    }
+
+    console.log('[Upload] All files processed. Saving to DB...');
     const report = new Report({
       userId: req.user._id,
       folderName,
@@ -30,11 +75,16 @@ exports.uploadReport = async (req, res) => {
     });
 
     await report.save();
+    console.log('[Upload] DB Save Success');
 
     res.status(201).json({ success: true, report });
   } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Upload Endpoint Error:', error);
+    res.status(500).json({ 
+        message: 'Server error during upload', 
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+    });
   }
 };
 
@@ -55,10 +105,14 @@ exports.deleteReport = async (req, res) => {
       return res.status(404).json({ message: 'Report not found' });
     }
 
-    // Delete files from Cloudinary
+    // Delete files from Storage (Cloudinary or Supabase)
     for (const file of report.files) {
       if (file.publicId) {
-        await cloudinary.uploader.destroy(file.publicId, { resource_type: file.fileType === 'pdf' ? 'raw' : 'image' });
+        if (file.fileType === 'pdf') {
+          await deleteFromSupabase(file.publicId);
+        } else {
+          await cloudinary.uploader.destroy(file.publicId, { resource_type: 'image' });
+        }
       }
     }
 
@@ -122,6 +176,15 @@ exports.analyzeReport = async (req, res) => {
           inlineData: {
             data: Buffer.from(buffer).toString('base64'),
             mimeType: 'image/jpeg' // Simplified, ideally detect from file
+          }
+        });
+      } else if (file.fileType === 'pdf') {
+        const response = await fetch(file.url);
+        const buffer = await response.arrayBuffer();
+        imageParts.push({
+          inlineData: {
+            data: Buffer.from(buffer).toString('base64'),
+            mimeType: 'application/pdf'
           }
         });
       }
