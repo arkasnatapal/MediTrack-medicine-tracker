@@ -1,4 +1,5 @@
 const Report = require('../models/Report');
+const User = require('../models/User');
 const { cloudinary } = require('../config/cloudinary');
 const { uploadToSupabase, deleteFromSupabase } = require('../utils/supabaseHelper');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -226,6 +227,7 @@ exports.analyzeReport = async (req, res) => {
   }
 };
 
+
 exports.updateReport = async (req, res) => {
   try {
     const { folderName, reportDate, domain } = req.body;
@@ -243,6 +245,27 @@ exports.updateReport = async (req, res) => {
     res.json({ success: true, report });
   } catch (error) {
     console.error('Update error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.getPublicReports = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    
+    // Find user by memberId
+    const user = await User.findOne({ memberId });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Fetch reports for this user
+    const reports = await Report.find({ userId: user._id }).sort({ reportDate: -1 });
+
+    // Sanitize response (maybe hide userId if needed, but reports are gathered)
+    res.json({ success: true, reports });
+  } catch (error) {
+    console.error('Public Reports Error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

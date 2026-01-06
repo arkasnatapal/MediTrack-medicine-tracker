@@ -12,7 +12,7 @@ import FamilySection from "../components/landing/FamilySection";
 import IdentityShowcaseSection from "../components/landing/IdentityShowcaseSection";
 import AIShowcaseSection from "../components/landing/AIShowcaseSection";
 import StatsSection from "../components/landing/StatsSection";
-import TestimonialsSection from "../components/landing/TestimonialsSection";
+import ReviewMarquee from "../components/landing/ReviewMarquee";
 import CTASection from "../components/landing/CTASection";
 import HealthAnalysisSection from "../components/landing/HealthAnalysisSection";
 import ReportThesisSection from "../components/landing/ReportThesisSection";
@@ -275,12 +275,12 @@ const LandingPage = () => {
           <div id="report-decoder">
             <ReportThesisSection />
           </div>
+           <div id="emergency">
+            <AIEmergencyAdvisorSection />
           <StatsSection />
           <div id="testimonials">
-            <TestimonialsSection />
+            <ReviewMarquee />
           </div>
-          <div id="emergency">
-            <AIEmergencyAdvisorSection />
           </div>
           <CTASection />
         </div>

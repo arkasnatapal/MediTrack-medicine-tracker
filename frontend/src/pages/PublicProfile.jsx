@@ -6,6 +6,7 @@ import api from '../api/api';
 import UserAvatar from '../components/UserAvatar';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import ReportsLibrary from '../components/ReportsLibrary';
 
 const PublicProfile = () => {
   const { memberId } = useParams();
@@ -287,7 +288,7 @@ const PublicProfile = () => {
                     </div>
                  </div>
 
-                 {/* Detailed Intelligence Modal */}
+                    {/* Detailed Intelligence Modal */}
                  {showIntelligenceModal && medicalData.predictedThreat && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowIntelligenceModal(false)}>
                         <motion.div 
@@ -351,6 +352,11 @@ const PublicProfile = () => {
                         </motion.div>
                     </div>
                  )}
+
+                 {/* Medical Reports Section */}
+                 <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+                    <ReportsLibrary memberId={profile.memberId} />
+                 </div>
             </div>
         </div>
     );
