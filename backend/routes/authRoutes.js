@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, verifyEmail, resendOtp, forgotPassword, verifyResetOtp, resetPassword, updatePassword, toggleTwoFactor, verifyLoginOtp, updateProfile, addEmergencyContact, getPublicProfile } = require('../controllers/authController');
+const { register, login, getMe, verifyEmail, resendOtp, forgotPassword, verifyResetOtp, resetPassword, updatePassword, toggleTwoFactor, verifyLoginOtp, updateProfile, addEmergencyContact, getPublicProfile, requestFamilyAccessOtp, verifyFamilyAccessOtp, requestDoctorAccessOtp, verifyDoctorAccessOtp } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 router.post('/register', register);
@@ -17,5 +17,9 @@ router.put('/update-profile', authMiddleware, updateProfile);
 router.put('/emergency-contact', authMiddleware, addEmergencyContact);
 router.get('/me', authMiddleware, getMe);
 router.get('/public/:memberId', getPublicProfile);
+router.post('/family-access/request-otp', requestFamilyAccessOtp);
+router.post('/family-access/verify-otp', verifyFamilyAccessOtp);
+router.post('/doctor-access/request-otp', requestDoctorAccessOtp);
+router.post('/doctor-access/verify-otp', verifyDoctorAccessOtp);
 
 module.exports = router;

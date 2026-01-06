@@ -47,15 +47,89 @@ const PublicProfile = () => {
   };
 
     const [doctorCreds, setDoctorCreds] = useState({ id: '', password: '' });
+    const [familyOtp, setFamilyOtp] = useState('');
+    const [doctorOtp, setDoctorOtp] = useState('');
+    const [accessMode, setAccessMode] = useState('doctor'); // 'doctor' | 'family'
+    const [otpSent, setOtpSent] = useState(false);
+    const [doctorOtpSent, setDoctorOtpSent] = useState(false);
+    const [processing, setProcessing] = useState(false);
     const [isAuthorized, setIsAuthorized] = useState(false);
 
-    const handleDoctorLogin = () => {
+    const handleDoctorLogin = async () => {
+        // 1. Validate Credentials Client-side (Mock for now, as per original logic)
         if (doctorCreds.id === 'Dooriyan4551' && doctorCreds.password === 'alphajax4551') {
-            notify.success('Doctor Access Authorized');
-            setShowDoctorModal(false);
-            setIsAuthorized(true);
+            
+            // 2. Request OTP
+            try {
+                setProcessing(true);
+                const response = await api.post('/auth/doctor-access/request-otp', { memberId });
+                if (response.data.success) {
+                    setDoctorOtpSent(true);
+                    notify.success('Access Code sent to patient\'s email');
+                }
+            } catch (err) {
+                notify.error(err.response?.data?.message || 'Failed to send verification code');
+            } finally {
+                setProcessing(false);
+            }
+
         } else {
             notify.error('Invalid Credentials');
+        }
+    };
+
+    const handleDoctorBackupOtpRequest = async () => {
+        try {
+            setProcessing(true);
+            const response = await api.post('/auth/doctor-access/request-otp', { memberId, includeFamily: true });
+            if (response.data.success) {
+                notify.success(response.data.message);
+            }
+        } catch (err) {
+            notify.error(err.response?.data?.message || 'Failed to send backup codes');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleDoctorOtpVerify = async () => {
+        try {
+            const response = await api.post('/auth/doctor-access/verify-otp', { memberId, otp: doctorOtp });
+            if (response.data.success) {
+                notify.success('Doctor Access Authorized');
+                setShowDoctorModal(false);
+                setIsAuthorized(true);
+            }
+        } catch (err) {
+            notify.error(err.response?.data?.message || 'Invalid Access Code');
+        }
+    };
+
+    const handleFamilyOtpRequest = async () => {
+        try {
+            setProcessing(true);
+            const response = await api.post('/auth/family-access/request-otp', { memberId });
+            if (response.data.success) {
+                setOtpSent(true);
+                notify.success('Access Code sent to registered contacts');
+            }
+        } catch (err) {
+            notify.error(err.response?.data?.message || 'Failed to send OTP');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleFamilyOtpVerify = async () => {
+        try {
+            const response = await api.post('/auth/family-access/verify-otp', { memberId, otp: familyOtp });
+            if (response.data.success) {
+                notify.success('Family Access Authorized');
+                setShowDoctorModal(false);
+                setIsAuthorized(true);
+            }
+        } catch (err) {
+            notify.error(err.response?.data?.message || 'Invalid Access Code');
         }
     };
 
@@ -459,36 +533,150 @@ const PublicProfile = () => {
                         <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                             <KeyRound className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Doctor Access</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Please authenticate to view detailed medical records.</p>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Secure Access</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Authenticate to view medical records.</p>
                     </div>
 
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Medical License ID / Email</label>
-                            <input 
-                                type="text" 
-                                value={doctorCreds.id}
-                                onChange={(e) => setDoctorCreds({...doctorCreds, id: e.target.value})}
-                                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500" 
-                            />
-                        </div>
-                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Password</label>
-                            <input 
-                                type="password" 
-                                value={doctorCreds.password}
-                                onChange={(e) => setDoctorCreds({...doctorCreds, password: e.target.value})}
-                                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500" 
-                            />
-                        </div>
-                        <button 
-                            onClick={handleDoctorLogin}
-                            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform"
+                    {/* Mode Toggle */}
+                    <div className="flex p-1 bg-slate-100 dark:bg-slate-700/50 rounded-xl mb-6">
+                        <button
+                            onClick={() => setAccessMode('doctor')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${accessMode === 'doctor' ? 'bg-white dark:bg-slate-600 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
                         >
-                            Authorize Access
+                            Doctor
+                        </button>
+                        <button
+                            onClick={() => setAccessMode('family')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${accessMode === 'family' ? 'bg-white dark:bg-slate-600 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
+                        >
+                            Family
                         </button>
                     </div>
+
+                    {accessMode === 'doctor' ? (
+                        <div className="space-y-4">
+                            {!doctorOtpSent ? (
+                                <>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Medical License ID</label>
+                                        <input 
+                                            type="text" 
+                                            value={doctorCreds.id}
+                                            onChange={(e) => setDoctorCreds({...doctorCreds, id: e.target.value})}
+                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500" 
+                                            placeholder="Enter License ID"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Password</label>
+                                        <input 
+                                            type="password" 
+                                            value={doctorCreds.password}
+                                            onChange={(e) => setDoctorCreds({...doctorCreds, password: e.target.value})}
+                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500" 
+                                            placeholder="Enter Password"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleDoctorLogin}
+                                        disabled={processing}
+                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform disabled:opacity-70"
+                                    >
+                                        {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Authorize Access'}
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="space-y-4">
+                                     <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg flex items-start gap-2 text-sm text-blue-700 dark:text-blue-400">
+                                        <div className="mt-0.5 min-w-[16px]">i</div>
+                                        <p>Verification code sent to patient's registered email.</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Access Code from Patient</label>
+                                        <input 
+                                            type="text" 
+                                            value={doctorOtp}
+                                            onChange={(e) => setDoctorOtp(e.target.value)}
+                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 text-center tracking-widest text-lg font-mono" 
+                                            placeholder="000000"
+                                            maxLength={6}
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleDoctorOtpVerify}
+                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform"
+                                    >
+                                        Verify & Access
+                                    </button>
+                                    
+                                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700/50">
+                                        <p className="text-xs text-center text-slate-500 mb-2">Patient's device unavailable?</p>
+                                        <button 
+                                            onClick={handleDoctorBackupOtpRequest}
+                                            disabled={processing}
+                                            className="w-full py-2 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                                        >
+                                           {processing ? 'Sending...' : 'Send Code to Linked Family'}
+                                        </button>
+                                    </div>
+
+                                     <button 
+                                        onClick={() => setDoctorOtpSent(false)}
+                                        className="w-full py-2 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors"
+                                    >
+                                        Back to Login
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {!otpSent ? (
+                                <div className="text-center py-4">
+                                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                                        To access these records, we will send a one-time verification code to the registered family members and emergency contacts.
+                                    </p>
+                                    <button 
+                                        onClick={handleFamilyOtpRequest}
+                                        disabled={processing}
+                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
+                                    >
+                                        {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Send Access Code'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg flex items-start gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+                                        <div className="mt-0.5 min-w-[16px]">✓</div>
+                                        <p>Code sent to all linked contacts. Please check your email.</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Access Code</label>
+                                        <input 
+                                            type="text" 
+                                            value={familyOtp}
+                                            onChange={(e) => setFamilyOtp(e.target.value)}
+                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 text-center tracking-widest text-lg font-mono" 
+                                            placeholder="000000"
+                                            maxLength={6}
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleFamilyOtpVerify}
+                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform"
+                                    >
+                                        Verify Access
+                                    </button>
+                                    <button 
+                                        onClick={() => setOtpSent(false)}
+                                        className="w-full py-2 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors"
+                                    >
+                                        Resend Code
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </motion.div>
             </div>
         )}

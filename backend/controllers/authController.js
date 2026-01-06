@@ -1,7 +1,8 @@
 const User = require('../models/User');
+const FamilyConnection = require('../models/FamilyConnection');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { sendOtpEmail, sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/email');
+const { sendOtpEmail, sendWelcomeEmail, sendPasswordResetEmail, sendFamilyAccessOtpEmail, sendDoctorAccessOtpEmail } = require('../utils/email');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -588,3 +589,236 @@ exports.getPublicProfile = async (req, res) => {
   }
 };
 
+exports.requestFamilyAccessOtp = async (req, res) => {
+  try {
+    const { memberId } = req.body;
+    
+    // Find user by memberId
+    const user = await User.findOne({ 
+        $or: [
+            { memberId: memberId },
+            { memberId: `MT-${memberId.replace('MT-', '')}` },
+            { memberId: memberId.replace('MT-', '') }
+        ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Identity not found' });
+    }
+
+    // Gather recipients
+    const emails = new Set();
+    
+    // 1. Emergency Contacts
+    if (user.emergencyContacts && user.emergencyContacts.length > 0) {
+      user.emergencyContacts.forEach(contact => {
+        if (contact.email) emails.add(contact.email);
+      });
+    }
+
+    // 2. Family Connections
+    const connections = await FamilyConnection.find({
+      $or: [{ inviter: user._id }, { invitee: user._id }],
+      status: 'active'
+    }).populate('inviter invitee');
+
+    for (const conn of connections) {
+      // If user is inviter, add invitee's email
+      if (conn.inviter._id.toString() === user._id.toString()) {
+         if (conn.inviteeEmail) emails.add(conn.inviteeEmail);
+         else if (conn.invitee && conn.invitee.email) emails.add(conn.invitee.email);
+      } 
+      // If user is invitee, add inviter's email
+      else if (conn.invitee && conn.invitee._id.toString() === user._id.toString()) {
+         if (conn.inviter && conn.inviter.email) emails.add(conn.inviter.email);
+      }
+    }
+
+    if (emails.size === 0) {
+      return res.status(400).json({ message: 'No family or emergency contacts found for this profile.' });
+    }
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    user.otp = otp;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // Send Emails in parallel
+    const emailPromises = Array.from(emails).map(email => 
+      sendFamilyAccessOtpEmail({
+        to: email,
+        otp,
+        patientName: user.name
+      })
+    );
+
+    await Promise.all(emailPromises);
+
+    res.json({
+      success: true,
+      message: `OTP sent to ${emails.size} contacts associated with this profile.`
+    });
+
+  } catch (error) {
+    console.error("Family Access Request Error:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.verifyFamilyAccessOtp = async (req, res) => {
+  try {
+    const { memberId, otp } = req.body;
+
+    const user = await User.findOne({ 
+        $or: [
+            { memberId: memberId },
+            { memberId: `MT-${memberId.replace('MT-', '')}` },
+            { memberId: memberId.replace('MT-', '') }
+        ]
+    }).select('+otp +otpExpires');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Identity not found' });
+    }
+
+    if (!user.otp || user.otp !== otp || user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    // Clear OTP logic - Optional? Maybe keep it for a bit or clear it to prevent replay? 
+    // Usually best to clear.
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Access Authorized',
+      // We don't need to return user data here as the frontend will just unlock the view 
+      // (which already has data populated or can refetch if needed). 
+      // But actually PublicProfile has the data already, just hidden.
+    });
+
+  } catch (error) {
+    console.error("Family Access Verify Error:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
+exports.requestDoctorAccessOtp = async (req, res) => {
+  try {
+    const { memberId, includeFamily } = req.body;
+    
+    // Find user by memberId
+    const user = await User.findOne({ 
+        $or: [
+            { memberId: memberId },
+            { memberId: `MT-${memberId.replace('MT-', '')}` },
+            { memberId: memberId.replace('MT-', '') }
+        ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Identity not found' });
+    }
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    user.otp = otp;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    const recipients = [user.email];
+
+    // If backup mode requested, add family emails
+    if (includeFamily) {
+        // 1. Emergency Contacts
+        if (user.emergencyContacts && user.emergencyContacts.length > 0) {
+          user.emergencyContacts.forEach(contact => {
+            if (contact.email) recipients.push(contact.email);
+          });
+        }
+
+        // 2. Family Connections
+        const connections = await FamilyConnection.find({
+          $or: [{ inviter: user._id }, { invitee: user._id }],
+          status: 'active'
+        }).populate('inviter invitee');
+
+        for (const conn of connections) {
+          if (conn.inviter._id.toString() === user._id.toString()) {
+             if (conn.inviteeEmail) recipients.push(conn.inviteeEmail);
+             else if (conn.invitee && conn.invitee.email) recipients.push(conn.invitee.email);
+          } 
+          else if (conn.invitee && conn.invitee._id.toString() === user._id.toString()) {
+             if (conn.inviter && conn.inviter.email) recipients.push(conn.inviter.email);
+          }
+        }
+    }
+
+    // Send Emails (unique set)
+    const uniqueRecipients = [...new Set(recipients)];
+    const emailPromises = uniqueRecipients.map(email => 
+        sendDoctorAccessOtpEmail({
+            to: email,
+            otp,
+            patientName: user.name
+        })
+    );
+
+    await Promise.all(emailPromises);
+
+    res.json({
+      success: true,
+      message: includeFamily 
+        ? `Access Code sent to patient and ${uniqueRecipients.length - 1} family contact(s).` 
+        : `Access Code sent to patient's registered email.`
+    });
+
+  } catch (error) {
+    console.error("Doctor Access Request Error:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.verifyDoctorAccessOtp = async (req, res) => {
+  try {
+    const { memberId, otp } = req.body;
+
+    const user = await User.findOne({ 
+        $or: [
+            { memberId: memberId },
+            { memberId: `MT-${memberId.replace('MT-', '')}` },
+            { memberId: memberId.replace('MT-', '') }
+        ]
+    }).select('+otp +otpExpires');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Identity not found' });
+    }
+
+    if (!user.otp || user.otp !== otp || user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired Access Code' });
+    }
+
+    // Clear OTP logic
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Doctor Access Authorized',
+    });
+
+  } catch (error) {
+    console.error("Doctor Access Verify Error:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

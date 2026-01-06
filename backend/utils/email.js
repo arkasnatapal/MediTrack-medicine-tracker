@@ -109,7 +109,78 @@ module.exports = {
   sendOtpEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
+  sendFamilyAccessOtpEmail,
+  sendDoctorAccessOtpEmail,
 };
+
+async function sendFamilyAccessOtpEmail({ to, otp, patientName }) {
+  const transporter = getTransporter();
+  if (!transporter || !to) return;
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || `"MediTrack" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `Emergency Access Code for ${patientName} - MediTrack`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Emergency Access Code</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">MediTrack</h1>
+              <p style="color: #fef2f2; margin: 10px 0 0; font-size: 16px; font-weight: 500;">Emergency Access Request</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #1e293b; margin-top: 0; font-size: 20px; font-weight: 700;">Access requested for ${patientName}</h2>
+              <p style="color: #475569; line-height: 1.6; font-size: 16px; margin-bottom: 24px;">
+                An emergency access request was initiated for <strong>${patientName}'s</strong> medical profile. 
+                <br><br>
+                Please use the code below to authorize access:
+              </p>
+              
+              <div style="background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 24px; text-align: center; margin: 32px 0;">
+                <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; color: #dc2626; letter-spacing: 6px;">${otp}</span>
+              </div>
+              
+              <p style="color: #64748b; font-size: 14px; text-align: center; margin-bottom: 0;">
+                This code will expire in 5 minutes.<br>
+                If you are not aware of this access request, please contact the patient immediately.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ Family access OTP email sent:", info.messageId);
+  } catch (err) {
+    console.error("❌ Failed to send family access OTP email:", err.message);
+  }
+}
 
 async function sendOtpEmail({ to, otp, name }) {
   const transporter = getTransporter();
@@ -342,5 +413,74 @@ async function sendWelcomeEmail({ to, name }) {
     console.log("✅ Welcome email sent:", info.messageId);
   } catch (err) {
     console.error("❌ Failed to send welcome email:", err.message);
+  }
+}
+
+async function sendDoctorAccessOtpEmail({ to, otp, patientName }) {
+  const transporter = getTransporter();
+  if (!transporter || !to) return;
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || `"MediTrack" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `Doctor Access Request for ${patientName} - MediTrack`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Doctor Access Verification</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">MediTrack</h1>
+              <p style="color: #dbeafe; margin: 10px 0 0; font-size: 16px; font-weight: 500;">Medical Access Request</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #1e293b; margin-top: 0; font-size: 20px; font-weight: 700;">Doctor Access Requested</h2>
+              <p style="color: #475569; line-height: 1.6; font-size: 16px; margin-bottom: 24px;">
+                A medical professional has requested access to your (<strong>${patientName}</strong>) full medical records and health intelligence.
+                <br><br>
+                Please provide this code to the doctor to authorize access:
+              </p>
+              
+              <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 24px; text-align: center; margin: 32px 0;">
+                <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; color: #1d4ed8; letter-spacing: 6px;">${otp}</span>
+              </div>
+              
+              <p style="color: #64748b; font-size: 14px; text-align: center; margin-bottom: 0;">
+                This code will expire in 5 minutes.<br>
+                If you are not at a medical appointment, please ignore this email.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ Doctor access OTP email sent:", info.messageId);
+  } catch (err) {
+    console.error("❌ Failed to send doctor access OTP email:", err.message);
   }
 }
