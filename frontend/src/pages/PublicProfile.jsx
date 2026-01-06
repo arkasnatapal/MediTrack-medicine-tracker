@@ -437,77 +437,95 @@ const PublicProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-12 px-4 flex items-center justify-center">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4 flex items-center justify-center relative overflow-hidden">
+        {/* Background Patterns */}
+        <div className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.05]" 
+            style={{ 
+                backgroundImage: 'radial-gradient(#6366f1 1px, transparent 1px)', 
+                backgroundSize: '24px 24px' 
+            }} 
+        />
+        <div className="absolute top-0 left-[-10%] w-[50%] h-[50%] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 right-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="w-full max-w-sm md:max-w-4xl relative z-10">
         
         {/* Profile Card */}
         <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-slate-800 rounded-[32px] overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700"
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-[32px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-black/50 border border-white/50 dark:border-slate-700/50 ring-1 ring-slate-900/5 dark:ring-white/10 md:flex md:flex-row"
         >
-            {/* Header / Banner */}
-            <div className="h-32 bg-gradient-to-r from-emerald-500 to-teal-600 relative overflow-hidden">
-                <div className="absolute inset-0 opacity-20" 
-                    style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.4) 0%, transparent 50%)' }} 
+            {/* Header / Banner (Left Side on Desktop) */}
+            <div className="h-36 md:h-auto md:w-2/5 bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 relative overflow-hidden flex flex-col items-center justify-center p-8">
+                <div className="absolute inset-0 opacity-30 mix-blend-overlay" 
+                    style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} 
                 />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent md:hidden" />
+                
+                <div className="relative z-10 text-center w-full mt-[-2rem] md:mt-0">
+                    <div className="w-28 h-28 md:w-32 md:h-32 mx-auto rounded-full border-[6px] border-white dark:border-slate-800 md:border-white/20 shadow-2xl overflow-hidden bg-white mb-4">
+                        <UserAvatar user={profile} className="w-full h-full text-3xl" />
+                    </div>
+                    
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white md:text-white tracking-tight leading-tight">{profile.name}</h1>
+                    <p className="text-slate-500 dark:text-slate-400 md:text-emerald-100/90 text-sm font-medium mb-4">{profile.email}</p>
+
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 md:bg-white/10 rounded-full border border-emerald-100 dark:border-emerald-900/50 md:border-white/20 backdrop-blur-md">
+                        <div className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 md:bg-white opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 md:bg-white"></span>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 md:text-white uppercase tracking-wide">Active Patient</span>
+                    </div>
+                </div>
             </div>
 
-            <div className="px-8 pb-8 -mt-16 text-center relative z-10">
-                {/* Avatar */}
-                <div className="w-32 h-32 mx-auto rounded-full border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden bg-white">
-                    <UserAvatar user={profile} className="w-full h-full text-4xl" />
-                </div>
-
-                <div className="mt-4">
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{profile.name}</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{profile.email}</p>
-                    
-                    <div className="inline-flex items-center gap-2 mt-3 px-3 py-1 bg-slate-100 dark:bg-slate-700/50 rounded-full border border-slate-200 dark:border-slate-600">
-                        <Activity className="w-3.5 h-3.5 text-emerald-500" />
-                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Health Status: Active</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-1" />
+            {/* Content (Right Side on Desktop) */}
+            <div className="px-6 pb-8 pt-16 md:p-8 md:w-3/5 text-center md:text-left flex flex-col justify-center relative z-10 bg-transparent md:bg-white/50 md:dark:bg-slate-900/50">
+                
+                <div className="grid grid-cols-2 gap-3 mb-8">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 group hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-colors">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold mb-1">ID Code</p>
+                        <p className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{profile.memberId}</p>
                     </div>
-                </div>
-
-                <div className="mt-8 grid grid-cols-2 gap-4 text-left">
-                    <div className="bg-slate-50 dark:bg-slate-700/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Member ID</p>
-                        <p className="text-sm font-mono font-semibold text-slate-700 dark:text-slate-200 mt-1">{profile.memberId}</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-700/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Joined</p>
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{new Date(profile.joinDate).getFullYear()}</p>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 group hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-colors">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold mb-1">Member Since</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{new Date(profile.joinDate).getFullYear()}</p>
                     </div>
                 </div>
 
                 {/* Actions */}
-                <div className="mt-8 space-y-3">
+                <div className="space-y-3 md:space-y-4">
                     <motion.button 
+                        whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleInvite}
-                        className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-colors"
+                        className="w-full py-4 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all relative overflow-hidden group"
                     >
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                         <Users className="w-5 h-5" />
-                        Invite to Family
+                        <span>Invite to Family</span>
                     </motion.button>
                     
                     <motion.button 
+                        whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setShowDoctorModal(true)}
-                        className="w-full py-3.5 px-4 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-white border border-slate-200 dark:border-slate-600 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                        className="w-full py-4 px-4 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white border border-transparent rounded-2xl font-bold shadow-lg shadow-slate-500/10 flex items-center justify-center gap-2 transition-all"
                     >
                         <Activity className="w-5 h-5" />
-                        View Detailed Analysis
+                        <span>View Records</span>
                     </motion.button>
+                </div>
+                 {/* Security Footer - Integrated in Right Side for Desktop */}
+                 <div className="mt-8 flex items-center justify-center md:justify-start gap-2 text-slate-400 text-[10px] uppercase tracking-widest font-bold opacity-60">
+                    <Shield className="w-3 h-3" />
+                    <span>Verified MediTrack Identity &trade;</span>
                 </div>
             </div>
             
-             {/* Security Footer */}
-             <div className="px-8 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-center gap-2 text-slate-400 text-xs">
-                <Shield className="w-3 h-3" />
-                <span>Verified MediTrack Identity</span>
-            </div>
         </motion.div>
       </div>
 
@@ -519,110 +537,123 @@ const PublicProfile = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                    className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
                     onClick={() => setShowDoctorModal(false)}
                 />
                 
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="relative bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                    className="relative bg-white dark:bg-slate-900 rounded-[32px] p-8 max-w-sm w-full shadow-2xl border border-white/20 dark:border-slate-700"
                 >
-                    <div className="text-center mb-6">
-                        <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <KeyRound className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-500/20 shadow-inner">
+                            <KeyRound className="w-7 h-7 text-emerald-600 dark:text-emerald-500" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Secure Access</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Authenticate to view medical records.</p>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Access Records</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">Authentication required for privacy.</p>
                     </div>
 
                     {/* Mode Toggle */}
-                    <div className="flex p-1 bg-slate-100 dark:bg-slate-700/50 rounded-xl mb-6">
+                    <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl mb-8 border border-slate-200 dark:border-slate-700">
                         <button
                             onClick={() => setAccessMode('doctor')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${accessMode === 'doctor' ? 'bg-white dark:bg-slate-600 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
+                            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${accessMode === 'doctor' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                         >
                             Doctor
                         </button>
                         <button
                             onClick={() => setAccessMode('family')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${accessMode === 'family' ? 'bg-white dark:bg-slate-600 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
+                            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${accessMode === 'family' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                         >
                             Family
                         </button>
                     </div>
 
                     {accessMode === 'doctor' ? (
-                        <div className="space-y-4">
+                        <div className="space-y-5">
                             {!doctorOtpSent ? (
                                 <>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Medical License ID</label>
-                                        <input 
-                                            type="text" 
-                                            value={doctorCreds.id}
-                                            onChange={(e) => setDoctorCreds({...doctorCreds, id: e.target.value})}
-                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500" 
-                                            placeholder="Enter License ID"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Password</label>
-                                        <input 
-                                            type="password" 
-                                            value={doctorCreds.password}
-                                            onChange={(e) => setDoctorCreds({...doctorCreds, password: e.target.value})}
-                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500" 
-                                            placeholder="Enter Password"
-                                        />
+                                    <div className="space-y-4">
+                                        <div className="group">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Medical License ID</label>
+                                            <input 
+                                                type="text" 
+                                                value={doctorCreds.id}
+                                                onChange={(e) => setDoctorCreds({...doctorCreds, id: e.target.value})}
+                                                className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all font-semibold text-slate-900 dark:text-white placeholder:text-slate-400" 
+                                                placeholder="Enter ID"
+                                            />
+                                        </div>
+                                        <div className="group">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Password</label>
+                                            <input 
+                                                type="password" 
+                                                value={doctorCreds.password}
+                                                onChange={(e) => setDoctorCreds({...doctorCreds, password: e.target.value})}
+                                                className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all font-semibold text-slate-900 dark:text-white placeholder:text-slate-400" 
+                                                placeholder="••••••••"
+                                            />
+                                        </div>
                                     </div>
                                     <button 
                                         onClick={handleDoctorLogin}
                                         disabled={processing}
-                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform disabled:opacity-70"
+                                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/25 active:scale-95 transition-all disabled:opacity-70 disabled:scale-100 mt-2"
                                     >
                                         {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Authorize Access'}
                                     </button>
                                 </>
                             ) : (
-                                <div className="space-y-4">
-                                     <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg flex items-start gap-2 text-sm text-blue-700 dark:text-blue-400">
-                                        <div className="mt-0.5 min-w-[16px]">i</div>
-                                        <p>Verification code sent to patient's registered email.</p>
+                                <div className="space-y-6">
+                                     <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl flex items-start gap-3 border border-blue-100 dark:border-blue-900/30">
+                                        <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <span className="text-xs font-bold text-blue-600 dark:text-blue-400">i</span>
+                                        </div>
+                                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300 leading-snug">Verification code sent to patient's registered email.</p>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Access Code from Patient</label>
-                                        <input 
-                                            type="text" 
-                                            value={doctorOtp}
-                                            onChange={(e) => setDoctorOtp(e.target.value)}
-                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 text-center tracking-widest text-lg font-mono" 
-                                            placeholder="000000"
-                                            maxLength={6}
-                                        />
-                                    </div>
-                                    <button 
-                                        onClick={handleDoctorOtpVerify}
-                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform"
-                                    >
-                                        Verify & Access
-                                    </button>
                                     
-                                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700/50">
-                                        <p className="text-xs text-center text-slate-500 mb-2">Patient's device unavailable?</p>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block text-center">Enter Access Code</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="text" 
+                                                value={doctorOtp}
+                                                onChange={(e) => setDoctorOtp(e.target.value)}
+                                                className="w-full px-4 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-center tracking-[0.5em] text-2xl font-mono font-bold text-slate-800 dark:text-white" 
+                                                placeholder="000000"
+                                                maxLength={6}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <button 
+                                            onClick={handleDoctorOtpVerify}
+                                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/25 active:scale-95 transition-all"
+                                        >
+                                            Verify & Access Records
+                                        </button>
+                                        
+                                        <div className="relative py-2">
+                                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200 dark:border-slate-700"></div></div>
+                                            <div className="relative flex justify-center text-xs uppercase"><span className="bg-white dark:bg-slate-900 px-2 text-slate-400 font-bold">Or</span></div>
+                                        </div>
+
                                         <button 
                                             onClick={handleDoctorBackupOtpRequest}
                                             disabled={processing}
-                                            className="w-full py-2 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                                            className="w-full py-3 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
                                         >
-                                           {processing ? 'Sending...' : 'Send Code to Linked Family'}
+                                            <Users className="w-4 h-4" />
+                                            {processing ? 'Sending...' : 'Send to Linked Family'}
                                         </button>
                                     </div>
 
                                      <button 
                                         onClick={() => setDoctorOtpSent(false)}
-                                        className="w-full py-2 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors"
+                                        className="w-full py-2 text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors"
                                     >
                                         Back to Login
                                     </button>
@@ -630,48 +661,60 @@ const PublicProfile = () => {
                             )}
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {!otpSent ? (
-                                <div className="text-center py-4">
-                                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-                                        To access these records, we will send a one-time verification code to the registered family members and emergency contacts.
-                                    </p>
+                                <div className="text-center py-2">
+                                    <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                            To ensure privacy, we will send a one-time verification code to all linked <span className="font-bold text-slate-700 dark:text-slate-200">family members</span> and <span className="font-bold text-slate-700 dark:text-slate-200">emergency contacts</span>.
+                                        </p>
+                                    </div>
                                     <button 
                                         onClick={handleFamilyOtpRequest}
                                         disabled={processing}
-                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
+                                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/25 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed group relative overflow-hidden"
                                     >
-                                        {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Send Access Code'}
+                                        <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300" />
+                                        <span className="relative flex items-center justify-center gap-2">
+                                            {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Shield className="w-5 h-5"/> Request Access Code</>}
+                                        </span>
                                     </button>
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg flex items-start gap-2 text-sm text-emerald-700 dark:text-emerald-400">
-                                        <div className="mt-0.5 min-w-[16px]">✓</div>
-                                        <p>Code sent to all linked contacts. Please check your email.</p>
+                                <div className="space-y-6">
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl flex items-start gap-3 border border-emerald-100 dark:border-emerald-900/30">
+                                        <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">✓</span>
+                                        </div>
+                                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300 leading-snug">Security code sent to all linked contacts.</p>
                                     </div>
+
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Access Code</label>
-                                        <input 
-                                            type="text" 
-                                            value={familyOtp}
-                                            onChange={(e) => setFamilyOtp(e.target.value)}
-                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 text-center tracking-widest text-lg font-mono" 
-                                            placeholder="000000"
-                                            maxLength={6}
-                                        />
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block text-center">Enter Access Code</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="text" 
+                                                value={familyOtp}
+                                                onChange={(e) => setFamilyOtp(e.target.value)}
+                                                className="w-full px-4 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-center tracking-[0.5em] text-2xl font-mono font-bold text-slate-800 dark:text-white" 
+                                                placeholder="000000"
+                                                maxLength={6}
+                                            />
+                                        </div>
                                     </div>
+
                                     <button 
                                         onClick={handleFamilyOtpVerify}
-                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 active:scale-95 transition-transform"
+                                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/25 active:scale-95 transition-all"
                                     >
-                                        Verify Access
+                                        Verify & Unlock
                                     </button>
+                                    
                                     <button 
                                         onClick={() => setOtpSent(false)}
-                                        className="w-full py-2 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors"
+                                        className="w-full py-2 text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors"
                                     >
-                                        Resend Code
+                                        Send New Code
                                     </button>
                                 </div>
                             )}
