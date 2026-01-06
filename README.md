@@ -54,8 +54,9 @@ Unauthorized copying, reuse, or redistribution of the code is strictly prohibite
 ### Backend
 *   **Runtime**: Node.js
 *   **Framework**: Express.js
-*   **Database**: MongoDB (Mongoose)
+*   **Database**: MongoDB (Mongoose),Cloudinary, Supabase
 *   **Authentication**: JWT, Google OAuth 2.0
+*   **Security**: AES-256 for better encryption
 
 ### AI & Services
 *   **AI Model**: Google Gemini 2.5 Flash / 2.5 Flash Lite
@@ -75,64 +76,8 @@ Follow these steps to set up the project locally.
 *   MongoDB (Local or Atlas URI)
 *   Git
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/yourusername/meditrack.git
-cd meditrack
-```
-
-### 2. Backend Setup
-Navigate to the backend directory and install dependencies:
-```bash
-cd backend
-npm install
-```
-
-Create a `.env` file in the `backend` directory with the following variables:
-```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-GEMINI_API_KEY=your_gemini_api_key
-EMAIL_USER=your_email_address
-EMAIL_PASS=your_email_password
-FRONTEND_URL=http://localhost:5173
-```
-
-Start the backend server:
-```bash
-npm start
-# OR for development
-npm run dev
-```
-
-### 3. Frontend Setup
-Open a new terminal, navigate to the frontend directory, and install dependencies:
-```bash
-cd frontend
-npm install
-```
-
-Create a `.env` file in the `frontend` directory:
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_BACKEND_URL=http://localhost:5000
-
-```
-
-Start the frontend development server:
-```bash
-npm run dev
-```
-
-### 4. Access the App
-Open your browser and visit `http://localhost:5173`.
 
 ---
 *Created with ❤️ by the MediTrack Team*
+
 
