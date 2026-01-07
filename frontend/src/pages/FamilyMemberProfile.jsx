@@ -21,10 +21,17 @@ import {
   Droplets,
   Tablets,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileText,
+  Lock,
+  Unlock,
+  Eye,
+  ArrowRight,
+  ExternalLink,
+  Loader2
 } from "lucide-react";
-import { getFamilyMemberDetails } from "../api/family";
-import Loader from "../components/Loader";
+import { getFamilyMemberDetails, requestReportAccess, verifyReportAccess } from "../api/family";
+import ReportViewerModal from "../components/ReportViewerModal";
 import UserAvatar from "../components/UserAvatar";
 import { useNotification } from "../context/NotificationContext";
 import FamilyHealthReview from "../components/FamilyHealthReview";
@@ -146,7 +153,72 @@ const FamilyMemberProfile = () => {
   const [error, setError] = useState(null);
   const [expandedMedIndex, setExpandedMedIndex] = useState(null);
 
+  // Report Access State
+  const [isReportAccessRequested, setIsReportAccessRequested] = useState(false);
+  const [isReportAccessGranted, setIsReportAccessGranted] = useState(false);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [reports, setReports] = useState([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
   const { notify } = useNotification();
+
+
+  const handleRequestAccess = async () => {
+    try {
+      setReportLoading(true);
+      await requestReportAccess(userId);
+      setIsReportAccessRequested(true);
+      notify.success("Access code sent to family member's email");
+    } catch (err) {
+      console.error(err);
+      notify.error("Failed to request access");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const handleVerifyAccess = async () => {
+    const otpValue = otp.join("");
+    if (otpValue.length !== 6) {
+      notify.error("Please enter a valid 6-digit code");
+      return;
+    }
+
+    try {
+      setReportLoading(true);
+      const data = await verifyReportAccess(userId, otpValue);
+      setReports(data.reports);
+      setIsReportAccessGranted(true);
+      notify.success("Access granted to medical reports");
+    } catch (err) {
+      console.error(err);
+      notify.error("Invalid or expired code");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const handleOtpChange = (index, value) => {
+    if (isNaN(value)) return;
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+     if (e.key === "Backspace" && !otp[index] && index > 0) {
+        const prevInput = document.getElementById(`otp-${index - 1}`);
+        if(prevInput) prevInput.focus();
+     }
+  };
 
   const handleToggle = useCallback((index) => {
     setExpandedMedIndex((prev) => (prev === index ? null : index));
@@ -342,9 +414,9 @@ const FamilyMemberProfile = () => {
             <div className="lg:col-span-9 space-y-6">
               
               {/* 1. Health Intelligence (Full Width) */}
-              <motion.div variants={itemVariants}>
+              {/* <motion.div variants={itemVariants}>
                 <FamilyHealthReview memberId={userId} memberName={member.name} />
-              </motion.div>
+              </motion.div> */}
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                  {/* 2. Today's Status (Left Half) */}
@@ -443,6 +515,141 @@ const FamilyMemberProfile = () => {
                  </div>
               </div>
 
+              {/* 5. Medical Reports Section (Secure) */}
+              <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                 <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="flex items-center gap-3">
+                       <div className={`p-2 rounded-lg ${isReportAccessGranted ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
+                          {isReportAccessGranted ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                       </div>
+                       <div>
+                          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Medical Reports</h2>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Secure Document Vault</p>
+                       </div>
+                    </div>
+                    {isReportAccessGranted && (
+                       <div className="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border border-emerald-100 dark:border-emerald-900/30">
+                          Access Granted
+                       </div>
+                    )}
+                 </div>
+
+                 <div className="p-6">
+                    {!isReportAccessGranted ? (
+                       <div className="flex flex-col items-center justify-center py-8 text-center max-w-md mx-auto">
+                          {!isReportAccessRequested ? (
+                            <motion.div 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="w-full flex flex-col items-center"
+                            >
+                              <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700">
+                                 <Lock className="w-6 h-6 text-slate-400" />
+                              </div>
+                              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Restricted Access</h3>
+                              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                                Request an access code to view {member.name}'s medical documents.
+                              </p>
+                              
+                              <button 
+                                onClick={handleRequestAccess}
+                                disabled={reportLoading}
+                                className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                              >
+                                 {reportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Lock className="w-3 h-3" /> Request Access Code</>}
+                              </button>
+                            </motion.div>
+                          ) : (
+                            <motion.div 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="w-full"
+                            >
+                              <div className="mb-6">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">Enter Access Code</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  Sent to <span className="font-semibold text-slate-700 dark:text-slate-300">{member.email}</span>
+                                </p>
+                              </div>
+
+                              <div className="flex justify-center gap-2 mb-6">
+                                {otp.map((digit, idx) => (
+                                  <input 
+                                    key={idx}
+                                    id={`otp-${idx}`}
+                                    type="text"
+                                    maxLength={1}
+                                    value={digit}
+                                    onChange={(e) => handleOtpChange(idx, e.target.value)}
+                                    onKeyDown={(e) => handleKeyDown(idx, e)}
+                                    className="w-10 h-12 text-center text-lg font-bold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none"
+                                  />
+                                ))}
+                              </div>
+
+                              <div className="flex flex-col gap-2">
+                                <button 
+                                  onClick={handleVerifyAccess}
+                                  disabled={reportLoading || otp.join("").length !== 6}
+                                  className="w-full py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                   {reportLoading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : "Verify Access"}
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setIsReportAccessRequested(false);
+                                    setOtp(["", "", "", "", "", ""]);
+                                  }}
+                                  className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium py-2"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                       </div>
+                    ) : (
+                       <div className="space-y-4">
+                          {reports.length === 0 ? (
+                            <div className="text-center py-10 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                No reports found.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                               {reports.map((report) => (
+                                  <div 
+                                    key={report._id}
+                                    className="group p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all cursor-pointer flex items-center gap-3"
+                                    onClick={() => {
+                                      setSelectedReport(report);
+                                      setIsReportModalOpen(true);
+                                    }}
+                                  >
+                                     <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                                        <FileText className="w-5 h-5" />
+                                     </div>
+                                     <div className="min-w-0 flex-1">
+                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors">
+                                          {report.folderName}
+                                        </h4>
+                                        <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                          <span>{new Date(report.reportDate).toLocaleDateString()}</span>
+                                          <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                                          <span>{report.files?.length || 0} files</span>
+                                        </div>
+                                     </div>
+                                     <ChevronDown className="w-4 h-4 text-slate-400 -rotate-90" />
+                                  </div>
+                               ))}
+                            </div>
+                          )}
+                       </div>
+                    )}
+                 </div>
+              </motion.div>
+
               {/* 4. Full Inventory List */}
               <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
                 <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
@@ -480,6 +687,12 @@ const FamilyMemberProfile = () => {
           </div>
         </motion.div>
       </div>
+
+      <ReportViewerModal 
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        report={selectedReport}
+      />
     </div>
   );
 };

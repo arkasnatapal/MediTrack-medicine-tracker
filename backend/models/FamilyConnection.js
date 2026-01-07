@@ -44,6 +44,12 @@ const familyConnectionSchema = new mongoose.Schema(
     },
     acceptedAt: {
       type: Date,
+    },
+    reportAccessOtp: {
+      type: String,
+    },
+    reportAccessOtpExpires: {
+      type: Date,
     }
   },
   { timestamps: true }

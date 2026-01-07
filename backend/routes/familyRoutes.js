@@ -5,8 +5,9 @@ const User = require("../models/User");
 const FamilyConnection = require("../models/FamilyConnection");
 const Message = require("../models/Message");
 const PendingReminder = require("../models/PendingReminder");
-const { sendFamilyInviteEmail } = require("../utils/email");
+const { sendFamilyInviteEmail, sendFamilyAccessOtpEmail } = require("../utils/email");
 const { generateHealthIntelligence } = require("../controllers/intelligenceController");
+const Report = require("../models/Report");
 
 
 // GET /api/family - my connections (as inviter or invitee)
@@ -497,6 +498,103 @@ router.delete("/invitations/:id", auth, async (req, res) => {
   } catch (err) {
     console.error("Error canceling invitation:", err);
     res.status(500).json({ success: false, message: "Failed to cancel invitation" });
+  }
+});
+
+// POST /api/family/request-report-access
+router.post("/request-report-access", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { memberId } = req.body;
+
+    // Verify connection exists
+    const connection = await FamilyConnection.findOne({
+      $or: [
+        { inviter: userId, invitee: memberId },
+        { inviter: memberId, invitee: userId },
+      ],
+      status: "active",
+    });
+
+    if (!connection) {
+      return res.status(403).json({ success: false, message: "Not connected to this user" });
+    }
+
+    // Determine the target user (the one whose reports are being requested)
+    const targetUserId = memberId;
+    const targetUser = await User.findById(targetUserId);
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Save OTP to connection (valid for 3 minutes)
+    connection.reportAccessOtp = otp;
+    connection.reportAccessOtpExpires = Date.now() + 3 * 60 * 1000;
+    await connection.save();
+
+    // Fetch requester details
+    const requester = await User.findById(userId);
+    const requesterName = requester ? (requester.name || "A family member") : "A family member";
+
+    // Send OTP to the target user
+    await sendFamilyAccessOtpEmail({
+      to: targetUser.email,
+      otp,
+      patientName: targetUser.name || "Family Member",
+      requesterName
+    });
+
+    res.json({ success: true, message: "OTP sent to family member's email" });
+  } catch (err) {
+    console.error("Error requesting report access:", err);
+    res.status(500).json({ success: false, message: "Failed to request access" });
+  }
+});
+
+// POST /api/family/verify-report-access
+router.post("/verify-report-access", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { memberId, otp } = req.body;
+
+    // Verify connection exists
+    const connection = await FamilyConnection.findOne({
+      $or: [
+        { inviter: userId, invitee: memberId },
+        { inviter: memberId, invitee: userId },
+      ],
+      status: "active",
+    });
+
+    if (!connection) {
+      return res.status(403).json({ success: false, message: "Not connected to this user" });
+    }
+
+    // Verify OTP
+    if (
+      !connection.reportAccessOtp ||
+      connection.reportAccessOtp !== otp ||
+      connection.reportAccessOtpExpires < Date.now()
+    ) {
+      return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+    }
+
+    // Clear OTP after successful use (optional, but good for one-time use security)
+    connection.reportAccessOtp = undefined;
+    connection.reportAccessOtpExpires = undefined;
+    await connection.save();
+
+    // Fetch reports for the member
+    const reports = await Report.find({ userId: memberId }).sort({ reportDate: -1 });
+
+    res.json({ success: true, reports });
+  } catch (err) {
+    console.error("Error verifying report access:", err);
+    res.status(500).json({ success: false, message: "Failed to verify access" });
   }
 });
 

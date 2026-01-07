@@ -51,3 +51,13 @@ export const updateFamilyMember = async (userId, data) => {
   const response = await axios.put(`${API_URL}/${userId}`, data, { headers: getAuthHeader() });
   return response.data;
 };
+
+export const requestReportAccess = async (memberId) => {
+  const response = await axios.post(`${API_URL}/request-report-access`, { memberId }, { headers: getAuthHeader() });
+  return response.data;
+};
+
+export const verifyReportAccess = async (memberId, otp) => {
+  const response = await axios.post(`${API_URL}/verify-report-access`, { memberId, otp }, { headers: getAuthHeader() });
+  return response.data;
+};

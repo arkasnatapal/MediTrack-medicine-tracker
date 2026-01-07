@@ -498,7 +498,7 @@ const PublicProfile = () => {
 
                 {/* Actions */}
                 <div className="space-y-3 md:space-y-4">
-                    <motion.button 
+                    {/* <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleInvite}
@@ -507,7 +507,7 @@ const PublicProfile = () => {
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                         <Users className="w-5 h-5" />
                         <span>Invite to Family</span>
-                    </motion.button>
+                    </motion.button> */}
                     
                     <motion.button 
                         whileHover={{ scale: 1.02 }}
@@ -563,12 +563,12 @@ const PublicProfile = () => {
                         >
                             Doctor
                         </button>
-                        <button
+                        {/* <button
                             onClick={() => setAccessMode('family')}
                             className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${accessMode === 'family' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                         >
                             Family
-                        </button>
+                        </button> */}
                     </div>
 
                     {accessMode === 'doctor' ? (

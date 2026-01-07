@@ -113,7 +113,7 @@ module.exports = {
   sendDoctorAccessOtpEmail,
 };
 
-async function sendFamilyAccessOtpEmail({ to, otp, patientName }) {
+async function sendFamilyAccessOtpEmail({ to, otp, patientName, requesterName }) {
   const transporter = getTransporter();
   if (!transporter || !to) return;
 
@@ -142,11 +142,11 @@ async function sendFamilyAccessOtpEmail({ to, otp, patientName }) {
           <!-- Content -->
           <tr>
             <td style="padding: 40px 30px;">
-              <h2 style="color: #1e293b; margin-top: 0; font-size: 20px; font-weight: 700;">Access requested for ${patientName}</h2>
+              <h2 style="color: #1e293b; margin-top: 0; font-size: 20px; font-weight: 700;">Access requested by ${requesterName}</h2>
               <p style="color: #475569; line-height: 1.6; font-size: 16px; margin-bottom: 24px;">
-                An emergency access request was initiated for <strong>${patientName}'s</strong> medical profile. 
+                <strong>${requesterName}</strong> has requested to view your medical reports in MediTrack.
                 <br><br>
-                Please use the code below to authorize access:
+                Please use the code below to authorize this access:
               </p>
               
               <div style="background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 24px; text-align: center; margin: 32px 0;">
@@ -154,7 +154,7 @@ async function sendFamilyAccessOtpEmail({ to, otp, patientName }) {
               </div>
               
               <p style="color: #64748b; font-size: 14px; text-align: center; margin-bottom: 0;">
-                This code will expire in 5 minutes.<br>
+                This code will expire in 3 minutes.<br>
                 If you are not aware of this access request, please contact the patient immediately.
               </p>
             </td>
