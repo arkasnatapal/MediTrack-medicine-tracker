@@ -13,6 +13,7 @@ import IdentityShowcaseSection from "../components/landing/IdentityShowcaseSecti
 import AIShowcaseSection from "../components/landing/AIShowcaseSection";
 import StatsSection from "../components/landing/StatsSection";
 import ReviewMarquee from "../components/landing/ReviewMarquee";
+import TestimonialSection from "../components/landing/TestimonialSection";
 import CTASection from "../components/landing/CTASection";
 import HealthAnalysisSection from "../components/landing/HealthAnalysisSection";
 import ReportThesisSection from "../components/landing/ReportThesisSection";
@@ -279,7 +280,12 @@ const LandingPage = () => {
             <AIEmergencyAdvisorSection />
           <StatsSection />
           <div id="testimonials">
-            <ReviewMarquee />
+            <div className="hidden lg:block">
+              <TestimonialSection />
+            </div>
+            <div className="block lg:hidden">
+              <ReviewMarquee />
+            </div>
           </div>
           </div>
           <CTASection />
