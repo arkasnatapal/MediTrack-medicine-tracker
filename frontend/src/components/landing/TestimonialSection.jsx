@@ -4,7 +4,7 @@ import { Quote, ChevronLeft, ChevronRight, Star } from "lucide-react";
 
 const reviews = [
   {
-    id: 1,
+    id: 4,
     name: "Papiya Layek",
     role: "Student",
     image: "/images/feedbacks/1.jpeg",
@@ -12,15 +12,15 @@ const reviews = [
     rating: 5,
   },
   {
-    id: 2,
-    name: "Sarah Jenkins",
-    role: "Caregiver",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=300&q=80",
-    text: "As a caregiver for my elderly mother, this app gives me peace of mind I never had before. Tracking medications has never been easier.",
+    id: 3,
+    name: "Sasmit Banerjee",
+    role: "Student Researcher",
+    image: "/images/feedbacks/2.jpeg",
+    text: "MediTrack is a family-focused health companion that simplifies care through smart reminders, emergency support, and seamless family integration. Its AI-powered insights and detailed reports make it a reliable and user-friendly solution for real-life healthcare management.",
     rating: 5,
   },
   {
-    id: 3,
+    id: 2,
     name: "Aishiki Joardar",
     role: "Medical Student",
     image: "/images/feedbacks/26ba4426-bfaa-456d-af5f-997a2d1b7bc6.jpeg",
@@ -28,21 +28,21 @@ const reviews = [
     rating: 5,
   },
   {
-    id: 4,
-    name: "Emily Rodriguez",
-    role: "Busy Mom",
-    image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80",
-    text: "Managing health records for the whole family used to be a nightmare. Now it's a breeze. I can check everyone's status in one place.",
+    id: 1,
+    name: "Riya Paul",
+    role: "Student",
+    image: "/images/feedbacks/3.jpeg",
+    text: "I’m really impressed by how intuitive MediTrack is. It organizes prescriptions intelligently, provides timely reminders, and feels secure and personalized—making it easy to stay consistent with health goals without the stress of paperwork or complex schedules.",
     rating: 5,
   },
-  {
-    id: 5,
-    name: "Michael Chang",
-    role: "Tech Enthusiast",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80",
-    text: "The UI is stunning and the AI features genuinely feel like the future of healthcare. Highly recommended for tech-savvy users.",
-    rating: 4,
-  },
+  // {
+  //   id: 5,
+  //   name: "Michael Chang",
+  //   role: "Tech Enthusiast",
+  //   image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80",
+  //   text: "The UI is stunning and the AI features genuinely feel like the future of healthcare. Highly recommended for tech-savvy users.",
+  //   rating: 4,
+  // },
 ];
 
 const TestimonialSection = () => {
@@ -211,7 +211,7 @@ const TestimonialSection = () => {
                            
                            <div className="flex flex-col gap-1">
                               <h4 className="text-xl font-bold text-white tracking-wide">{reviews[activeIndex].name}</h4>
-                              <p className="text-emerald-400 font-semibold tracking-wide text-sm uppercase">{reviews[activeIndex].role}</p>
+                              <p className="text-emerald-400 dark:text-emerald-400 font-semibold tracking-wide text-sm uppercase">{reviews[activeIndex].role}</p>
                            </div>
                        </div>
                     </motion.div>
