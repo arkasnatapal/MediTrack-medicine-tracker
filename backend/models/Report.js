@@ -41,6 +41,7 @@ const reportSchema = new mongoose.Schema({
       summary: String,
       detailedAnalysis: String,
       keyFindings: [String],
+      questionsForDoctor: [String],
       healthScore: Number,
       createdAt: Date
     },

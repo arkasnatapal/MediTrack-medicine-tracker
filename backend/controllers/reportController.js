@@ -153,8 +153,9 @@ exports.analyzeReport = async (req, res) => {
     2. Detailed findings (abnormalities, key metrics) - explained simply.
     3. Key findings as a list.
     4. Any recommendations based on the report.
+    5. Suggest 3-5 specific questions the patient should ask their doctor based on these findings.
     
-    Format the response as JSON with keys: "summary", "detailedAnalysis", "keyFindings" (array of strings), "healthScore" (number 0-100), "domain" (String, e.g. "Cardiology", "Endocrinology", "General").
+    Format the response as JSON with keys: "summary", "detailedAnalysis", "keyFindings" (array of strings), "questionsForDoctor" (array of strings), "healthScore" (number 0-100), "domain" (String, e.g. "Cardiology", "Endocrinology", "General").
     
     IMPORTANT:
     - Never panic the user.

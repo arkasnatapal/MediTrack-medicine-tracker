@@ -164,8 +164,9 @@ const Settings = () => {
           phoneNumber: user.phoneNumber || '',
           gender: user.gender || '',
           dateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : '',
+          bloodGroup: user.bloodGroup || '',
+          age: user.age || '',
           address: user.address || '',
-          timezone: user.timezone || 'Asia/Kolkata',
           profilePictureUrl: user.profilePictureUrl,
           google: user.google || { calendarConnected: false, email: '' },
 
@@ -513,10 +514,10 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Timezone</label>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Blood Group</label>
                       <select 
-                        name="timezone"
-                        value={profile.timezone} 
+                        name="bloodGroup"
+                        value={profile.bloodGroup} 
                         onChange={handleProfileChange}
                         className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none"
                         style={{
@@ -526,11 +527,22 @@ const Settings = () => {
                           backgroundSize: '1.25rem'
                         }}
                       >
-                        <option value="Asia/Kolkata" className="bg-white dark:bg-slate-800">Asia/Kolkata (IST)</option>
-                        <option value="UTC" className="bg-white dark:bg-slate-800">UTC</option>
-                        <option value="America/New_York" className="bg-white dark:bg-slate-800">New York (EST)</option>
-                        <option value="Europe/London" className="bg-white dark:bg-slate-800">London (GMT)</option>
+                        <option value="" className="bg-white dark:bg-slate-800">Select Group</option>
+                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
+                          <option key={bg} value={bg} className="bg-white dark:bg-slate-800">{bg}</option>
+                        ))}
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Age</label>
+                      <input 
+                        type="number" 
+                        name="age"
+                        value={profile.age} 
+                        onChange={handleProfileChange}
+                        placeholder="e.g. 25"
+                        className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all" 
+                      />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Address</label>

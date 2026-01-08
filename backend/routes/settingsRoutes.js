@@ -54,7 +54,8 @@ router.put("/", auth, async (req, res) => {
       gender,
       dateOfBirth,
       address,
-      timezone,
+      bloodGroup,
+      age,
       settings,
       emergencyContacts
     } = req.body;
@@ -70,7 +71,8 @@ router.put("/", auth, async (req, res) => {
     if (gender) user.gender = gender;
     if (dateOfBirth) user.dateOfBirth = dateOfBirth;
     if (address !== undefined) user.address = address;
-    if (timezone) user.timezone = timezone;
+    if (bloodGroup) user.bloodGroup = bloodGroup;
+    if (age) user.age = age;
     if (emergencyContacts) user.emergencyContacts = emergencyContacts;
 
     // Ensure settings objects exist

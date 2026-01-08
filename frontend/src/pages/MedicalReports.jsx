@@ -850,7 +850,34 @@ const MedicalReports = () => {
                                   )}
                                 </ul>
                               </div>
-                            </div>
+                              </div>
+                            
+                            {/* Questions for Doctor */}
+                            {selectedReport.aiAnalysis.questionsForDoctor?.length > 0 && (
+                                <div className="bg-emerald-50 dark:bg-emerald-900/10 p-8 rounded-[2rem] border border-emerald-100 dark:border-emerald-800/30">
+                                  <h4 className="font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                    <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
+                                       <Stethoscope className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    Questions to Ask Your Doctor
+                                  </h4>
+                                  <div className="grid gap-4">
+                                    {selectedReport.aiAnalysis.questionsForDoctor.map((question, idx) => (
+                                      <div 
+                                        key={idx}
+                                        className="flex gap-4 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-emerald-100 dark:border-slate-700 shadow-sm"
+                                      >
+                                        <span className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-sm">
+                                          {idx + 1}
+                                        </span>
+                                        <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed pt-1">
+                                          {question}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                            )}
 
                             {/* Detailed Analysis */}
                             <div className="bg-gray-50 dark:bg-slate-900/50 p-8 rounded-[2rem] border border-gray-100 dark:border-slate-700/50">

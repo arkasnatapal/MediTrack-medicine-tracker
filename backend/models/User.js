@@ -74,9 +74,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  timezone: {
+  bloodGroup: {
     type: String,
-    default: "Asia/Kolkata",
+    enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+    default: null
+  },
+  age: {
+    type: Number,
+    default: null
   },
     settings: {
     notifications: {
