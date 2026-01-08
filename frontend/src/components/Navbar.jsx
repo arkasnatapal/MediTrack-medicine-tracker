@@ -167,7 +167,6 @@ const Navbar = () => {
                 {/* Predicted Threat Alert Pill - Dynamic & Auto-Collapsing */}
                 {intelligenceData?.predictedThreat && severityConfig && (
                   <motion.button
-                    layout
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     whileTap={{ scale: 0.95 }}

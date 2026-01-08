@@ -113,7 +113,7 @@ const HeroSection = () => {
             className="flex items-center justify-center lg:justify-start gap-6 pt-6 border-t border-white/5 mt-8"
           >
             <div className="flex flex-col">
-              <span className="text-2xl font-bold text-white">10k+</span>
+              <span className="text-2xl font-bold text-white">10+</span>
               <span className="text-xs text-slate-500 uppercase tracking-wider">Active Users</span>
             </div>
             <div className="w-px h-8 bg-white/10" />

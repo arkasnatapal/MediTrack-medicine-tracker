@@ -180,7 +180,7 @@ const TestimonialSection = () => {
                <div className="relative mt-8 lg:mt-0">
                   {/* Decorative Big Quote Icon */}
                   <div className="absolute -top-12 -right-4 lg:-right-8 z-20">
-                      <Quote className="w-24 h-24 lg:w-32 lg:h-32 text-emerald-500 fill-emerald-500 rotate-180 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
+                      <Quote className="w-24 h-24 lg:w-32 lg:h-32 text-emerald-500 dark:text-emerald-500 fill-emerald-500 rotate-180 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
                   </div>
 
                   <AnimatePresence mode="wait">

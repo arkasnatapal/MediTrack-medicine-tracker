@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 const stats = [
   { label: "Doses Tracked", value: "10k+" },
   { label: "Missed Meds Reduced", value: "97%" },
-  { label: "Active Users", value: "5,000+" },
-  { label: "Countries", value: "40+" },
+  { label: "Active Users", value: "10+" },
+  { label: "States", value: "25+" },
 ];
 
 const StatsSection = () => {

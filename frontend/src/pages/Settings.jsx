@@ -364,7 +364,36 @@ const Settings = () => {
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Sidebar Navigation */}
             <div className="w-full lg:w-72 flex-shrink-0">
-              <div className="rounded-3xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl overflow-hidden sticky top-4">
+              {/* Mobile Navigation Layout - Horizontal Icon Row */}
+              <div className="lg:hidden mb-6">
+                 <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide px-0 py-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {tabs.map((tab) => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                           <button
+                             key={tab.id}
+                             onClick={() => setActiveTab(tab.id)}
+                             className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm border ${
+                                isActive 
+                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-emerald-500/20' 
+                                : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                             } ${tab.id === 'danger' && isActive ? '!bg-red-500 !border-red-500 shadow-red-500/20' : ''}`}
+                           >
+                             <tab.icon size={18} />
+                           </button>
+                        )
+                    })}
+                 </div>
+                 {/* Active Tab Label Indicator */}
+                 <div className="text-center mt-3">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white/50 dark:bg-slate-800/50 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 backdrop-blur-sm">
+                        {tabs.find(t => t.id === activeTab)?.label}
+                    </span>
+                 </div>
+              </div>
+
+              {/* Desktop Navigation Layout (Original) */}
+              <div className="hidden lg:block rounded-3xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-xl overflow-hidden sticky top-4">
                 <div className="p-4 space-y-2">
                   {tabs.map((tab) => (
                     <button
