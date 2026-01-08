@@ -35,6 +35,13 @@ const reviews = [
     text: "I’m really impressed by how intuitive MediTrack is. It organizes prescriptions intelligently, provides timely reminders, and feels secure and personalized—making it easy to stay consistent with health goals without the stress of paperwork or complex schedules.",
     rating: 5,
   },
+  { id: 5,
+    name: "Atrayee Ghosh",
+    role: "Medical Student",
+    image: "/images/feedbacks/5.jpeg",
+    text: "The UI is simple and clean, and the AI features genuinely feel like the future of healthcare. Highly recommended for daily usage.",
+    rating: 5,
+  },
   // {
   //   id: 5,
   //   name: "Michael Chang",
@@ -61,7 +68,9 @@ const ReviewCard = ({ review }) => (
           <img
             src={review.image}
             alt={review.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover select-none"
+            onContextMenu={(e) => e.preventDefault()}
+            draggable={false}
           />
         </div>
       </div>
