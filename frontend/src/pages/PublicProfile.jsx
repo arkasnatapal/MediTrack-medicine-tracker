@@ -458,13 +458,13 @@ const PublicProfile = () => {
             className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-[32px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-black/50 border border-white/50 dark:border-slate-700/50 ring-1 ring-slate-900/5 dark:ring-white/10 md:flex md:flex-row"
         >
             {/* Header / Banner (Left Side on Desktop) */}
-            <div className="h-36 md:h-auto md:w-2/5 bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 relative overflow-hidden flex flex-col items-center justify-center p-8">
+            <div className="h-auto md:h-auto md:w-2/5 bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 relative overflow-hidden flex flex-col items-center justify-center p-8">
                 <div className="absolute inset-0 opacity-30 mix-blend-overlay" 
                     style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} 
                 />
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent md:hidden" />
+                <div className="absolute inset-x-0 bottom-0  bg-gradient-to-t from-black/20 to-transparent md:hidden" />
                 
-                <div className="relative z-10 text-center w-full mt-[-2rem] md:mt-0">
+                <div className="relative z-10 text-center w-full md:mt-0">
                     <div className="w-28 h-28 md:w-32 md:h-32 mx-auto rounded-full border-[6px] border-white dark:border-slate-800 md:border-white/20 shadow-2xl overflow-hidden bg-white mb-4">
                         <UserAvatar user={profile} className="w-full h-full text-3xl" />
                     </div>
@@ -483,7 +483,7 @@ const PublicProfile = () => {
             </div>
 
             {/* Content (Right Side on Desktop) */}
-            <div className="px-6 pb-8 pt-16 md:p-8 md:w-3/5 text-center md:text-left flex flex-col justify-center relative z-10 bg-transparent md:bg-white/50 md:dark:bg-slate-900/50">
+            <div className="px-6 pb-8 pt-8 md:p-8 md:w-3/5 text-center md:text-left flex flex-col justify-center relative z-10 bg-transparent md:bg-white/50 md:dark:bg-slate-900/50">
                 
                 <div className="grid grid-cols-2 gap-3 mb-8">
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 group hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-colors">
