@@ -14,8 +14,8 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const crypto = require('crypto');
 
 // Initialize Gemini
-const genAI = process.env.GEMINI_API_CHAT_KEY
-  ? new GoogleGenerativeAI(process.env.GEMINI_API_CHAT_KEY)
+const genAI = process.env.GEMINI_API_INTELLIGENT_KEY
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_INTELLIGENT_KEY)
   : null;
 
 const MODEL_NAME = "gemini-2.5-flash-lite"; // Use lighter model for dashboard efficiency
