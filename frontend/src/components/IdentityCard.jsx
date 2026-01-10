@@ -17,8 +17,8 @@ const IdentityCard = ({ user }) => {
 
   // QR Code Data - Redirects to user profile or app download
   // Hardcoded production URL as requested
-  // const appUrl = 'https://meditrack-ultimate.vercel.app';
-    const appUrl = 'http://localhost:5173';
+  const appUrl = 'https://meditrack-ultimate.vercel.app';
+    // const appUrl = 'http://localhost:5173';
   const qrData = `${appUrl}/identify/${memberId}`;
 
   const generateImage = async () => {
