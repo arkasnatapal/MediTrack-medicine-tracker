@@ -14,6 +14,7 @@ const ayurvedicProfileSchema = new mongoose.Schema({
     kapha: { type: Number, default: 0 },
     primary: { type: String, default: 'Unknown' } 
   },
+  onboardingCompleted: { type: Boolean, default: false },
   // Women's Cycle Tracking
   cycleData: {
     lastPeriodDate: Date,

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, Wind, Flame, Droplets, ArrowRight, Check, Activity, Moon, Sun, Sprout, Sparkles, Info, Clock, ShieldCheck, RefreshCw, Bell, Calendar, Trash2, X, CheckSquare, Square, Coffee, Utensils } from 'lucide-react';
+import { Leaf, Wind, Flame, Droplets, ArrowRight, Check, Activity, Moon, Sun, Sprout, Sparkles, Info, Clock, ShieldCheck, Bell, Calendar, Trash2, X, CheckSquare, Square, Coffee, Utensils } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Loader from './Loader';
+import AyurvedicOnboarding from './AyurvedicOnboarding';
 
 // Components
 const DoshaCard = ({ type, score, primary }) => {
@@ -305,20 +306,7 @@ const AyurvedicCentre = () => {
     }
   };
 
-  const handleRegenerate = async () => {
-    setLoading(true);
-    try {
-        const token = localStorage.getItem('token');
-        const res = await axios.post(`${import.meta.env.VITE_API_URL}/ayurvedic/regenerate`, {}, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        setProfile(res.data);
-        setLoading(false);
-    } catch (err) {
-        console.error("Failed to regenerate", err);
-        setLoading(false);
-    }
-  };
+
 
   useEffect(() => {
     fetchProfile();
@@ -355,6 +343,10 @@ const AyurvedicCentre = () => {
   };
 
   if (loading) return <Loader />;
+
+  if (profile && profile.onboardingCompleted === false) {
+      return <AyurvedicOnboarding onComplete={fetchProfile} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#FDFCF8] dark:bg-slate-900 text-slate-800 dark:text-slate-200">
@@ -465,14 +457,11 @@ const AyurvedicCentre = () => {
                         <div>
                             <span className="text-emerald-600 dark:text-emerald-400 font-bold tracking-wider uppercase text-sm flex items-center gap-2">
                                 Today's Focus
-                                <button 
-                                    onClick={handleRegenerate}
-                                    disabled={loading}
-                                    title="Regenerate Plan"
-                                    className="p-1.5 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:hover:bg-emerald-800 rounded-lg transition-colors text-emerald-700 dark:text-emerald-300 disabled:opacity-50"
-                                >
-                                    <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-                                </button>
+                                {profile?.dailySuggestion?.generatedAt && (
+                                     <span className="ml-2 text-[10px] normal-case font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                        Updated {Math.floor((new Date() - new Date(profile.dailySuggestion.generatedAt)) / (1000 * 60 * 60))}h ago
+                                    </span>
+                                )}
                             </span>
                             <h2 className="text-3xl font-serif text-slate-800 dark:text-white mt-1">
                                 {profile?.dailySuggestion?.content?.focus || "Finding Balance"}

@@ -9,5 +9,6 @@ router.post('/regenerate', protect, ayurvedicController.regenerateProfile);
 router.post('/reminders/sync', protect, ayurvedicController.syncReminders);
 router.post('/reminders/schedule', protect, ayurvedicController.scheduleReminders);
 router.delete('/reminders/:reminderId', protect, ayurvedicController.deleteReminder);
+router.post('/onboarding/complete', protect, ayurvedicController.completeOnboarding);
 
 module.exports = router;

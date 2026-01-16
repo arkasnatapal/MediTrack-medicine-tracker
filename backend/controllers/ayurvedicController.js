@@ -429,6 +429,20 @@ exports.deleteReminder = async (req, res) => {
     }
 };
 
+exports.completeOnboarding = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const profile = await AyurvedicProfile.findOne({ userId });
+        if (profile) {
+            profile.onboardingCompleted = true;
+            await profile.save();
+        }
+        res.json(profile);
+    } catch (error) {
+        res.status(500).json({ message: "Error completing onboarding" });
+    }
+};
+
 function getNextDateTime(timeStr, addMinutes = 0) {
     const today = new Date();
     const [hours, minutes] = (timeStr || "07:00").split(':').map(Number);
