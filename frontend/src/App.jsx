@@ -47,6 +47,7 @@ import EmergencyHistoryPage from './emergency/EmergencyHistoryPage'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import PublicProfile from './pages/PublicProfile'
+import AyurvedicCentre from './components/AyurvedicCentre'
 
 import Loader from './components/Loader'
 import Onboarding from './components/Onboarding'
@@ -285,6 +286,12 @@ function AppContent() {
               <Route path="/medication-status" element={
                 <PrivateRoute>
                   <MedicationStatus />
+                </PrivateRoute>
+              } />
+
+              <Route path="/natural-healing" element={
+                <PrivateRoute>
+                  <AyurvedicCentre />
                 </PrivateRoute>
               } />
 

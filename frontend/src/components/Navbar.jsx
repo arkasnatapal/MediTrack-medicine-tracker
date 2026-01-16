@@ -4,7 +4,7 @@ import HealthIntelligencePanel from './HealthIntelligencePanel';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert } from 'lucide-react';
+import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert, Leaf } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from './NotificationBell';
 import UserAvatar from './UserAvatar';
@@ -227,6 +227,16 @@ const Navbar = () => {
                   title="Open MediTrack AI Assistant"
                 >
                   <Bot className="h-6 w-6" />
+                </button>
+
+                {/* Ayurvedic Centre Button */}
+                <button
+                  type="button"
+                  onClick={() => navigate("/natural-healing")}
+                  className="p-2 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                  title="Natural Healing Sanctuary"
+                >
+                  <Leaf className="h-6 w-6" />
                 </button>
                 <div className="relative" ref={dropdownRef}>
                   <button

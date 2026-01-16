@@ -7,6 +7,7 @@ const fs = require('fs');
 
 const authRoutes = require('./routes/authRoutes');
 const googleAuthRoutes = require("./routes/googleAuthRoutes");
+const ayurvedicRoutes = require('./routes/ayurvedicRoutes'); // New Route
 const medicineRoutes = require('./routes/medicineRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -58,6 +59,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/ayurvedic', ayurvedicRoutes); // Register Route
 app.use('/api/family', require('./routes/familyRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/ai', require('./routes/aiRoutes'));
