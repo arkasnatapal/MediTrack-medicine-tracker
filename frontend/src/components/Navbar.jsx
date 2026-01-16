@@ -469,6 +469,14 @@ const Navbar = () => {
                   Dashboard
                 </Link>
                 <Link
+                to='/natural-healing'
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center px-4 py-3 text-base font-medium text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/10 hover:text-emerald-700 transition-colors"
+                >
+                  <Leaf className="h-5 w-5 mr-3" />
+                  Ayurvedic Treatment
+                </Link>
+                <Link
                   to="/medicines"
                   onClick={() => setIsOpen(false)}
                   className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
