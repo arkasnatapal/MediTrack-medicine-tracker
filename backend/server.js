@@ -85,6 +85,9 @@ app.use("/api/google", googleRoutes);
 
 // Error handling middleware
 app.use(errorMiddleware);
+// Note: activityTracker is best integrated into the Application's auth middleware 
+// or applied to specific routes. We will integrate it into the Auth Middleware in the next step.
+
 
 // 404 handler
 app.use((req, res) => {
@@ -93,6 +96,9 @@ app.use((req, res) => {
 
 // [REMOVED] Automatic cron startup
 // Cron jobs are now triggered via HTTP endpoints in /api/cron
+
+// Initialize Living Health OS Workers
+require('./src/living-os/workers');
 
 // Start server
 const PORT = process.env.PORT || 5000;

@@ -24,9 +24,16 @@ const authMiddleware = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, { lastActive: now });
     }
 
+    // [LIVING HEALTH OS] Log activity for Sleep Intelligence
+    // Fire and forget - do not await
+    const { logActivity } = require('./activityTracker');
+    logActivity(user._id).catch(err => console.error('Activity Log Error:', err));
+
+
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Invalid or expired token' });
+    console.error('❌ Auth Middleware Error:', error);
+    res.status(401).json({ message: 'Invalid or expired token', error: error.message });
   }
 };
 

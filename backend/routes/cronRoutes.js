@@ -57,4 +57,65 @@ router.post('/check-expired-medicines', async (req, res) => {
   }
 });
 
+// Living OS Queues
+const { 
+  healthScanQueue, 
+  sleepIntelligenceQueue, 
+  riskEscalationQueue, 
+  improvementDetectionQueue,
+  medicinePatternQueue // If needed daily
+} = require('../src/living-os/queues');
+
+
+
+// --- LIVING HEALTH OS TRIGGERS ---
+
+// POST /api/cron/trigger-daily-health
+// Triggers: Health Scan, Sleep Analysis, Medicine Pattern
+router.post('/trigger-daily-health', async (req, res) => {
+  try {
+    console.log('🧠 Triggering Daily Health Intelligence...');
+    
+    // 1. Sleep Intelligence (First, to feed into health score)
+    await sleepIntelligenceQueue.add('analyze-sleep', {});
+    
+    // 2. Medicine Patterns
+    await medicinePatternQueue.add('check-patterns', {});
+    
+    // 3. Health Scan (Calculates final score)
+    // Delay slightly to allow others to process? Or independent?
+    // Independent for now.
+    await healthScanQueue.add('trigger-daily-scan', {});
+
+    res.json({ success: true, message: 'Daily routines enqueued' });
+  } catch (error) {
+    console.error('Trigger Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/cron/trigger-risk-check
+// Runs frequently (e.g. every 3 hours)
+router.post('/trigger-risk-check', async (req, res) => {
+  try {
+    await riskEscalationQueue.add('check-risks', {});
+    res.json({ success: true, message: 'Risk check enqueued' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/cron/trigger-weekly-check
+// Runs weekly
+router.post('/trigger-weekly-check', async (req, res) => {
+  try {
+    await improvementDetectionQueue.add('check-improvements', {});
+    res.json({ success: true, message: 'Weekly improvement check enqueued' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 module.exports = router;
+
