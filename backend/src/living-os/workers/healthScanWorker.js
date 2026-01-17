@@ -47,13 +47,12 @@ const healthScanWorker = createWorker('health-scan-queue', async (job) => {
           const score = calculateHealthScore(adherenceStats, sleepData.inferred ? sleepData : { durationHours: 7 }); 
           const state = determineHealthState(score);
           
-          console.log(`User ${user.email}: Score ${score} (${state}) [Meds: ${taken}/${total}]`);
-
+          // 4. Update User
+          user.healthScore = score;
+          user.healthState = state;
+          await user.save();
           
-          // 4. Update User (we need fields in User model or a separate HealthState model)
-          // user.healthScore = score;
-          // user.healthState = state;
-          // await user.save();
+          console.log(`User ${user.email}: Score ${score} (${state}) [Meds: ${taken}/${total}] - SAVED`);
       }
   }
 });

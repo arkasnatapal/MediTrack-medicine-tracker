@@ -104,6 +104,77 @@ If you do not recognize this, you can ignore this email.
   }
 }
 
+   
+async function sendRiskAlertEmail({ to, name, score, issues, suggestions }) {
+  const transporter = getTransporter();
+  if (!transporter || !to) return;
+
+  const baseUrl = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
+  const issuesList = issues.map(i => `<li style="margin-bottom: 8px;">${i}</li>`).join('');
+  // const suggestionsList = suggestions.map(s => `<li style="margin-bottom: 8px;">${s}</li>`).join('');
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || `"MediTrack Health AI" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `⚠️ Critical Health Alert: Score ${score}`,
+    text: `Your health score has dropped to ${score}. Please check the app.`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Health Risk Alert</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #fff1f2; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #e11d48 0%, #be123c 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">MediTrack Intelligence</h1>
+              <p style="color: #fce7f3; margin: 5px 0 0; font-weight: 600;">CRITICAL ALERT</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #be123c; margin-top: 0;">Attention Needed, ${name}</h2>
+              <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                Our system has detected a significant drop in your adherence consistency. Your current Health Score is <strong style="color: #be123c; font-size: 18px;">${score}/100</strong>.
+              </p>
+              
+              <div style="background-color: #fff1f2; border-left: 4px solid #e11d48; padding: 15px; margin: 25px 0;">
+                <h3 style="color: #9f1239; margin: 0 0 10px 0; font-size: 16px;">Identified Issues:</h3>
+                <ul style="color: #4b5563; margin: 0; padding-left: 20px;">
+                  ${issuesList}
+                </ul>
+              </div>
+
+              <p style="color: #374151;">
+                We recommend checking your app to log any missed doses or update your schedule.
+              </p>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${baseUrl}/dashboard" style="display: inline-block; background-color: #e11d48; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                  Open Dashboard
+                </a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Risk alert email sent to:", to);
+  } catch (err) {
+    console.error("❌ Failed to send risk email:", err.message);
+  }
+}
+
 module.exports = {
   sendFamilyInviteEmail,
   sendOtpEmail,
@@ -111,6 +182,7 @@ module.exports = {
   sendPasswordResetEmail,
   sendFamilyAccessOtpEmail,
   sendDoctorAccessOtpEmail,
+  sendRiskAlertEmail
 };
 
 async function sendFamilyAccessOtpEmail({ to, otp, patientName, requesterName }) {

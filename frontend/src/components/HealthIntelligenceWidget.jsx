@@ -4,9 +4,17 @@ import { Activity, TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles, Brain,
 import axios from 'axios';
 import HealthIntelligencePanel from './HealthIntelligencePanel';
 
-const HealthIntelligenceWidget = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+const HealthIntelligenceWidget = ({ user }) => {
+  // Use cached data from user object for instant load
+  const [data, setData] = useState(user?.healthScore ? {
+      healthScore: user.healthScore,
+      trend: 'stable',
+      summary: 'analyzing latest patterns...',
+      highlights: [],
+      // If we have state, we can map it? user.healthState
+  } : null);
+  
+  const [loading, setLoading] = useState(!user?.healthScore);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const fetchIntelligence = async () => {

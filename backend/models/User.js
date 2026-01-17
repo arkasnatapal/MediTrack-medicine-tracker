@@ -83,6 +83,19 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  healthScore: {
+    type: Number,
+    default: 100
+  },
+  healthState: {
+    type: String,
+    enum: ['GREEN', 'YELLOW', 'RED'],
+    default: 'GREEN'
+  },
+  lastRiskAlert: {
+    type: Date,
+    default: null
+  },
     settings: {
     notifications: {
       emailReminders: { type: Boolean, default: true },

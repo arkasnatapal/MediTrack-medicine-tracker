@@ -22,6 +22,7 @@ const notificationSchema = new mongoose.Schema(
         "medicine_reminder",
         "system_error",
         "family_invitation",
+        "risk_alert",
         "general",
       ],
       default: "general",

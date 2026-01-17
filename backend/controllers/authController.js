@@ -106,6 +106,8 @@ exports.verifyEmail = async (req, res) => {
         gender: user.gender, // Include gender in user object
         settings: user.settings,
         google: user.google,
+        healthScore: user.healthScore,
+        healthState: user.healthState,
       },
       token,
     });
@@ -234,7 +236,9 @@ exports.login = async (req, res) => {
         gender: user.gender,
         settings: user.settings,
         twoFactorEnabled: user.twoFactorEnabled,
-        google: user.google
+        google: user.google,
+        healthScore: user.healthScore,
+        healthState: user.healthState,
       },
       token,
     });
@@ -272,7 +276,9 @@ exports.verifyLoginOtp = async (req, res) => {
         gender: user.gender,
         settings: user.settings,
         twoFactorEnabled: user.twoFactorEnabled,
-        google: user.google
+        google: user.google,
+        healthScore: user.healthScore,
+        healthState: user.healthState,
       },
       token,
     });
@@ -346,7 +352,9 @@ exports.updateProfile = async (req, res) => {
         bloodGroup: user.bloodGroup,
         age: user.age,
         settings: user.settings,
-        google: user.google
+        google: user.google,
+        healthScore: user.healthScore,
+        healthState: user.healthState,
       }
     });
   } catch (error) {
