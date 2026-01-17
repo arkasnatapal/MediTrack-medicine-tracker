@@ -82,6 +82,7 @@ app.use('/api/hospital-details', require('./src/hospital-detail/hospital-detail.
 
 const googleRoutes = require("./routes/googleRoutes");
 app.use("/api/google", googleRoutes);
+app.use('/api/nutrition', require('./routes/nutritionRoutes'));
 
 // Error handling middleware
 app.use(errorMiddleware);

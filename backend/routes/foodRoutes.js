@@ -82,4 +82,11 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+// AI Food Routes
+const foodAIController = require('../controllers/foodAIController');
+router.post('/ai-recommend', auth, foodAIController.generateRecommendation);
+
+const foodInsightController = require('../controllers/foodInsightController');
+router.get('/insight/:name', auth, foodInsightController.getFoodInsight);
+
 module.exports = router;

@@ -34,6 +34,7 @@ import FAQ from './pages/FAQ'
 import Careers from './pages/Careers'
 import Cookies from './pages/Cookies'
 import FoodRoutine from './pages/FoodRoutine'
+import FoodDetail from './pages/FoodDetail'
 import HealthReview from './pages/HealthReview'
 import MedicalReports from './pages/MedicalReports'
 import MedicationStatus from './pages/MedicationStatus'
@@ -196,6 +197,12 @@ function AppContent() {
               <Route path="/food" element={
                 <PrivateRoute>
                   <FoodRoutine />
+                </PrivateRoute>
+              } />
+              
+              <Route path="/food/:name" element={
+                <PrivateRoute>
+                  <FoodDetail />
                 </PrivateRoute>
               } />
               

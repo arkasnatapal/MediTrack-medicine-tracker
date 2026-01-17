@@ -4,9 +4,11 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Trash2, Edit2, Clock, Calendar, Utensils, Check, X, Bot,
-  Filter, Sparkles, ChefHat, Search, LayoutGrid, List, AlignLeft
+  Filter, Sparkles, ChefHat, Search, LayoutGrid, List, AlignLeft, Info, Activity
 } from "lucide-react";
 import Loader from "../components/Loader";
+import AIFoodRecommendationModal from "../components/AIFoodRecommendationModal";
+import WeeklyNutritionModal from "../components/WeeklyNutritionModal";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -16,8 +18,10 @@ const FoodRoutine = () => {
   const [items, setItems] = useState([]);
   const [aiAccess, setAiAccess] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false); 
+  const [showNutritionModal, setShowNutritionModal] = useState(false); // New State
   const [editingItem, setEditingItem] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'timeline'
+  const [viewMode, setViewMode] = useState('grid');
   const [filter, setFilter] = useState({ day: "", mealType: "" });
 
   // Form State
@@ -36,7 +40,7 @@ const FoodRoutine = () => {
   useEffect(() => {
     fetchData();
     fetchSettings();
-  }, []);
+  }, [filter.day, filter.mealType]); // Trigger fetch when filters change
 
   const fetchData = async () => {
     try {
@@ -203,12 +207,95 @@ const FoodRoutine = () => {
     }
   };
 
+  const handleSaveAIResult = async (result) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      
+      const dayMapping = {
+        "Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed", "Thursday": "Thu", "Friday": "Fri", "Saturday": "Sat", "Sunday": "Sun"
+      };
+
+      if (result.type === 'immediate') {
+         let mType = 'other';
+         const timeLower = result.bestTime.toLowerCase();
+         if (timeLower.includes('morning') || timeLower.includes('breakfast')) mType = 'breakfast';
+         else if (timeLower.includes('noon') || timeLower.includes('lunch')) mType = 'lunch';
+         else if (timeLower.includes('evening') || timeLower.includes('dinner') || timeLower.includes('night')) mType = 'dinner';
+         else if (timeLower.includes('snack')) mType = 'snack';
+
+         await axios.post(`${API_URL}/food`, {
+            name: result.dishName,
+            mealType: mType,
+            time: "", 
+            days: [daysOfWeek[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]],
+            notes: `AI Recommended: ${result.description}\n\nRecipe:\n${result.recipe.join('\n')}`,
+            tags: ["AI-Chef", ...result.ingredientsUsed]
+         }, config);
+
+      } else if (result.type === 'weekly') {
+         const requests = [];
+         
+         result.schedule.forEach(dayPlan => {
+            const shortDay = dayMapping[dayPlan.day] || dayPlan.day.substring(0, 3);
+            
+            requests.push(axios.post(`${API_URL}/food`, {
+                name: dayPlan.breakfast,
+                mealType: 'breakfast',
+                days: [shortDay],
+                tags: ["AI-Plan", "Breakfast"],
+                notes: `Part of 7-Day Healing Plan`
+            }, config));
+
+            requests.push(axios.post(`${API_URL}/food`, {
+                name: dayPlan.lunch,
+                mealType: 'lunch',
+                days: [shortDay],
+                tags: ["AI-Plan", "Lunch"],
+                notes: `Part of 7-Day Healing Plan`
+            }, config));
+
+             requests.push(axios.post(`${API_URL}/food`, {
+                name: dayPlan.dinner,
+                mealType: 'dinner',
+                days: [shortDay],
+                tags: ["AI-Plan", "Dinner"],
+                notes: `Part of 7-Day Healing Plan`
+            }, config));
+         });
+
+         await Promise.all(requests);
+      }
+
+      await fetchData(); 
+      setShowAIModal(false); 
+    } catch (err) {
+      console.error("Error saving AI meals:", err);
+      alert("Failed to save to dashboard");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F17] p-6 lg:p-10 font-sans">
+      <WeeklyNutritionModal 
+        isOpen={showNutritionModal}
+        onClose={() => setShowNutritionModal(false)}
+      />
+      <AIFoodRecommendationModal 
+        isOpen={showAIModal} 
+        onClose={() => setShowAIModal(false)}
+        onSave={handleSaveAIResult}
+      />
+      
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header Section - Clean MedicalReports Style */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-900 dark:to-emerald-900 p-10 shadow-xl">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-900 dark:to-emerald-900 p-6 md:p-10 shadow-xl">
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/10 text-white/90 text-xs font-medium mb-3">
@@ -223,13 +310,20 @@ const FoodRoutine = () => {
               </p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <button
-                onClick={() => askAI(null)}
-                className="flex items-center gap-2 px-6 py-3 bg-white/30 dark:bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-2xl hover:bg-white/20 transition-all font-bold text-sm"
+                onClick={() => setShowNutritionModal(true)}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-white/20 backdrop-blur-md border border-white/20 text-white rounded-2xl hover:bg-white/30 transition-all font-bold text-sm"
               >
-                <Sparkles className="w-4 h-4 text-black dark:text-white" />
-                <span className="text-black dark:text-white">Ask AI</span>
+                <Activity className="w-5 h-5" />
+                <span>Nutri-Scan</span>
+              </button>
+              <button
+                onClick={() => setShowAIModal(true)}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-white/30 dark:bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-2xl hover:bg-white/20 transition-all font-bold text-sm"
+              >
+                <ChefHat className="w-5 h-5 text-white" />
+                <span className="text-white">AI Chef</span>
               </button>
               <button
                 onClick={() => {
@@ -244,7 +338,7 @@ const FoodRoutine = () => {
                   });
                   setShowForm(true);
                 }}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-teal-700 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all text-sm"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-teal-700 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all text-sm"
               >
                 <Plus className="w-5 h-5" />
                 <span className="text-black dark:text-black">Add Meal</span>
@@ -288,7 +382,7 @@ const FoodRoutine = () => {
             
             <select 
               value={filter.mealType}
-              onChange={(e) => { setFilter({...filter, mealType: e.target.value}); setTimeout(fetchData, 0); }}
+              onChange={(e) => setFilter({...filter, mealType: e.target.value})}
               className="px-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-sm font-bold text-slate-700 dark:text-slate-300 focus:ring-0 cursor-pointer"
             >
               <option value="">All Meals</option>
@@ -297,7 +391,7 @@ const FoodRoutine = () => {
             
             <select 
               value={filter.day}
-              onChange={(e) => { setFilter({...filter, day: e.target.value}); setTimeout(fetchData, 0); }}
+              onChange={(e) => setFilter({...filter, day: e.target.value})}
               className="px-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-sm font-bold text-slate-700 dark:text-slate-300 focus:ring-0 cursor-pointer"
             >
               <option value="">All Days</option>
@@ -356,6 +450,13 @@ const FoodRoutine = () => {
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => handleEdit(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-indigo-500 transition-colors">
                             <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => navigate(`/food/${encodeURIComponent(item.name)}`)}
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-indigo-400 hover:text-indigo-600 transition-colors"
+                            title="View Health Insight"
+                          >
+                             <Info className="w-4 h-4" />
                           </button>
                           <button onClick={() => handleDelete(item._id)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-rose-500 transition-colors">
                             <Trash2 className="w-4 h-4" />
@@ -443,9 +544,19 @@ const FoodRoutine = () => {
                         <button onClick={() => handleEdit(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-indigo-500 transition-colors">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(item._id)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-rose-500 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <button 
+                        onClick={() => navigate(`/food/${encodeURIComponent(item.name)}`)}
+                        className="p-2 text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
+                        title="View Health Insight"
+                      >
+                         <Info className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(item._id)}
+                        className="p-2 text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                       </div>
                     </div>
                   </motion.div>
