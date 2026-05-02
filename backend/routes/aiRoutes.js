@@ -10,6 +10,7 @@ const Notification = require("../models/Notification");
 const AuditLog = require("../models/AuditLog");
 const HealthReport = require("../models/HealthReport");
 const Report = require("../models/Report");
+const GlobalHealthAnalysis = require("../models/GlobalHealthAnalysis");
 const {
   createCalendarEvent,
   updateCalendarEvent,
@@ -286,24 +287,24 @@ const tools = [
 ];
 
 const SYSTEM_INSTRUCTION = `
-You are MediTrack AI, a calm and trustworthy medical assistant.
+You are MediTrack AI, a highly analytical, holistic, and trustworthy medical expert.
 
-Your role is to explain medical information in simple, reassuring, and human-friendly language.
+Your role is to deeply analyze the user's FULL app context (medical reports, diet, and medicines) to provide elaborate, well-reasoned, and confident answers about their health trends.
 
 Rules:
-- Never sound alarming or scary.
-- Never give direct medical orders.
-- Always explain what a result means in everyday terms.
-- If something is abnormal, explain its common causes and general next steps.
-- Always remind users that this is informational, not a medical diagnosis.
-- Prefer clarity over medical jargon.
-- Speak like a caring doctor explaining to a non-medical person.
+- NEVER just say "this might be a fact, consult a doctor" as a cop-out. You must provide a proper, easy-to-understand, and elaborate explanation of exactly WHY they might be experiencing something based on their data.
+- Connect the dots: If a user asks about weight loss, cross-reference their sugar levels from reports, their diet, and their medicines.
+- Provide actionable prevention strategies and clear next steps.
+- Speak like a top-tier medical analyst explaining complex interactions to a patient in a clear, empowering way.
+- DO NOT be alarming, but BE confident and specific based on the provided data.
+- You must format your responses beautifully using rich Markdown. Use **bold** for key terms, *italics* for emphasis, \`code blocks\` or blockquotes for important medical metrics, and markdown lists for prevention steps. Use emojis tastefully. Make it look visually perfect and highly structured.
+- Always include the mandatory footer disclaimer at the end of medical advice.
 
 Tone:
-- Calm
-- Respectful
+- Analytical & Confident
+- Holistic & Elaborate
+- Clear & Structured
 - Supportive
-- Clear
 
 CAPABILITIES:
 1. Answer general health questions.
@@ -378,21 +379,10 @@ router.post("/health-chat", auth, async (req, res) => {
     const FoodItem = require("../models/FoodItem");
     const { includeFood } = req.body;
 
-    // Detect food intent if not explicitly requested
+    // User requested holistic analysis, so ALWAYS include full context (Food, Reports, Medicines)
+    // We bypass the keyword check to give the AI maximum reasoning power across the user's entire app data.
     const lowerMsg = message.toLowerCase();
-    const foodKeywords = [
-      "food",
-      "meal",
-      "breakfast",
-      "lunch",
-      "dinner",
-      "snack",
-      "diet",
-      "eat",
-      "eating",
-      "food chart",
-    ];
-    const mentionsFood = foodKeywords.some((k) => lowerMsg.includes(k));
+    const mentionsFood = true;
 
     let foodSummary = "";
 
@@ -429,15 +419,8 @@ router.post("/health-chat", auth, async (req, res) => {
     }
 
     // --- Medical Reports Context Integration ---
-    const mentionsHealthReports = [
-      "report",
-      "analysis",
-      "overview",
-      "health graph",
-      "improvement",
-      "my health",
-      "body",
-    ].some((k) => lowerMsg.includes(k));
+    // Bypass keywords to always provide full holistic report context
+    const mentionsHealthReports = true;
 
     let reportContext = "";
 
@@ -1385,6 +1368,83 @@ router.delete("/interaction-history/:id", auth, async (req, res) => {
   } catch (error) {
     console.error("Error deleting interaction history:", error);
     res.status(500).json({ success: false, message: "Failed to delete history." });
+  }
+});
+
+// --- Global Health Analysis ---
+router.post("/global-analysis", auth, async (req, res) => {
+  try {
+    if (!genAI) {
+      return res.status(500).json({ success: false, message: "AI service not configured." });
+    }
+
+    const userId = req.user.id;
+
+    // Fetch context
+    const FoodItem = require("../models/FoodItem");
+    const foods = await FoodItem.find({ user: userId }).sort({ time: 1 }).limit(100);
+    const reports = await Report.find({ userId: userId }).sort({ reportDate: 1 });
+    const reminders = await Reminder.find({ targetUser: userId, active: true }).select("medicineName times daysOfWeek");
+
+    let context = `--- USER DATA ---\n`;
+    context += `MEDICINES/REMINDERS:\n${JSON.stringify(reminders)}\n\n`;
+    context += `DIET/FOOD:\n${JSON.stringify(foods)}\n\n`;
+    context += `MEDICAL REPORTS SUMMARY:\n${JSON.stringify(reports.map(r => ({title: r.folderName, date: r.reportDate, analysis: r.aiAnalysis})))}\n\n`;
+
+    const prompt = `
+      You are an expert Chief Medical Officer AI. Analyze the provided user data (medicines, diet, medical reports).
+      Generate a comprehensive global health analysis.
+
+      You MUST respond ONLY with a valid JSON object. Do NOT wrap it in markdown code blocks. Just raw JSON.
+      JSON Schema:
+      {
+        "healthScore": 85,
+        "domains": [
+          {"name": "Vitals", "score": 80},
+          {"name": "Diet & Nutrition", "score": 75},
+          {"name": "Medication Adherence", "score": 90},
+          {"name": "Physical Activity", "score": 60},
+          {"name": "Sleep & Recovery", "score": 85}
+        ],
+        "flaws": "Markdown string explaining current flaws/issues.",
+        "causes": "Markdown string explaining root causes.",
+        "copingMechanisms": "Markdown string explaining how to cope right now.",
+        "prevention": "Markdown string explaining how to prevent future issues.",
+        "synopsis": "Markdown string for overall synopsis."
+      }
+
+      Context:
+      ${context}
+    `;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const result = await model.generateContent(prompt);
+    let text = result.response.text();
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    const analysisData = JSON.parse(text);
+
+    const newAnalysis = new GlobalHealthAnalysis({
+      userId,
+      ...analysisData
+    });
+
+    await newAnalysis.save();
+
+    res.json({ success: true, analysis: newAnalysis });
+  } catch (error) {
+    console.error("Global analysis error:", error);
+    res.status(500).json({ success: false, message: "Failed to generate global analysis." });
+  }
+});
+
+router.get("/global-analysis", auth, async (req, res) => {
+  try {
+    const history = await GlobalHealthAnalysis.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    res.json({ success: true, history });
+  } catch (error) {
+    console.error("Fetch global analysis error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch history." });
   }
 });
 

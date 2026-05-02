@@ -37,6 +37,7 @@ import FoodRoutine from './pages/FoodRoutine'
 import FoodDetail from './pages/FoodDetail'
 import HealthReview from './pages/HealthReview'
 import MedicalReports from './pages/MedicalReports'
+import GlobalAnalysis from './pages/GlobalAnalysis'
 import MedicationStatus from './pages/MedicationStatus'
 import NotFound from './pages/NotFound'
 import WomenHealth from './pages/WomenHealth'
@@ -287,6 +288,12 @@ function AppContent() {
               <Route path="/reports" element={
                 <PrivateRoute>
                   <MedicalReports />
+                </PrivateRoute>
+              } />
+
+              <Route path="/global-analysis" element={
+                <PrivateRoute>
+                  <GlobalAnalysis />
                 </PrivateRoute>
               } />
 
