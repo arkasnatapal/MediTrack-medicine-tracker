@@ -46,6 +46,8 @@ const Settings = () => {
     dateOfBirth: '',
     address: '',
     timezone: 'Asia/Kolkata',
+    height: '',
+    weight: '',
     profilePictureUrl: null,
     google: {
       calendarConnected: false,
@@ -166,6 +168,8 @@ const Settings = () => {
           dateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : '',
           bloodGroup: user.bloodGroup || '',
           age: user.age || '',
+          height: user.height || '',
+          weight: user.weight || '',
           address: user.address || '',
           profilePictureUrl: user.profilePictureUrl,
           google: user.google || { calendarConnected: false, email: '' },
@@ -541,6 +545,28 @@ const Settings = () => {
                         value={profile.age} 
                         onChange={handleProfileChange}
                         placeholder="e.g. 25"
+                        className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Height (cm)</label>
+                      <input 
+                        type="number" 
+                        name="height"
+                        value={profile.height} 
+                        onChange={handleProfileChange}
+                        placeholder="e.g. 170"
+                        className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Weight (kg)</label>
+                      <input 
+                        type="number" 
+                        name="weight"
+                        value={profile.weight} 
+                        onChange={handleProfileChange}
+                        placeholder="e.g. 70"
                         className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all" 
                       />
                     </div>

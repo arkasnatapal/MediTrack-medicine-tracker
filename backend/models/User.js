@@ -83,6 +83,14 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  height: {
+    type: Number,
+    default: null
+  },
+  weight: {
+    type: Number,
+    default: null
+  },
   healthScore: {
     type: Number,
     default: 100

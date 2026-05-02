@@ -281,10 +281,10 @@ const LandingPage = () => {
           <StatsSection />
           <div id="testimonials">
             <div className="hidden lg:block">
-              <TestimonialSection />
+              {/* <TestimonialSection /> */}
             </div>
             <div className="block lg:hidden">
-              <ReviewMarquee />
+              {/* <ReviewMarquee /> */}
             </div>
           </div>
           </div>

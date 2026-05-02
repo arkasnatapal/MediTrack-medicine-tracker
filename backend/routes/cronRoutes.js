@@ -3,6 +3,7 @@ const router = express.Router();
 const { executeReminderCheck } = require('../jobs/reminderScheduler');
 const { checkGracePeriod } = require('../jobs/gracePeriodCheck');
 const { checkExpiredMedicines } = require('../jobs/cronJobs');
+const { sendCheckupReminders } = require('../utils/checkupReminders');
 
 // Middleware to verify CRON_SECRET
 const verifyCronSecret = (req, res, next) => {
@@ -57,36 +58,36 @@ router.post('/check-expired-medicines', async (req, res) => {
   }
 });
 
+// POST /api/cron/checkup-reminders
+router.post('/checkup-reminders', async (req, res) => {
+  try {
+    console.log('🔄 Manual trigger: Checkup Reminders Check');
+    await sendCheckupReminders();
+    res.status(200).json({ success: true, message: 'Checkup reminders check executed' });
+  } catch (error) {
+    console.error('❌ Error executing checkup reminders:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Living OS Queues
 const { 
   healthScanQueue, 
   sleepIntelligenceQueue, 
   riskEscalationQueue, 
   improvementDetectionQueue,
-  medicinePatternQueue // If needed daily
+  medicinePatternQueue
 } = require('../src/living-os/queues');
-
-
 
 // --- LIVING HEALTH OS TRIGGERS ---
 
 // POST /api/cron/trigger-daily-health
-// Triggers: Health Scan, Sleep Analysis, Medicine Pattern
 router.post('/trigger-daily-health', async (req, res) => {
   try {
     console.log('🧠 Triggering Daily Health Intelligence...');
-    
-    // 1. Sleep Intelligence (First, to feed into health score)
     await sleepIntelligenceQueue.add('analyze-sleep', {});
-    
-    // 2. Medicine Patterns
     await medicinePatternQueue.add('check-patterns', {});
-    
-    // 3. Health Scan (Calculates final score)
-    // Delay slightly to allow others to process? Or independent?
-    // Independent for now.
     await healthScanQueue.add('trigger-daily-scan', {});
-
     res.json({ success: true, message: 'Daily routines enqueued' });
   } catch (error) {
     console.error('Trigger Error:', error);
@@ -95,7 +96,6 @@ router.post('/trigger-daily-health', async (req, res) => {
 });
 
 // POST /api/cron/trigger-risk-check
-// Runs frequently (e.g. every 3 hours)
 router.post('/trigger-risk-check', async (req, res) => {
   try {
     await riskEscalationQueue.add('check-risks', {});
@@ -106,7 +106,6 @@ router.post('/trigger-risk-check', async (req, res) => {
 });
 
 // POST /api/cron/trigger-weekly-check
-// Runs weekly
 router.post('/trigger-weekly-check', async (req, res) => {
   try {
     await improvementDetectionQueue.add('check-improvements', {});
@@ -116,6 +115,4 @@ router.post('/trigger-weekly-check', async (req, res) => {
   }
 });
 
-
 module.exports = router;
-

@@ -79,6 +79,7 @@ app.use('/api/cron', require('./routes/cronRoutes'));
 app.use('/api/women-health', require('./routes/womenHealth.routes'));
 app.use('/api/emergency', require('./src/emergency/emergency.routes'));
 app.use('/api/hospital-details', require('./src/hospital-detail/hospital-detail.routes'));
+app.use('/api/checkups', require('./routes/checkupRoutes'));
 
 const googleRoutes = require("./routes/googleRoutes");
 app.use("/api/google", googleRoutes);

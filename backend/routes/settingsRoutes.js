@@ -56,6 +56,8 @@ router.put("/", auth, async (req, res) => {
       address,
       bloodGroup,
       age,
+      height,
+      weight,
       settings,
       emergencyContacts
     } = req.body;
@@ -73,6 +75,8 @@ router.put("/", auth, async (req, res) => {
     if (address !== undefined) user.address = address;
     if (bloodGroup) user.bloodGroup = bloodGroup;
     if (age) user.age = age;
+    if (height) user.height = height;
+    if (weight) user.weight = weight;
     if (emergencyContacts) user.emergencyContacts = emergencyContacts;
 
     // Ensure settings objects exist

@@ -327,13 +327,15 @@ exports.toggleTwoFactor = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { gender, familyMedicalHistory, bloodGroup, age } = req.body;
+    const { gender, familyMedicalHistory, bloodGroup, age, height, weight } = req.body;
     const user = await User.findById(req.user.id);
 
     if (gender) user.gender = gender;
     if (familyMedicalHistory) user.familyMedicalHistory = familyMedicalHistory;
     if (bloodGroup) user.bloodGroup = bloodGroup;
     if (age) user.age = age;
+    if (height) user.height = height;
+    if (weight) user.weight = weight;
     
     // Add other profile updates here if needed in future
 
@@ -351,6 +353,8 @@ exports.updateProfile = async (req, res) => {
         gender: user.gender,
         bloodGroup: user.bloodGroup,
         age: user.age,
+        height: user.height,
+        weight: user.weight,
         settings: user.settings,
         google: user.google,
         healthScore: user.healthScore,
