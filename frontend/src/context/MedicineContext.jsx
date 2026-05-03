@@ -103,6 +103,19 @@ export const MedicineProvider = ({ children }) => {
       return false;
     }
   };
+ 
+  const bulkDeleteMedicines = async (ids) => {
+    try {
+      await api.post('/medicines/bulk-delete', { ids });
+      setMedicines(prev => prev.filter((med) => !ids.includes(med._id)));
+      notify.success('Expired medicines removed successfully!');
+      return true;
+    } catch (err) {
+      console.error('Error bulk deleting medicines:', err);
+      notify.error(err.response?.data?.message || 'Failed to remove medicines');
+      return false;
+    }
+  };
 
   const getMedicineById = (id) => {
     return medicines.find((med) => med._id === id);
@@ -116,6 +129,7 @@ export const MedicineProvider = ({ children }) => {
     addMedicine,
     updateMedicine,
     deleteMedicine,
+    bulkDeleteMedicines,
     getMedicineById,
   };
 

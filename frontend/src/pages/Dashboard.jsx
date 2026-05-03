@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useMedicine } from '../context/MedicineContext';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Plus, Calendar as CalendarIcon, ArrowRight, User, Settings, Bell, ChevronLeft, ChevronRight, Activity, Pill, CheckCircle, Clock, MapPin, Edit2, Sparkles, Lightbulb
+  Plus, Calendar as CalendarIcon, ArrowRight, User, Settings, Bell, ChevronLeft, ChevronRight, Activity, Pill, CheckCircle, Clock, MapPin, Edit2, Sparkles, Lightbulb, Trash2
 } from 'lucide-react';
 import { getDaysUntilExpiry } from '../utils/formatDate';
 import PendingRemindersWidget from '../components/PendingRemindersWidget';
@@ -19,6 +19,7 @@ import HealthIntelligencePanel from '../components/HealthIntelligencePanel';
 import CheckupModal from '../components/CheckupModal';
 import DailyInsightWidget from '../components/DailyInsightWidget';
 import QuickActionsWidget from '../components/QuickActionsWidget';
+import ExpiredCleanupModal from '../components/ExpiredCleanupModal';
 
 // Mini Line Chart Component for Stats
 const MiniLineChart = ({ data, color }) => {
@@ -77,6 +78,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [editingMedicine, setEditingMedicine] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isExpiredModalOpen, setIsExpiredModalOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isHealthPanelOpen, setIsHealthPanelOpen] = useState(false);
   const [healthData, setHealthData] = useState(null);
@@ -259,6 +261,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a] text-slate-900 dark:text-slate-100 p-4 md:p-8 lg:p-10 font-sans transition-colors duration-300">
       <CompleteProfileManager />
+      <ExpiredCleanupModal forceOpen={isExpiredModalOpen} onClose={() => setIsExpiredModalOpen(false)} />
       
       <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 xl:gap-10">
         
@@ -274,30 +277,45 @@ const Dashboard = () => {
               </h1>
             </motion.div>
             
-            <div className="flex flex-col items-end gap-3 hidden md:flex">
-             
-              {(() => {
-                const upcomingCheckup = checkups
-                  .filter(c => new Date(c.date) >= new Date().setHours(0,0,0,0))
-                  .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+            <div className="flex flex-col items-end gap-3 hidden  md:flex">
+              <div className="flex items-center gap-3">
+                {expiredCount > 0 && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsExpiredModalOpen(true)}
+                    className="flex items-center gap-2 bg-rose-500 text-white px-4 py-3 rounded-[24px]   transition-all border border-rose-400"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">{expiredCount} Expired</span>
+                  </motion.button>
+                )}
                 
-                return (
-                  <div className="flex items-center gap-4 bg-white dark:bg-slate-800 pr-6 pl-3 py-3 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-slate-100 dark:border-slate-700/50">
-                    <div className="w-12 h-12 bg-pink-50 dark:bg-pink-500/20 rounded-[18px] flex items-center justify-center text-pink-500">
-                      <CalendarIcon className="w-6 h-6" />
+                {(() => {
+                  const upcomingCheckup = checkups
+                    .filter(c => new Date(c.date) >= new Date().setHours(0,0,0,0))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+                  
+                  return (
+                    <div className="flex items-center gap-4 bg-white dark:bg-slate-800 pr-6 pl-3 py-3 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-slate-100 dark:border-slate-700/50">
+                      <div className="w-12 h-12 bg-pink-50 dark:bg-pink-500/20 rounded-[18px] flex items-center justify-center text-pink-500">
+                        <CalendarIcon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 font-bold tracking-wider uppercase mb-0.5">Next Checkup</p>
+                        <p className="font-bold text-slate-800 dark:text-white text-base">
+                          {upcomingCheckup 
+                            ? new Date(upcomingCheckup.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                            : 'None Scheduled'
+                          }
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-400 font-bold tracking-wider uppercase mb-0.5">Next Checkup</p>
-                      <p className="font-bold text-slate-800 dark:text-white text-base">
-                        {upcomingCheckup 
-                          ? new Date(upcomingCheckup.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-                          : 'None Scheduled'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
+              </div>
             </div>
           </div>
 

@@ -266,3 +266,66 @@ exports.getStatistics = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+exports.bulkDeleteMedicines = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ success: false, message: 'Invalid IDs provided' });
+    }
+
+    const Reminder = require('../models/Reminder');
+    const MedicineLog = require('../models/MedicineLog');
+    const { deleteCalendarEvent } = require('../utils/googleCalendar');
+
+    // Find medicines to ensure they belong to user
+    const medicines = await Medicine.find({
+      _id: { $in: ids },
+      userId: req.user._id
+    });
+
+    if (medicines.length === 0) {
+      return res.status(404).json({ success: false, message: 'No valid medicines found to delete' });
+    }
+
+    const deletedNames = medicines.map(m => m.name);
+
+    // Clean up reminders and logs for each medicine
+    for (const medicine of medicines) {
+        const reminders = await Reminder.find({ medicine: medicine._id });
+        for (const reminder of reminders) {
+            if (reminder.googleEventId) {
+                try {
+                    await deleteCalendarEvent(req.user._id, reminder.googleEventId);
+                } catch (calErr) {
+                    console.error(`Failed to delete calendar event for bulk delete:`, calErr);
+                }
+            }
+        }
+        await Reminder.deleteMany({ medicine: medicine._id });
+        await MedicineLog.deleteMany({ medicineId: medicine._id });
+    }
+
+    await Medicine.deleteMany({
+      _id: { $in: medicines.map(m => m._id) },
+      userId: req.user._id
+    });
+
+    await createNotification({
+      userId: req.user._id,
+      type: "medicine_deleted",
+      title: "Bulk Medicines deleted",
+      message: `You deleted ${deletedNames.length} medicines: ${deletedNames.join(', ')}.`,
+      severity: "warning",
+      meta: {
+        count: deletedNames.length
+      }
+    });
+
+    res.json({ success: true, message: 'Medicines deleted successfully' });
+  } catch (error) {
+    console.error('Error in bulkDeleteMedicines:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+

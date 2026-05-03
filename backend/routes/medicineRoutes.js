@@ -6,6 +6,7 @@ const {
   getMedicineById,
   updateMedicine,
   deleteMedicine,
+  bulkDeleteMedicines,
   getExpiringSoon,
   getStatistics,
 } = require('../controllers/medicineController');
@@ -54,6 +55,7 @@ router.get("/family", async (req, res) => {
 });
 
 
+router.post('/bulk-delete', bulkDeleteMedicines);
 router.post('/', addMedicine);
 router.get('/', getMedicines);
 router.get('/expiring-soon', getExpiringSoon);
