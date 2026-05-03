@@ -100,25 +100,25 @@ const Signup = () => {
       description="Create a free MediTrack account today. Start managing your health, family, and prescriptions with our AI-powered platform."
     />
     <AuthLayout 
-      title="Create your account" 
+      title="Create account" 
       subtitle={
-        <>
-          Already have an account?{' '}
-          <Link to="/login" className="font-bold text-emerald-400 hover:text-emerald-300 transition-colors inline-flex items-center gap-1">
+        <div className="mt-2">
+          Already a member?{' '}
+          <Link to="/login" className="text-emerald-600 hover:underline decoration-emerald-200 underline-offset-4 transition-all">
             Sign in
            </Link>
-        </>
+        </div>
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         {/* Name Field */}
         <div>
-          <label htmlFor="name" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
+          <label htmlFor="name" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
             Full Name
           </label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <User className="h-5 w-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+              <User className="h-5 w-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
             </div>
             <input
               id="name"
@@ -126,7 +126,7 @@ const Signup = () => {
               type="text"
               autoComplete="name"
               required
-              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-14 pr-5 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0 focus:border-emerald-500 transition-all hover:bg-slate-50"
               placeholder="John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -136,12 +136,12 @@ const Signup = () => {
 
         {/* Email Field */}
         <div>
-          <label htmlFor="email" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
+          <label htmlFor="email" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
             Email address
           </label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <Mail className="h-5 w-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+              <Mail className="h-5 w-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
             </div>
             <input
               id="email"
@@ -149,7 +149,7 @@ const Signup = () => {
               type="email"
               autoComplete="email"
               required
-              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-14 pr-5 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0 focus:border-emerald-500 transition-all hover:bg-slate-50"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -159,28 +159,27 @@ const Signup = () => {
 
         {/* Gender Field */}
         <div>
-          <label htmlFor="gender" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
+          <label htmlFor="gender" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
             Gender
           </label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <User className="h-5 w-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+              <User className="h-5 w-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
             </div>
             <select
               id="gender"
               name="gender"
               required
-              className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10 appearance-none"
+              className="block w-full pl-14 pr-5 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0 focus:border-emerald-500 transition-all hover:bg-slate-50 appearance-none"
               value={gender}
               onChange={(e) => setGender(e.target.value)}
             >
-              <option value="" disabled className="text-slate-500 bg-slate-800">Select Gender</option>
-              <option value="male" className="bg-white dark:bg-slate-800 text-black dark:text-white">Male</option>
-              <option value="female" className="bg-white dark:bg-slate-800 text-black dark:text-white">Female</option>
-              <option value="other" className="bg-white dark:bg-slate-800 text-black dark:text-white">Other</option>
+              <option value="" disabled>Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
             </select>
-            {/* Custom arrow icon since appearance-none hides default */}
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none text-slate-300">
                <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd" />
                </svg>
@@ -190,19 +189,19 @@ const Signup = () => {
 
         {/* Password Field */}
         <div>
-          <label htmlFor="password" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
+          <label htmlFor="password" university className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
             Password
           </label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+              <Lock className="h-5 w-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
             </div>
             <input
               id="password"
               name="password"
               type={showPassword ? "text" : "password"}
               required
-              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-14 pr-12 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0 focus:border-emerald-500 transition-all hover:bg-slate-50"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -210,7 +209,7 @@ const Signup = () => {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-emerald-400 transition-colors z-10"
+              className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-300 hover:text-emerald-500 transition-colors z-10"
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -224,13 +223,13 @@ const Signup = () => {
                     key={level}
                     className={`h-1 flex-1 rounded-full transition-all ${
                       level <= passwordStrength.strength
-                        ? level === 1 ? 'bg-red-500' : level === 2 ? 'bg-orange-500' : level === 3 ? 'bg-yellow-500' : 'bg-emerald-500'
-                        : 'bg-white/10'
+                        ? level === 1 ? 'bg-red-500' : level === 2 ? 'bg-orange-500' : level === 3 ? 'bg-yellow-500' : 'bg-emerald-600'
+                        : 'bg-slate-100'
                     }`}
                   />
                 ))}
               </div>
-              <p className={`text-xs font-semibold ${passwordStrength.color}`}>
+              <p className={`text-[10px] font-bold uppercase tracking-widest ${passwordStrength.color}`}>
                 {passwordStrength.label} password
               </p>
             </div>
@@ -239,19 +238,19 @@ const Signup = () => {
 
         {/* Confirm Password Field */}
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">
+          <label htmlFor="confirmPassword" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
             Confirm Password
           </label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+              <Lock className="h-5 w-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
             </div>
             <input
               id="confirmPassword"
               name="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
               required
-              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-14 pr-12 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0 focus:border-emerald-500 transition-all hover:bg-slate-50"
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -259,7 +258,7 @@ const Signup = () => {
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-emerald-400 transition-colors z-10"
+              className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-300 hover:text-emerald-500 transition-colors z-10"
             >
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -269,13 +268,13 @@ const Signup = () => {
             <div className="mt-2 flex items-center gap-2">
               {passwordsMatch ? (
                 <>
-                  <Check className="h-4 w-4 text-emerald-500" />
-                  <p className="text-xs font-semibold text-emerald-500">Passwords match</p>
+                  <Check className="h-4 w-4 text-emerald-600" />
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Passwords match</p>
                 </>
               ) : (
                 <>
                   <X className="h-4 w-4 text-red-500" />
-                  <p className="text-xs font-semibold text-red-500">Passwords don't match</p>
+                  <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Passwords don't match</p>
                 </>
               )}
             </div>
@@ -286,37 +285,30 @@ const Signup = () => {
         <button
           type="submit"
           disabled={isSubmitting || !passwordsMatch}
-          className="relative w-full group overflow-hidden mt-6 rounded-2xl"
+          className="w-full bg-slate-900 text-white rounded-2xl py-4 font-bold text-base hover:bg-emerald-600 transition-all shadow-xl shadow-slate-200 active:scale-[0.98] disabled:opacity-50 mt-6"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600" />
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="relative flex items-center justify-center py-3.5 px-4 text-white font-bold text-base shadow-lg shadow-emerald-900/20 disabled:opacity-50">
-            {isSubmitting ? (
-              <>
-                <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                Creating account...
-              </>
-            ) : (
-              <>
-                Create Account
-               
-              </>
-            )}
-          </div>
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="animate-spin h-5 w-5" />
+              Creating account...
+            </span>
+          ) : (
+            "Create Account"
+          )}
         </button>
 
-        <div className="relative flex py-2 items-center mt-4">
-          <div className="flex-grow border-t border-white/10"></div>
-          <span className="flex-shrink-0 mx-4 text-slate-500 text-sm font-medium">Or continue with</span>
-          <div className="flex-grow border-t border-white/10"></div>
+        <div className="relative flex py-4 items-center">
+          <div className="flex-grow border-t border-slate-100"></div>
+          <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px] font-bold uppercase tracking-widest">Or continue with</span>
+          <div className="flex-grow border-t border-slate-100"></div>
         </div>
 
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3.5 text-black dark:text-white font-bold hover:bg-white/10 transition-all duration-300 group"
+          className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 rounded-2xl p-4 text-slate-900 font-bold hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm"
         >
-          <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
               fill="#4285F4"
@@ -338,14 +330,14 @@ const Signup = () => {
         </button>
 
         {/* Terms */}
-        <p className="text-xs text-center text-slate-500 mt-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-center text-slate-400 mt-8">
           By signing up, you agree to our{' '}
-          <Link to="/terms" className="text-emerald-400 hover:text-emerald-300 hover:underline font-semibold transition-colors">
-            Terms of Service
+          <Link to="/terms" className="text-slate-900 hover:underline transition-colors">
+            Terms
           </Link>{' '}
-          and{' '}
-          <Link to="/privacy" className="text-emerald-400 hover:text-emerald-300 hover:underline font-semibold transition-colors">
-            Privacy Policy
+          &{' '}
+          <Link to="/privacy" className="text-slate-900 hover:underline transition-colors">
+            Privacy
           </Link>
         </p>
       </form>

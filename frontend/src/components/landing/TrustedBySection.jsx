@@ -3,82 +3,51 @@ import { motion } from "framer-motion";
 import { Building2, Stethoscope, HeartPulse, ShieldPlus, Activity } from "lucide-react";
 
 const logos = [
-  { name: "HealthCorp", icon: <Building2 className="w-6 h-6" /> },
-  { name: "MediCare+", icon: <ShieldPlus className="w-6 h-6" /> },
-  { name: "UniHealth", icon: <Stethoscope className="w-6 h-6" /> },
-  { name: "Vitality", icon: <Activity className="w-6 h-6" /> },
-  { name: "PulseLabs", icon: <HeartPulse className="w-6 h-6" /> },
-  { name: "CareGivers", icon: <Building2 className="w-6 h-6" /> },
+  { name: "HealthCorp", icon: <Building2 className="w-5 h-5" /> },
+  { name: "MediCare+", icon: <ShieldPlus className="w-5 h-5" /> },
+  { name: "UniHealth", icon: <Stethoscope className="w-5 h-5" /> },
+  { name: "Vitality", icon: <Activity className="w-5 h-5" /> },
+  { name: "PulseLabs", icon: <HeartPulse className="w-5 h-5" /> },
+  { name: "CareGivers", icon: <Building2 className="w-5 h-5" /> },
 ];
 
 const TrustedBySection = () => {
   return (
-    <section className="py-10 border-y border-white/5 bg-[#020617]/50 backdrop-blur-sm overflow-hidden relative">
-      <div className="container mx-auto px-8 lg:px-12 text-center mb-8">
-        <p className="text-sm text-slate-400 font-medium tracking-wide uppercase">
-          Trusted by caregivers, students, and families
+    <section className="py-20 bg-white overflow-hidden relative border-y border-slate-50">
+      <div className="container mx-auto px-8 text-center mb-12">
+        <p className="text-xs text-slate-400 font-bold tracking-[0.4em] uppercase">
+          Integrating with leading healthcare providers
         </p>
       </div>
 
-      {/* Marquee Container */}
-      <div className="relative flex overflow-x-hidden group">
-        {/* Gradient Masks for smooth fade out at edges */}
-        <div className="absolute top-0 left-0 w-20 h-full bg-gradient-to-r from-[#020617] to-transparent z-10" />
-        <div className="absolute top-0 right-0 w-20 h-full bg-gradient-to-l from-[#020617] to-transparent z-10" />
-
-        {/* Marquee Track - Duplicated for seamless loop */}
+      <div className="relative flex overflow-x-hidden">
         <motion.div
-          className="flex gap-16 items-center whitespace-nowrap"
+          className="flex gap-20 items-center whitespace-nowrap"
           animate={{ x: [0, -1000] }}
           transition={{
             repeat: Infinity,
-            duration: 30,
+            duration: 40,
             ease: "linear",
           }}
         >
-          {/* First Set */}
-          {logos.map((logo, index) => (
-            <div
-              key={`logo-1-${index}`}
-              className="flex items-center gap-2 text-slate-500 hover:text-emerald-400 transition-colors duration-300 cursor-pointer"
-            >
-              {logo.icon}
-              <span className="text-lg font-bold tracking-tight">{logo.name}</span>
-            </div>
-          ))}
-          
-          {/* Second Set (Duplicate) */}
-          {logos.map((logo, index) => (
-            <div
-              key={`logo-2-${index}`}
-              className="flex items-center gap-2 text-slate-500 hover:text-emerald-400 transition-colors duration-300 cursor-pointer"
-            >
-              {logo.icon}
-              <span className="text-lg font-bold tracking-tight">{logo.name}</span>
-            </div>
-          ))}
-
-          {/* Third Set (Extra buffer) */}
-          {logos.map((logo, index) => (
-            <div
-              key={`logo-3-${index}`}
-              className="flex items-center gap-2 text-slate-500 hover:text-emerald-400 transition-colors duration-300 cursor-pointer"
-            >
-              {logo.icon}
-              <span className="text-lg font-bold tracking-tight">{logo.name}</span>
-            </div>
-          ))}
-           {/* Fourth Set (Extra buffer for wide screens) */}
-           {logos.map((logo, index) => (
-            <div
-              key={`logo-4-${index}`}
-              className="flex items-center gap-2 text-slate-500 hover:text-emerald-400 transition-colors duration-300 cursor-pointer"
-            >
-              {logo.icon}
-              <span className="text-lg font-bold tracking-tight">{logo.name}</span>
-            </div>
+          {[1, 2, 3, 4].map((setIndex) => (
+            <React.Fragment key={setIndex}>
+              {logos.map((logo, index) => (
+                <div
+                  key={`${setIndex}-${index}`}
+                  className="flex items-center gap-3 text-slate-300 hover:text-slate-900 grayscale hover:grayscale-0 transition-all duration-500 cursor-pointer"
+                >
+                  {logo.icon}
+                  <span className="text-xl font-bold tracking-tighter">{logo.name}</span>
+                </div>
+              ))}
+            </React.Fragment>
           ))}
         </motion.div>
+        
+        {/* Gradient Overlays */}
+        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white to-transparent z-10" />
+        <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white to-transparent z-10" />
       </div>
     </section>
   );

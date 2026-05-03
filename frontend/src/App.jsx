@@ -313,7 +313,6 @@ function AppContent() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
-          {isLandingPage && <Footer />}
         </div>
       </div>
     </div>

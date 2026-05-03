@@ -92,15 +92,15 @@ const Login = () => {
     <AuthLayout
       title="Welcome back"
       subtitle={
-        <>
-          Don't have an account?{" "}
+        <div className="mt-2">
+          New to MediTrack?{" "}
           <Link
             to="/signup"
-            className="font-bold text-emerald-400 hover:text-emerald-300 transition-colors inline-flex items-center gap-1"
+            className="text-emerald-600 hover:underline decoration-emerald-200 underline-offset-4 transition-all"
           >
-            Sign up for free
+            Create an account
           </Link>
-        </>
+        </div>
       }
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
@@ -108,13 +108,13 @@ const Login = () => {
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2"
+            className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"
           >
             Email address
           </label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <Mail className="h-5 w-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+              <Mail className="h-5 w-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
             </div>
             <input
               id="email"
@@ -122,7 +122,7 @@ const Login = () => {
               type="email"
               autoComplete="email"
               required
-              className="block w-full pl-12 pr-4 py-3.5 text-black dark:text-white bg-white/5 border border-white/10 rounded-2xl placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-14 pr-5 py-4 text-slate-900 bg-slate-50/50 border border-slate-100 rounded-2xl placeholder-slate-400 focus:outline-none focus:ring-0 focus:border-emerald-500 transition-all hover:bg-slate-50"
               placeholder="jane.doe@mail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -135,21 +135,21 @@ const Login = () => {
           <div className="flex items-center justify-between mb-2">
             <label
               htmlFor="password"
-              className="block text-sm font-bold text-slate-600 dark:text-slate-300"
+              className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest"
             >
               Password
             </label>
             <Link
               to="/forgot-password"
               state={{ email }}
-              className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+              className="text-xs font-bold text-emerald-600 hover:underline decoration-emerald-200 underline-offset-4"
             >
               Forgot password?
             </Link>
           </div>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+              <Lock className="h-5 w-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
             </div>
             <input
               id="password"
@@ -157,7 +157,7 @@ const Login = () => {
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               required
-              className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-black dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-white/10"
+              className="block w-full pl-14 pr-12 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0 focus:border-emerald-500 transition-all hover:bg-slate-50"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -165,7 +165,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-emerald-400 transition-colors z-10"
+              className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-300 hover:text-emerald-500 transition-colors z-10"
             >
               {showPassword ? (
                 <EyeOff className="h-5 w-5" />
@@ -182,13 +182,13 @@ const Login = () => {
             id="remember-me"
             name="remember-me"
             type="checkbox"
-            className="h-4 w-4 text-emerald-500 focus:ring-emerald-500/50 border-white/10 bg-white/5 rounded cursor-pointer accent-emerald-500"
+            className="h-4 w-4 text-emerald-600 focus:ring-0 border-slate-200 bg-slate-50 rounded cursor-pointer accent-emerald-600"
           />
           <label
             htmlFor="remember-me"
-            className="ml-2 block text-sm dark:text-slate-300 text-slate-700 cursor-pointer font-medium hover:text-slate-600 transition-colors"
+            className="ml-2 block text-xs text-slate-500 cursor-pointer font-bold uppercase tracking-widest hover:text-slate-900 transition-colors"
           >
-            Remember me for 30 days
+            Remember for 30 days
           </label>
         </div>
 
@@ -196,36 +196,30 @@ const Login = () => {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="relative w-full group overflow-hidden rounded-2xl"
+          className="w-full bg-slate-900 text-white rounded-2xl py-4 font-bold text-base hover:bg-emerald-600 transition-all shadow-xl shadow-slate-200 active:scale-[0.98]"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600" />
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="relative flex items-center justify-center py-3.5 px-4 text-white font-bold text-base shadow-lg shadow-emerald-900/20">
-            {isSubmitting ? (
-              <>
-                <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                Sign in
-              </>
-            )}
-          </div>
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="animate-spin h-5 w-5" />
+              Signing in...
+            </span>
+          ) : (
+            "Sign in"
+          )}
         </button>
 
-        <div className="relative flex py-2 items-center">
-          <div className="flex-grow border-t border-white/10"></div>
-          <span className="flex-shrink-0 mx-4 text-slate-500 text-sm font-medium">Or continue with</span>
-          <div className="flex-grow border-t border-white/10"></div>
+        <div className="relative flex py-4 items-center">
+          <div className="flex-grow border-t border-slate-100"></div>
+          <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px] font-bold uppercase tracking-widest">Or continue with</span>
+          <div className="flex-grow border-t border-slate-100"></div>
         </div>
 
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3.5 dark:text-white font-bold hover:bg-white/10 transition-all duration-300 group"
+          className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 rounded-2xl p-4 text-slate-900 font-bold hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm"
         >
-          <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
               fill="#4285F4"
@@ -247,13 +241,13 @@ const Login = () => {
         </button>
 
         {/* Divider */}
-        <div className="relative my-6">
+        <div className="relative mt-8">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/5 "></div>
+            <div className="w-full border-t border-slate-100"></div>
           </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="px-4 dark:bg-[#0f172a] text-slate-500 font-light rounded-full border border-white/5">
-              Secure login powered by <span className="font-bold">Medi<span className="text-emerald-500 dark:text-emerald-500">Track</span></span>
+          <div className="relative flex justify-center text-[10px]">
+            <span className="px-4 bg-white/50 text-slate-400 font-bold uppercase tracking-widest rounded-full border border-slate-100">
+              Secure login powered by <span className="text-slate-900">MediTrack</span>
             </span>
           </div>
         </div>
