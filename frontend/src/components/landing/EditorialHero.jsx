@@ -137,7 +137,7 @@ const EditorialHero = () => {
         </div>
 
         {/* Join Now Button */}
-        <div className="mb-8 headline-text">
+        <div className="mb-8 headline-text relative z-30">
           <Link to="/signup" className="inline-flex items-center bg-slate-900/90 backdrop-blur-xl text-white pl-8 pr-3 py-3 rounded-full gap-6 mx-auto group hover:bg-slate-900 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transform active:scale-95">
             <span className="font-extrabold text-emerald-500 text-sm md:text-base tracking-tight">Join Now</span>
             <div className="w-10 h-10 rounded-full bg-emerald-500/80 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-400 transition-all">
