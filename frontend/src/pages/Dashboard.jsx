@@ -317,9 +317,12 @@ const Dashboard = () => {
               <div className="w-full px-2 mt-4">
                 <MiniLineChart data={[60, 65, 62, 70, 75, 80, healthScore]} color="#10b981" />
               </div>
-              <p className="text-slate-800 dark:text-white font-bold text-lg mt-4 text-center">Health Score</p>
+              <div className="mt-4 text-center">
+                <p className="text-slate-800 dark:text-white font-bold text-lg leading-none">Health Score</p>
+                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-2 animate-pulse">Click to see Your future health status</p>
+              </div>
             </motion.div>
-
+              
             {/* Medicines Stats Card */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
@@ -340,11 +343,13 @@ const Dashboard = () => {
               <p className="text-slate-800 dark:text-white font-bold text-lg mt-4 text-center">Active Prescriptions</p>
             </motion.div>
           </div>
+           <DailyHealthReviewWidget />
           
           {/* Women's Health Section (Conditionally rendered inside the component) */}
           <WomenHealthWidget />
 
           <DailyInsightWidget />
+         
 
           {/* Functional Quick Actions Panel to fill empty space */}
           <QuickActionsWidget 
@@ -352,7 +357,7 @@ const Dashboard = () => {
             onOpenSearch={() => setIsSearchOpen(true)}
           />
 
-          <DailyHealthReviewWidget />
+        
          
 
         </div>

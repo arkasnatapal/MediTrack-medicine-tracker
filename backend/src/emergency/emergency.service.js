@@ -144,7 +144,7 @@ exports.triggerEmergency = async (userId, data) => {
   return emergency;
 };
 
-exports.fetchNearbyHospitals = async (lat, lon, radius = 5000) => {
+exports.fetchNearbyHospitals = async (lat, lon, radius = 20000) => {
   const query = `
     [out:json];
     (
@@ -156,7 +156,12 @@ exports.fetchNearbyHospitals = async (lat, lon, radius = 5000) => {
   `;
 
   try {
-    const response = await axios.post('https://overpass-api.de/api/interpreter', query);
+    const response = await axios.post('https://overpass-api.de/api/interpreter', query, {
+      headers: {
+        'User-Agent': 'MediTrack-Emergency-Service/1.0',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
     const hospitals = response.data.elements.map(el => {
         const hLat = el.lat || el.center.lat;
         const hLon = el.lon || el.center.lon;

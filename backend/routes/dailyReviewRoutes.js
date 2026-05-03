@@ -94,14 +94,9 @@ router.get('/status', authMiddleware, async (req, res) => {
     
     // "User was ACTIVE yesterday (IST)" -> Checked via MedicineLog updates or similar?
     // Let's do a quick check on MedicineLogs for yesterday.
-    const activeYesterday = await hasActivityYesterday(userId, yesterdayIST, todayIST);
-    
-    // Strict Activity Check (Production Mode)
-    if (!activeYesterday) {
-         // If they were not active yesterday, we do NOT ask them to review it.
-         // This satisfies the "User was ACTIVE yesterday" rule.
-         return res.json({ showReview: false, reason: "Not active yesterday" });
-    }
+    // RULE 2: Removed strict activity check for "asap" visibility
+    const activeYesterday = true; 
+
     // Force allow for testing if not reviewed
     // if (!activeYesterday) console.log("TEST MODE: Allowing inactive user"); 
 
@@ -117,7 +112,7 @@ router.get('/status', authMiddleware, async (req, res) => {
     // Use range query to be safe against minor offsets, though exact match should work
     const existingReview = await DailyHealthReview.findOne({
         userId,
-        reviewForDate: { $gte: rangeStart, $lt: rangeEnd }
+        reviewForDate: { $gte: todayIST, $lt: new Date(todayIST.getTime() + 86400000) }
     });
     
     if (existingReview) {
@@ -130,8 +125,8 @@ router.get('/status', authMiddleware, async (req, res) => {
     // ELIGIBLE
     res.json({
         showReview: true,
-        reviewForDate: yesterdayIST,
-        formattedDate: yesterdayIST.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
+        reviewForDate: todayIST,
+        formattedDate: todayIST.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
     });
 
   } catch (error) {
@@ -143,7 +138,7 @@ router.get('/status', authMiddleware, async (req, res) => {
 // POST /api/daily-review
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { mood, reviewText, reviewForDate } = req.body;
+    const { mood, reviewText, energyLevel, bodyStatus, reviewForDate } = req.body;
     const userId = req.user.id;
 
     if (!mood) {
@@ -165,8 +160,8 @@ router.post('/', authMiddleware, async (req, res) => {
     const yesterdayIST = new Date(todayIST);
     yesterdayIST.setDate(yesterdayIST.getDate() - 1);
 
-    const rangeStart = new Date(yesterdayIST);
-    const rangeEnd = new Date(yesterdayIST);
+    const rangeStart = new Date(todayIST);
+    const rangeEnd = new Date(todayIST);
     rangeEnd.setDate(rangeEnd.getDate() + 1);
 
     // Check for duplicate again
@@ -176,16 +171,18 @@ router.post('/', authMiddleware, async (req, res) => {
     });
     
     if (existing) {
-        console.log(`[DailyReview POST] Duplicate detected for ${yesterdayIST.toISOString()}`);
-        return res.status(409).json({ message: "Review already submitted for yesterday" });
+        console.log(`[DailyReview POST] Duplicate detected for ${todayIST.toISOString()}`);
+        return res.status(409).json({ message: "Review already submitted for today" });
     }
 
-    console.log(`[DailyReview POST] Saving review for ${yesterdayIST.toISOString()}`);
+    console.log(`[DailyReview POST] Saving review for ${todayIST.toISOString()}`);
 
     const newReview = new DailyHealthReview({
         userId,
-        reviewForDate: yesterdayIST,
+        reviewForDate: todayIST,
         mood,
+        energyLevel,
+        bodyStatus,
         reviewText
     });
 

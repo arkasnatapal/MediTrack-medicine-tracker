@@ -99,8 +99,8 @@ app.use((req, res) => {
 // [REMOVED] Automatic cron startup
 // Cron jobs are now triggered via HTTP endpoints in /api/cron
 
-// Initialize Living Health OS Workers
-require('./src/living-os/workers');
+// [REMOVED] Initialize Living Health OS Workers
+// require('./src/living-os/workers');
 
 // Start server
 const PORT = process.env.PORT || 5000;

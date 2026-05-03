@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
 
-const dailyHealthReviewSchema = new mongoose.Schema({
+const dailyStatusSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
     index: true
   },
-  reviewForDate: {
+  date: {
     type: Date,
     required: true,
-    index: true // Helps in querying by date
+    index: true
   },
   mood: {
     type: String,
@@ -20,24 +20,34 @@ const dailyHealthReviewSchema = new mongoose.Schema({
   energyLevel: {
     type: Number,
     min: 1,
-    max: 10
+    max: 10,
+    required: true
   },
   bodyStatus: [{
     type: String,
     trim: true
   }],
-  reviewText: {
+  notes: {
     type: String,
     trim: true,
-    maxlength: 500 // Limit to avoid massive text
+    maxlength: 500
   },
   createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
     type: Date,
     default: Date.now
   }
 });
 
-// Compound index to ensure one review per user per date
-dailyHealthReviewSchema.index({ userId: 1, reviewForDate: 1 }, { unique: true });
+// Ensure one entry per user per day
+dailyStatusSchema.index({ userId: 1, date: 1 }, { unique: true });
 
-module.exports = mongoose.model('DailyHealthReview', dailyHealthReviewSchema);
+dailyStatusSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+module.exports = mongoose.model('DailyStatus', dailyStatusSchema);
