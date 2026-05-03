@@ -320,8 +320,10 @@ function AppContent() {
 }
 
 function App() {
+  const { user } = useAuth();
+  
   return (
-    <ThemeProvider>
+    <ThemeProvider isAuthenticated={!!user}>
       <SidebarProvider>
         <Router>
           <AppContent />

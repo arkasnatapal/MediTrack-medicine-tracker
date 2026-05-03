@@ -68,9 +68,9 @@ const TestimonialEditorial = () => {
   };
 
   return (
-    <section className="py-40 bg-white relative overflow-hidden">
+    <section className="py-24 lg:py-40 bg-white relative overflow-hidden">
       <div className="container mx-auto px-6">
-        <div className="max-w-6xl mx-auto h-[600px] lg:h-[700px] relative">
+        <div className="max-w-6xl mx-auto h-[850px] lg:h-[700px] relative">
           <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div 
               key={page}
@@ -83,10 +83,10 @@ const TestimonialEditorial = () => {
                 x: { type: "spring", stiffness: 300, damping: 30 },
                 opacity: { duration: 0.4 }
               }}
-              className="absolute inset-0 flex flex-col lg:flex-row items-center gap-20"
+              className="absolute inset-0 flex flex-col lg:flex-row items-center gap-10 lg:gap-20"
             >
               {/* Large Image */}
-              <div className="w-full lg:w-1/2 aspect-[4/5] rounded-[4rem] overflow-hidden shadow-2xl relative group flex-shrink-0">
+              <div className="w-full lg:w-1/2 aspect-square lg:aspect-[4/5] rounded-[2.5rem] lg:rounded-[4rem] overflow-hidden shadow-2xl relative group flex-shrink-0">
                 <img 
                   src={testimonials[currentIndex].image} 
                   alt={testimonials[currentIndex].author} 
@@ -97,8 +97,8 @@ const TestimonialEditorial = () => {
 
               {/* Testimonial Content */}
               <div className="w-full lg:w-1/2 flex flex-col justify-center">
-                <Quote className="text-emerald-500 mb-8" size={60} strokeWidth={1} />
-                <h2 className="text-3xl md:text-5xl font-bold text-slate-900 leading-tight mb-12">
+                <Quote className="text-emerald-500 mb-6 lg:mb-8" size={60} strokeWidth={1} />
+                <h2 className="text-3xl md:text-5xl font-bold text-slate-900 leading-tight mb-6 lg:mb-12">
                   {testimonials[currentIndex].quote}
                 </h2>
                 
@@ -111,7 +111,7 @@ const TestimonialEditorial = () => {
                 </div>
 
                 {/* Navigation Buttons - Absolute positioning to avoid movement */}
-                <div className="flex gap-4 mt-16">
+                <div className="flex gap-4 mt-8 lg:mt-16">
                   <button 
                     onClick={() => paginate(-1)}
                     className="w-12 h-12 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all group"

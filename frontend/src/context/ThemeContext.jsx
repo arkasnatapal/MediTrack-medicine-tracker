@@ -10,7 +10,7 @@ export const useTheme = () => {
   return context;
 };
 
-export const ThemeProvider = ({ children }) => {
+export const ThemeProvider = ({ children, isAuthenticated }) => {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     // If no theme is saved, OR if it was 'system' (legacy default), force 'dark' as the new default
@@ -19,6 +19,9 @@ export const ThemeProvider = ({ children }) => {
     }
     return savedTheme;
   });
+
+  // Force light mode for unauthenticated users (Landing, Login, Signup)
+  const activeTheme = isAuthenticated ? theme : 'light';
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -32,7 +35,7 @@ export const ThemeProvider = ({ children }) => {
       root.classList.add(themeToApply);
     };
 
-    if (theme === 'system') {
+    if (activeTheme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       applyTheme(systemTheme);
       
@@ -44,15 +47,19 @@ export const ThemeProvider = ({ children }) => {
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     } else {
-      applyTheme(theme);
+      applyTheme(activeTheme);
     }
 
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    // Still save the actual preference to localStorage if authenticated
+    if (isAuthenticated) {
+      localStorage.setItem('theme', theme);
+    }
+  }, [theme, activeTheme, isAuthenticated]);
 
   const value = {
-    theme,
+    theme: activeTheme,
     setTheme,
+    actualPreference: theme
   };
 
   return (
