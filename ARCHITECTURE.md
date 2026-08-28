@@ -10,7 +10,7 @@
                                       v
                         +----------------------------+
                         |    care_backend (5001)     |
-                        |   Express + Socket.io      |
+                        |    Express + LiveKit SDK   |
                         +----------------------------+
                                       |
                  +--------------------+--------------------+
@@ -30,8 +30,9 @@
 
 ## Core System Design
 1. **Dual Root Folder Architecture**:
-   - `/care_backend`: Express API, Socket.io WebSocket server, MongoDB Mongoose models.
-   - `/care_frontend`: Vite React Single Page Application.
+   - `/care_backend`: Express API, LiveKit token server, MongoDB Mongoose models.
+   - `/care_frontend`: Vite React Single Page Application with LiveKit client.
+
 2. **Shared Database & Patient Record Compatibility**:
    - Both patient and provider backends share the same MongoDB database (`MONGODB_URI`), ensuring unbroken continuity of care.
 3. **Many-to-Many Doctor-Facility Associations**:

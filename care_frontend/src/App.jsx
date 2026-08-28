@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { SocketProvider } from './context/SocketContext';
 
 import LandingPage from './pages/LandingPage';
 import FacilityAuthPage from './pages/auth/FacilityAuthPage';
@@ -23,46 +22,45 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 export default function App() {
   return (
     <AuthProvider>
-      <SocketProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/facility/auth" element={<FacilityAuthPage />} />
-            <Route path="/doctor/auth" element={<DoctorAuthPage />} />
-            <Route path="/admin/login" element={<AdminAuthPage />} />
-            <Route path="/patient-simulator" element={<PatientCareIntegrationSimulator />} />
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/facility/auth" element={<FacilityAuthPage />} />
+          <Route path="/doctor/auth" element={<DoctorAuthPage />} />
+          <Route path="/admin/login" element={<AdminAuthPage />} />
+          <Route path="/patient-simulator" element={<PatientCareIntegrationSimulator />} />
 
-            <Route
-              path="/facility/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['FACILITY_ADMIN', 'FACILITY_STAFF', 'SYSTEM_ADMIN']}>
-                  <FacilityDashboard />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/facility/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['FACILITY_ADMIN', 'FACILITY_STAFF', 'SYSTEM_ADMIN']}>
+                <FacilityDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/doctor/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['DOCTOR', 'SYSTEM_ADMIN']}>
-                  <DoctorDashboard />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/doctor/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['DOCTOR', 'SYSTEM_ADMIN']}>
+                <DoctorDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/admin/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['SYSTEM_ADMIN']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['SYSTEM_ADMIN']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </SocketProvider>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     </AuthProvider>
+
   );
 }

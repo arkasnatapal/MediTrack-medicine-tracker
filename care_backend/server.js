@@ -1,14 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
 
 const connectDB = require('./config/db');
-const setupSocketIO = require('./socketHandler');
+
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -26,22 +25,13 @@ const careJourneyRoutes = require('./routes/careJourneyRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const integrationRoutes = require('./routes/integrationRoutes');
+const livekitRoutes = require('./routes/livekitRoutes');
 
 // Connect DB
 connectDB();
 
 const app = express();
 const server = http.createServer(app);
-
-// Socket.io initialization
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true,
-  },
-});
-setupSocketIO(io);
 
 // Middleware
 app.use(cors({
@@ -58,12 +48,6 @@ if (!fs.existsSync(uploadsDir)) {
   try { fs.mkdirSync(uploadsDir); } catch (e) {}
 }
 app.use('/uploads', express.static(uploadsDir));
-
-// Attach Socket.io instance to request
-app.use((req, res, next) => {
-  req.io = io;
-  next();
-});
 
 // API Routes
 app.get('/api/health', (req, res) => {
@@ -85,6 +69,8 @@ app.use('/api/care-journey', careJourneyRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/integration', integrationRoutes);
+app.use('/api/livekit', livekitRoutes);
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {

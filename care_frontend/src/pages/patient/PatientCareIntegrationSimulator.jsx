@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useSocket } from '../../context/SocketContext';
 import api from '../../services/api';
 import { HeartPulse, ArrowLeft, Clock, MessageSquare, Mic, Play, RefreshCw, Send, CheckCircle2, AlertCircle, Layers } from 'lucide-react';
 
 export default function PatientCareIntegrationSimulator() {
-  const socket = useSocket();
-
   const [activeSubTab, setActiveSubTab] = useState('queue');
   const [patientPhone, setPatientPhone] = useState('9876543210');
   const [patientData, setPatientData] = useState(null);
@@ -52,32 +49,6 @@ export default function PatientCareIntegrationSimulator() {
     loadQueueStatus();
   }, []);
 
-  // Listen for Teleconsultation Socket events (Call Termination & Post-Session Messages)
-  useEffect(() => {
-    if (!socket || !activeSessionId) return;
-
-    socket.emit('join_teleconsultation', {
-      sessionId: activeSessionId,
-      userId: patientData?._id || 'patient-test-id',
-      userRole: 'PATIENT',
-    });
-
-    socket.on('call_terminated_by_doctor', (data) => {
-      alert(data.message);
-      setSessionDetails(prev => ({ ...prev, status: 'TERMINATED', postSessionMessagesLeft: 10 }));
-      setPostMessagesLeft(10);
-    });
-
-    socket.on('new_post_session_message', (data) => {
-      setPostMessages(prev => [...prev, data.message]);
-      setPostMessagesLeft(data.postSessionMessagesLeft);
-    });
-
-    return () => {
-      socket.off('call_terminated_by_doctor');
-      socket.off('new_post_session_message');
-    };
-  }, [socket, activeSessionId]);
 
   // Load Teleconsultation Session
   const loadTeleSession = async (sessionId) => {

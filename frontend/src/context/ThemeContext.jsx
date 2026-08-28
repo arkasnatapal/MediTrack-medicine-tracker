@@ -13,15 +13,15 @@ export const useTheme = () => {
 export const ThemeProvider = ({ children, isAuthenticated }) => {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
-    // If no theme is saved, OR if it was 'system' (legacy default), force 'dark' as the new default
-    if (!savedTheme || savedTheme === 'system') {
+    // Default to dark theme across application
+    if (!savedTheme || savedTheme === 'system' || savedTheme === 'light') {
       return 'dark';
     }
     return savedTheme;
   });
 
-  // Force light mode for unauthenticated users (Landing, Login, Signup)
-  const activeTheme = isAuthenticated ? theme : 'light';
+  // Always apply selected theme (defaulting to dark)
+  const activeTheme = theme;
 
   useEffect(() => {
     const root = window.document.documentElement;

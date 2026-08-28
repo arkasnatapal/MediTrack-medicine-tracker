@@ -216,8 +216,31 @@ router.put('/:id/terminate', async (req, res) => {
   }
 });
 
+// DOCTOR CLEARS & STOPS CONSULTATION -> Marks CLOSED and sets 3-Day MongoDB TTL auto-purge
+router.put('/:id/close', async (req, res) => {
+  try {
+    const session = await TeleconsultationSession.findById(req.params.id);
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+
+    const closedDate = new Date();
+    const purgeDate = new Date(closedDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days in ms
+
+    session.status = 'CLOSED';
+    session.closedAt = closedDate;
+    session.expiresAt = purgeDate;
+    await session.save();
+
+    res.json({
+      message: 'Consultation officially closed and cleared. Auto-archive scheduled in 3 days.',
+      session,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Post-Session Follow-Up Message (Patient sends text or voice clip after session is terminated)
-router.post('/:id/post-message', async (req, res) => {
+router.post(['/:id/post-message', '/:id/post-session-message'], async (req, res) => {
   try {
     const { sender, text, voiceClipUrl } = req.body;
 
@@ -250,6 +273,7 @@ router.post('/:id/post-message', async (req, res) => {
     res.status(201).json({
       message: 'Post-session message sent to doctor.',
       session,
+      newMessage,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -268,15 +292,17 @@ router.post('/:id/in-session-chat', async (req, res) => {
       return res.status(400).json({ message: 'In-session chat is active only during an ACTIVE call session.' });
     }
 
-    session.inSessionChat.push({
+    const chatItem = {
       sender: sender || 'User',
       text,
       timestamp: new Date(),
-    });
+    };
 
+    session.inSessionChat.push(chatItem);
     await session.save();
 
     res.json(session.inSessionChat);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

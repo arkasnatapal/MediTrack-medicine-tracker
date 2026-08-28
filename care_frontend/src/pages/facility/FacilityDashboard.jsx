@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useSocket } from '../../context/SocketContext';
 import api from '../../services/api';
+import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 import {
   Building2, Calendar, Users, ArrowUpRight, ArrowDownLeft, Stethoscope,
   Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus
 } from 'lucide-react';
+
 
 export default function FacilityDashboard() {
   const { user, logout } = useAuth();
@@ -25,11 +26,48 @@ export default function FacilityDashboard() {
   const [associations, setAssociations] = useState([]);
   const [teleSessions, setTeleSessions] = useState([]);
 
+
+  // LiveKit Call Modal States
+  const [showLiveKitModal, setShowLiveKitModal] = useState(false);
+  const [liveKitRoomName, setLiveKitRoomName] = useState('');
+  const [liveKitCallType, setLiveKitCallType] = useState('VIDEO');
+
+
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const [allocationDate, setAllocationDate] = useState(todayDateStr);
+  const [allocationTime, setAllocationTime] = useState('16:00');
+
+  const formatDateTimeString = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return '';
+    try {
+      const [year, month, day] = dateStr.split('-');
+      const [hours, minutes] = timeStr.split(':');
+      const dateObj = new Date(year, month - 1, day, hours, minutes);
+      const dateFormatted = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const timeFormatted = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return `${dateFormatted} at ${timeFormatted}`;
+    } catch (e) {
+      return `${dateStr} ${timeStr}`;
+    }
+  };
+
+  const handleDateChange = (newDate) => {
+    setAllocationDate(newDate);
+    const formatted = formatDateTimeString(newDate, allocationTime);
+    setAllocationForm(prev => ({ ...prev, scheduledTime: formatted }));
+  };
+
+  const handleTimeChange = (newTime) => {
+    setAllocationTime(newTime);
+    const formatted = formatDateTimeString(allocationDate, newTime);
+    setAllocationForm(prev => ({ ...prev, scheduledTime: formatted }));
+  };
+
   // Teleconsultation Doctor Allocation State
   const [allocationForm, setAllocationForm] = useState({
     sessionId: '',
     doctorId: '',
-    scheduledTime: 'Today at 4:00 PM',
+    scheduledTime: `${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} at 04:00 PM`,
   });
 
   // Doctor Association Form State (Select from Registered Doctors Only)
@@ -433,13 +471,28 @@ export default function FacilityDashboard() {
                               {a.status}
                             </span>
                           </td>
-                          <td className="py-3 px-3">
+                          <td className="py-3 px-3 flex items-center gap-2">
                             {a.status === 'ACTIVE' && (
-                              <button onClick={() => handleDisassociateDoctor(a._id)} className="px-2.5 py-1 rounded bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 font-bold text-[10px]">
-                                DISASSOCIATE
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => {
+                                    const docId = a.doctorId?._id || a.doctorId;
+                                    const facId = user?.facilityId || 'FACILITY';
+                                    setLiveKitRoomName(`hospital_${facId}_doctor_${docId}`);
+                                    setLiveKitCallType('VIDEO');
+                                    setShowLiveKitModal(true);
+                                  }}
+                                  className="px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 font-bold text-[10px] flex items-center gap-1"
+                                >
+                                  <Video className="w-3 h-3" /> CALL DOCTOR
+                                </button>
+                                <button onClick={() => handleDisassociateDoctor(a._id)} className="px-2.5 py-1 rounded bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 font-bold text-[10px]">
+                                  DISASSOCIATE
+                                </button>
+                              </>
                             )}
                           </td>
+
                         </tr>
                       ))
                     )}
@@ -495,15 +548,38 @@ export default function FacilityDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 mb-1">Scheduled Consultation Time *</label>
-                  <input
-                    type="text"
-                    value={allocationForm.scheduledTime}
-                    onChange={e => setAllocationForm({ ...allocationForm, scheduledTime: e.target.value })}
-                    required
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white font-semibold"
-                    placeholder="Today at 4:30 PM"
-                  />
+                  <label className="block text-slate-400 mb-1 font-semibold flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-teal-400" /> Scheduled Date & Time *</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Calendar Date Picker */}
+                    <div className="relative flex items-center">
+                      <Calendar className="w-4 h-4 text-teal-400 absolute left-3 pointer-events-none z-10" />
+                      <input
+                        type="date"
+                        value={allocationDate}
+                        onChange={e => handleDateChange(e.target.value)}
+                        required
+                        className="w-full pl-9 pr-2 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white font-semibold text-xs focus:outline-none focus:border-teal-500 [color-scheme:dark]"
+                      />
+                    </div>
+
+                    {/* Clock Time Picker */}
+                    <div className="relative flex items-center">
+                      <Clock className="w-4 h-4 text-amber-400 absolute left-3 pointer-events-none z-10" />
+                      <input
+                        type="time"
+                        value={allocationTime}
+                        onChange={e => handleTimeChange(e.target.value)}
+                        required
+                        className="w-full pl-9 pr-2 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white font-semibold text-xs focus:outline-none focus:border-teal-500 [color-scheme:dark]"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-teal-400 font-extrabold pt-1 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-emerald-400" />
+                    <span>Formatted: {allocationForm.scheduledTime || 'Select Date & Time'}</span>
+                  </div>
                 </div>
 
                 <div className="md:col-span-3 pt-2">
@@ -559,7 +635,7 @@ export default function FacilityDashboard() {
                                 setAllocationForm({
                                   sessionId: s._id,
                                   doctorId: s.assignedDoctorId || (registeredDoctors[0]?._id || ''),
-                                  scheduledTime: s.scheduledTime || 'Today at 4:30 PM',
+                                  scheduledTime: s.scheduledTime || `${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}, 04:30 PM`,
                                 });
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                               }}
@@ -741,7 +817,20 @@ export default function FacilityDashboard() {
             <p className="text-xs text-slate-400">Manage all facility records for {activeTab}.</p>
           </div>
         )}
+
+        {/* LiveKit Call Modal */}
+        {showLiveKitModal && liveKitRoomName && (
+          <LiveKitCallModal
+            roomName={liveKitRoomName}
+            participantName={user?.name || 'Hospital Representative'}
+            callType={liveKitCallType}
+            onClose={() => setShowLiveKitModal(false)}
+            onCallEnded={() => setShowLiveKitModal(false)}
+          />
+        )}
+
       </main>
     </div>
   );
 }
+

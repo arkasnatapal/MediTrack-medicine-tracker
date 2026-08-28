@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Video, Mic, MicOff, PhoneOff, Send, CheckCircle2, Clock, AlertCircle, Building2, User, Mail, Phone, MessageSquare, Volume2, ShieldCheck, RefreshCw, Paperclip, Trash2 } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Send, CheckCircle2, Clock, AlertCircle, Building2, User, Mail, Phone, MessageSquare, Volume2, ShieldCheck, RefreshCw, Paperclip, Trash2, Radio, Calendar, Maximize2, Minimize2 } from 'lucide-react';
 import axios from 'axios';
-import { io } from 'socket.io-client';
+import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 
 const CARE_BACKEND_URL = 'http://localhost:5001';
 
 export default function TeleconsultationPage() {
+
   const [facilities, setFacilities] = useState([]);
   const [selectedFacilityId, setSelectedFacilityId] = useState('');
   const [specialty, setSpecialty] = useState('Cardiology');
@@ -24,18 +25,29 @@ export default function TeleconsultationPage() {
   const [mediaMode, setMediaMode] = useState('VIDEO'); // 'VIDEO' or 'VOICE_ONLY'
   const [micOn, setMicOn] = useState(true);
   const [videoOn, setVideoOn] = useState(true);
+  const [remoteStreamActive, setRemoteStreamActive] = useState(false);
+  const [modeSwitchToast, setModeSwitchToast] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [inSessionChat, setInSessionChat] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [callDuration, setCallDuration] = useState(0);
 
   // Post-Session Follow-Up 10-Message Quota States
   const [postMessageText, setPostMessageText] = useState('');
   const [postMessages, setPostMessages] = useState([]);
   const [postMessagesLeft, setPostMessagesLeft] = useState(10);
+  const [isRecordingVoiceNote, setIsRecordingVoiceNote] = useState(false);
 
-  // Socket & WebRTC Refs
-  const socketRef = useRef(null);
-  const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
+  // LiveKit Call Modal States
+  const [showLiveKitModal, setShowLiveKitModal] = useState(false);
+  const [liveKitRoomName, setLiveKitRoomName] = useState('');
+  const [liveKitCallType, setLiveKitCallType] = useState('VIDEO');
+
+  const timerRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const videoContainerRef = useRef(null);
+
 
   // Fetch Facilities & Existing Sessions
   const loadInitialData = async () => {
@@ -53,6 +65,7 @@ export default function TeleconsultationPage() {
         setActiveSession(sessRes.data[0]);
         setPostMessages(sessRes.data[0].postSessionMessages || []);
         setPostMessagesLeft(sessRes.data[0].postSessionMessagesLeft ?? 10);
+        setInSessionChat(sessRes.data[0].inSessionChat || []);
       }
     } catch (err) {
       console.error('Failed to load initial teleconsultation data:', err);
@@ -80,43 +93,59 @@ export default function TeleconsultationPage() {
     loadInitialData();
   }, []);
 
-  // Connect Socket.io when session is active or confirmed
+  // Timer for call duration
   useEffect(() => {
-    if (activeSession && (activeSession.status === 'CONFIRMED' || activeSession.status === 'ACTIVE' || activeSession.status === 'TERMINATED')) {
-      const socket = io(CARE_BACKEND_URL);
-      socketRef.current = socket;
-
-      socket.emit('join_teleconsultation', {
-        meetingIdentifier: activeSession.meetingIdentifier,
-        userRole: 'PATIENT',
-        name: activeSession.patientName,
-      });
-
-      socket.on('call_terminated_by_doctor', (data) => {
-        setInCall(false);
-        setActiveSession(prev => ({ ...prev, status: 'TERMINATED', postSessionMessagesLeft: 10 }));
-        setPostMessagesLeft(10);
-        alert(data.message);
-      });
-
-      socket.on('new_in_session_chat', (chatItem) => {
-        setInSessionChat(prev => [...prev, chatItem]);
-      });
-
-      socket.on('new_post_session_message', (data) => {
-        setPostMessages(prev => [...prev, data.message]);
-        setPostMessagesLeft(data.postSessionMessagesLeft);
-      });
-
-      socket.on('media_mode_changed', ({ mode }) => {
-        setMediaMode(mode);
-      });
-
-      return () => {
-        socket.disconnect();
-      };
+    if (inCall) {
+      timerRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setCallDuration(0);
     }
-  }, [activeSession?.meetingIdentifier, activeSession?.status]);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [inCall]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Stop Call State
+  const stopCallState = () => {
+    setInCall(false);
+    setShowLiveKitModal(false);
+  };
+
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      if (videoContainerRef.current?.requestFullscreen) {
+        videoContainerRef.current.requestFullscreen().catch(err => {
+          console.warn('Fullscreen error:', err);
+          setIsFullscreen(prev => !prev);
+        });
+      } else {
+        setIsFullscreen(prev => !prev);
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => console.warn('Exit fullscreen error:', err));
+      }
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFSChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFSChange);
+    return () => document.removeEventListener('fullscreenchange', handleFSChange);
+  }, []);
 
   // Handle Patient Consultation Request
   const handleRequestConsultation = async (e) => {
@@ -143,28 +172,52 @@ export default function TeleconsultationPage() {
     }
   };
 
-  // Join Live Consultation Session
+  // Join Live Consultation Session via LiveKit
   const handleJoinSession = async () => {
+    if (!activeSession) return;
     try {
+      setInCall(true);
+
       const res = await axios.put(`${CARE_BACKEND_URL}/api/teleconsultations/${activeSession._id}/start`);
       setActiveSession(res.data);
-      setInCall(true);
+
+      setLiveKitRoomName(`telecon_${activeSession.meetingIdentifier}`);
+      setLiveKitCallType(mediaMode || 'VIDEO');
+      setShowLiveKitModal(true);
     } catch (err) {
-      alert('Failed to start session');
+      console.error('Failed to start session:', err);
+      alert('Failed to join live session: ' + (err.response?.data?.message || err.message));
     }
   };
 
+  // End Call locally
+  const handleLeaveCall = () => {
+    stopCallState();
+  };
+
+
   // Send In-Session Chat Message
-  const handleSendInSessionChat = (e) => {
+  const handleSendInSessionChat = async (e) => {
     e.preventDefault();
-    if (!chatInput.trim() || !socketRef.current) return;
+    if (!chatInput.trim() || !socketRef.current || !activeSession) return;
+    const textToSend = chatInput;
+    setChatInput('');
+
     socketRef.current.emit('send_in_session_chat', {
       roomId: `telecon:${activeSession.meetingIdentifier}`,
       meetingIdentifier: activeSession.meetingIdentifier,
       sender: activeSession.patientName,
-      text: chatInput,
+      text: textToSend,
     });
-    setChatInput('');
+
+    try {
+      await axios.post(`${CARE_BACKEND_URL}/api/teleconsultations/${activeSession._id}/in-session-chat`, {
+        sender: activeSession.patientName,
+        text: textToSend,
+      });
+    } catch (err) {
+      console.error('Failed to save in-session chat to backend:', err);
+    }
   };
 
   // Send Post-Session Follow-Up Message (Max 10)
@@ -185,6 +238,57 @@ export default function TeleconsultationPage() {
       alert('Follow-up message delivered directly to doctor portal!');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to send follow-up message');
+    }
+  };
+
+  // Voice Note Recorder for Post-Session Follow-Up
+  const handleToggleVoiceRecorder = async () => {
+    if (isRecordingVoiceNote) {
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        setIsRecordingVoiceNote(false);
+      }
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunksRef.current = [];
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            const base64Audio = reader.result;
+            if (postMessagesLeft <= 0) {
+              return alert('Post-session message quota (10/10) reached.');
+            }
+            try {
+              const res = await axios.post(`${CARE_BACKEND_URL}/api/teleconsultations/${activeSession._id}/post-message`, {
+                sender: 'PATIENT',
+                text: '🎙️ [Voice Note Clip]',
+                voiceClipUrl: base64Audio,
+              });
+              setPostMessages(res.data.session.postSessionMessages || []);
+              setPostMessagesLeft(res.data.session.postSessionMessagesLeft);
+              alert('Voice clip message delivered to doctor portal!');
+            } catch (err) {
+              alert('Failed to send voice clip');
+            }
+          };
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        mediaRecorder.start();
+        setIsRecordingVoiceNote(true);
+      } catch (err) {
+        alert('Could not start audio recorder: ' + err.message);
+      }
     }
   };
 
@@ -293,6 +397,7 @@ export default function TeleconsultationPage() {
                     setActiveSession(s);
                     setPostMessages(s.postSessionMessages || []);
                     setPostMessagesLeft(s.postSessionMessagesLeft ?? 10);
+                    setInSessionChat(s.inSessionChat || []);
                   }}
                   className={`p-3 rounded-xl border cursor-pointer transition ${activeSession?._id === s._id ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 font-bold' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'}`}
                 >
@@ -312,7 +417,12 @@ export default function TeleconsultationPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-1">ID: {s.meetingIdentifier}</div>
+                  <div className="text-[10px] text-slate-500 mt-1 flex justify-between items-center">
+                    <span>ID: {s.meetingIdentifier}</span>
+                    <span className="text-indigo-400 font-bold flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> {s.scheduledTime || 'Pending Time'}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -340,6 +450,22 @@ export default function TeleconsultationPage() {
                   <span className={`px-3 py-1 rounded-full font-black text-xs ${activeSession.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse' : activeSession.status === 'CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : activeSession.status === 'ACTIVE' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}`}>
                     STATUS: {activeSession.status}
                   </span>
+                </div>
+
+                {/* Prominently Highlighted Scheduled Date & Time Banner */}
+                <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-800/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-indigo-300 font-bold">
+                    <Calendar className="w-4 h-4 text-cyan-400" />
+                    <span>Scheduled Date & Time:</span>
+                    <span className="text-cyan-300 font-extrabold text-xs sm:text-sm bg-cyan-950/80 px-3 py-1 rounded-lg border border-cyan-500/30 shadow-md">
+                      {activeSession.scheduledTime || 'Awaiting Hospital Scheduling'}
+                    </span>
+                  </div>
+                  {activeSession.doctorName && (
+                    <div className="text-slate-300 font-semibold text-[11px]">
+                      Doctor: <strong className="text-white">{activeSession.doctorName.startsWith('Dr.') ? activeSession.doctorName : `Dr. ${activeSession.doctorName}`}</strong>
+                    </div>
+                  )}
                 </div>
 
                 {/* State 1: PENDING */}
@@ -385,68 +511,60 @@ export default function TeleconsultationPage() {
                 {/* State 3: ACTIVE LIVE CALL ROOM */}
                 {activeSession.status === 'ACTIVE' && (
                   <div className="space-y-4">
-                    {/* Media Screen Placeholder / Stream */}
-                    <div className="relative aspect-video rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden flex items-center justify-center">
-                      {mediaMode === 'VIDEO' ? (
-                        <div className="text-center space-y-2">
-                          <div className="w-16 h-16 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto animate-pulse">
-                            <Video className="w-8 h-8" />
-                          </div>
-                          <div className="text-sm font-bold text-white">Live WebRTC Video Stream Active</div>
-                          <div className="text-slate-400 text-[10px]">Connected with Dr. {activeSession.doctorName || 'Specialist'}</div>
-                        </div>
-                      ) : (
-                        <div className="text-center space-y-2">
-                          <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto animate-pulse">
-                            <Mic className="w-8 h-8" />
-                          </div>
-                          <div className="text-sm font-bold text-emerald-400">Voice Only Mode Active (Bandwidth Saver)</div>
-                          <div className="text-slate-400 text-[10px]">Connected via low-bandwidth audio socket channel</div>
-                        </div>
-                      )}
-
-                      {/* Controls Bar */}
-                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700">
+                    {/* LiveKit Teleconsultation Call Control Hub */}
+                    <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-4 shadow-2xl">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-600 to-indigo-600 border border-emerald-400/30 text-white flex items-center justify-center mx-auto shadow-xl shadow-emerald-950 animate-pulse">
+                        <Video className="w-8 h-8" />
+                      </div>
+                      <h4 className="text-lg font-bold text-white">LiveKit Consultation Active</h4>
+                      <p className="text-slate-400 text-xs max-w-md mx-auto">
+                        Doctor: <strong className="text-emerald-400">Dr. {activeSession.doctorName || 'Specialist Officer'}</strong> • Specialty: <strong className="text-indigo-300">{activeSession.specialty}</strong> • Session ID: <strong className="font-mono text-slate-200">{activeSession.meetingIdentifier}</strong>
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-3 pt-3">
                         <button
-                          onClick={() => {
-                            const newMode = mediaMode === 'VIDEO' ? 'VOICE_ONLY' : 'VIDEO';
-                            setMediaMode(newMode);
-                            if (socketRef.current) {
-                              socketRef.current.emit('switch_media_mode', { roomId: `telecon:${activeSession.meetingIdentifier}`, mode: newMode });
-                            }
-                          }}
-                          className={`px-3 py-1 rounded-full font-bold text-[10px] flex items-center gap-1 ${mediaMode === 'VIDEO' ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'}`}
+                          onClick={handleJoinSession}
+                          className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition active:scale-95"
                         >
-                          {mediaMode === 'VIDEO' ? <Video className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-                          <span>{mediaMode === 'VIDEO' ? 'Switch to Voice Only' : 'Switch to Video'}</span>
+                          <Video className="w-4 h-4" /> Open LiveKit Call Window
+                        </button>
+                        <button
+                          onClick={handleLeaveCall}
+                          className="px-5 py-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 font-bold text-xs flex items-center gap-2 border border-rose-500/30 transition"
+                        >
+                          <PhoneOff className="w-4 h-4 text-rose-400" /> Leave Call View
                         </button>
                       </div>
                     </div>
 
+
                     {/* In-Session Live Text Chat */}
                     <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
                       <div className="font-bold text-slate-300 text-xs flex items-center justify-between">
-                        <span className="flex items-center gap-1.5"><MessageSquare className="w-4 h-4 text-indigo-400" /> In-Session Live Chat</span>
-                        <span className="text-[10px] text-slate-500">Active fallback for low connectivity</span>
+                        <span className="flex items-center gap-1.5"><MessageSquare className="w-4 h-4 text-indigo-400" /> In-Session Realtime Text Chat</span>
+                        <span className="text-[10px] text-emerald-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" /> Live Socket Channel</span>
                       </div>
-                      <div className="h-32 overflow-y-auto space-y-2 p-2 bg-slate-900 rounded-xl text-[11px]">
-                        {inSessionChat.map((c, idx) => (
-                          <div key={idx} className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                            <span className="font-bold text-indigo-400">{c.sender}: </span>
-                            <span className="text-slate-200">{c.text}</span>
-                          </div>
-                        ))}
+                      <div className="h-36 overflow-y-auto space-y-2 p-3 bg-slate-900 rounded-xl text-[11px]">
+                        {inSessionChat.length === 0 ? (
+                          <div className="text-slate-500 text-center py-6">No chat messages during this call session yet. Send a message below.</div>
+                        ) : (
+                          inSessionChat.map((c, idx) => (
+                            <div key={idx} className={`p-2.5 rounded-xl border max-w-[85%] ${c.sender === activeSession.patientName ? 'bg-indigo-950/60 border-indigo-800 text-indigo-200 ml-auto' : 'bg-slate-950 border-slate-800 text-slate-200 mr-auto'}`}>
+                              <div className="font-bold text-[10px] text-slate-400 mb-0.5">{c.sender}</div>
+                              <div className="text-slate-100">{c.text}</div>
+                            </div>
+                          ))
+                        )}
                       </div>
                       <form onSubmit={handleSendInSessionChat} className="flex gap-2">
                         <input
                           type="text"
                           value={chatInput}
                           onChange={e => setChatInput(e.target.value)}
-                          placeholder="Type in-session message..."
-                          className="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs"
+                          placeholder="Type live message for doctor during call..."
+                          className="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500"
                         />
-                        <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs">
-                          Send
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-1">
+                          <Send className="w-3.5 h-3.5" /> Send
                         </button>
                       </form>
                     </div>
@@ -470,28 +588,47 @@ export default function TeleconsultationPage() {
                     </p>
 
                     {/* Messages History */}
-                    <div className="space-y-2 max-h-48 overflow-y-auto p-3 bg-slate-950 rounded-xl">
-                      {postMessages.map((m, idx) => (
-                        <div key={idx} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px]">
-                          <div className="flex justify-between font-bold text-slate-400">
-                            <span>{m.sender}</span>
-                            <span className="text-[9px]">{new Date(m.timestamp).toLocaleTimeString()}</span>
+                    <div className="space-y-2 max-h-52 overflow-y-auto p-3 bg-slate-950 rounded-xl">
+                      {postMessages.length === 0 ? (
+                        <p className="text-slate-500 text-center py-4">No follow-up messages sent yet.</p>
+                      ) : (
+                        postMessages.map((m, idx) => (
+                          <div key={idx} className={`p-2.5 rounded-lg border text-[11px] ${m.sender === 'PATIENT' ? 'bg-indigo-950/40 border-indigo-800 text-indigo-200 ml-6' : 'bg-slate-900 border-slate-800 text-slate-200 mr-6'}`}>
+                            <div className="flex justify-between font-bold text-slate-400">
+                              <span>{m.sender === 'PATIENT' ? activeSession.patientName : `Dr. ${activeSession.doctorName || 'Doctor'}`}</span>
+                              <span className="text-[9px]">{new Date(m.timestamp).toLocaleTimeString()}</span>
+                            </div>
+                            <p className="text-slate-200 mt-1">{m.text}</p>
+                            {m.voiceClipUrl && (
+                              <audio controls src={m.voiceClipUrl} className="mt-2 w-full h-8 rounded" />
+                            )}
                           </div>
-                          <p className="text-slate-200 mt-1">{m.text}</p>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
 
-                    {/* Message Form */}
+                    {/* Message Form & Voice Clip Recorder */}
                     {postMessagesLeft > 0 ? (
-                      <form onSubmit={handleSendPostMessage} className="flex gap-2">
+                      <form onSubmit={handleSendPostMessage} className="flex gap-2 items-center">
                         <input
                           type="text"
                           value={postMessageText}
                           onChange={e => setPostMessageText(e.target.value)}
                           placeholder="Type follow-up text or question..."
-                          className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs"
+                          className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-amber-500"
                         />
+                        
+                        {/* Voice Note Clip Recorder Button */}
+                        <button
+                          type="button"
+                          onClick={handleToggleVoiceRecorder}
+                          title={isRecordingVoiceNote ? "Stop & Send Voice Clip" : "Record Voice Clip Note"}
+                          className={`p-2 rounded-xl font-bold text-xs flex items-center gap-1 ${isRecordingVoiceNote ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700'}`}
+                        >
+                          <Mic className="w-4 h-4" />
+                          <span className="text-[10px]">{isRecordingVoiceNote ? 'Stop & Send' : 'Voice'}</span>
+                        </button>
+
                         <button type="submit" className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1">
                           <Send className="w-3.5 h-3.5" /> Send ({postMessagesLeft} left)
                         </button>
@@ -503,12 +640,76 @@ export default function TeleconsultationPage() {
                     )}
                   </div>
                 )}
+
+                {/* State 5: CLOSED -> Officially Closed by Doctor & 3-Day Auto-Archive Notice */}
+                {activeSession.status === 'CLOSED' && (
+                  <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-4 shadow-xl">
+                    <div className="flex justify-between items-center">
+                      <div className="font-bold text-rose-400 text-xs flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span>Consultation Officially Closed & Cleared by Specialist</span>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 font-black text-[11px] border border-amber-500/30 animate-pulse">
+                        ⏳ Auto-Archives in 3 Days
+                      </span>
+                    </div>
+                    
+                    <p className="text-slate-300 text-xs">
+                      The specialist doctor has officially closed and cleared this consultation session. This session and its full message history will remain accessible for <strong>3 days</strong> before being automatically archived on: <strong className="text-amber-400 font-mono">{activeSession.expiresAt ? new Date(activeSession.expiresAt).toLocaleString() : 'in 3 days'}</strong>.
+                    </p>
+
+                    {/* Message Log History (Read-Only) */}
+                    <div className="space-y-2 max-h-52 overflow-y-auto p-3 bg-slate-950 rounded-xl border border-slate-800">
+                      {postMessages.length === 0 ? (
+                        <p className="text-slate-500 text-center py-4 text-xs">No follow-up messages stored.</p>
+                      ) : (
+                        postMessages.map((m, idx) => (
+                          <div key={idx} className={`p-2.5 rounded-lg border text-[11px] ${m.sender === 'PATIENT' ? 'bg-indigo-950/40 border-indigo-800 text-indigo-200 ml-6' : 'bg-slate-900 border-slate-800 text-slate-200 mr-6'}`}>
+                            <div className="flex justify-between font-bold text-slate-400">
+                              <span>{m.sender === 'PATIENT' ? activeSession.patientName : `Dr. ${activeSession.doctorName || 'Specialist'}`}</span>
+                              <span className="text-[9px]">{new Date(m.timestamp).toLocaleTimeString()}</span>
+                            </div>
+                            <p className="text-slate-200 mt-1">{m.text}</p>
+                            {m.voiceClipUrl && (
+                              <audio controls src={m.voiceClipUrl} className="mt-2 w-full h-8 rounded" />
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-rose-500/20">
+                      <div className="text-rose-400 font-bold text-[11px]">
+                        🔒 Consultation officially closed by doctor.
+                      </div>
+                      <button
+                        onClick={() => handleDeleteSession(activeSession._id)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 font-bold text-xs flex items-center gap-1.5 border border-rose-500/30 transition"
+                        title="Delete & Clear Consultation from View"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-400" /> Clear & Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
 
+        {/* LiveKit Call Modal */}
+        {showLiveKitModal && liveKitRoomName && (
+          <LiveKitCallModal
+            roomName={liveKitRoomName}
+            participantName={activeSession?.patientName || patientName || 'Patient'}
+            callType={liveKitCallType}
+            sessionId={activeSession?._id}
+            onClose={() => setShowLiveKitModal(false)}
+            onCallEnded={() => setInCall(false)}
+          />
+        )}
       </div>
     </div>
   );
 }
+

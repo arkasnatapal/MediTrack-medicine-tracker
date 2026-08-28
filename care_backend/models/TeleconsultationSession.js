@@ -19,13 +19,15 @@ const teleconsultationSessionSchema = new mongoose.Schema(
     scheduledTime: { type: String },
     status: {
       type: String,
-      enum: ['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'TERMINATED', 'REJECTED'],
+      enum: ['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'TERMINATED', 'CLOSED', 'REJECTED'],
       default: 'PENDING',
     },
     startTime: { type: Date },
     endTime: { type: Date },
     terminatedAt: { type: Date },
     terminatedBy: { type: String }, // 'DOCTOR', 'PATIENT', or 'SYSTEM'
+    closedAt: { type: Date },
+    expiresAt: { type: Date }, // MongoDB TTL Index: Auto-purges document 3 days after closedAt
     // Post-session messaging rule: Patient can send up to 10 follow-up text or audio clip messages after session terminates
     postSessionMessagesLeft: { type: Number, default: 10 },
     postSessionMessagesSent: { type: Number, default: 0 },
@@ -48,5 +50,8 @@ const teleconsultationSessionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// MongoDB TTL Index: Automatically purges document from DB when expiresAt date is reached
+teleconsultationSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('TeleconsultationSession', teleconsultationSessionSchema);

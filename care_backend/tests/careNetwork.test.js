@@ -111,7 +111,11 @@ async function runTests() {
     const session = await TeleconsultationSession.create({
       appointmentId: appt._id,
       patientId: patient._id,
+      patientName: patient.name,
+      facilityId: fac._id,
       doctorId: doc._id,
+      specialty: 'Surgery',
+      symptoms: 'General Trauma',
       meetingIdentifier: `MEET-TEST-${Date.now()}`,
       socketRoomId: `room-test`,
       status: 'ACTIVE',

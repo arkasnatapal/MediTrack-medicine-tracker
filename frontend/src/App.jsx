@@ -402,7 +402,7 @@ function App() {
     <ThemeProvider isAuthenticated={!!user}>
       <AppModeProvider>
         <SidebarProvider>
-          <Router>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <AppContent />
           </Router>
         </SidebarProvider>
