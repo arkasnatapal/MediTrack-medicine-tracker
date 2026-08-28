@@ -1,6 +1,6 @@
 ﻿# MediTrack - Intelligent Medicine & Health Tracker
 
-**MediTrack** is a comprehensive, AI-powered health management application designed to simplify how you track medicines, monitor health habits, and manage family well-being. By leveraging advanced AI (Google Gemini), MediTrack goes beyond simple scheduling to provide deep insights into your health data, organize your medication inventory, and analyze medical reports.
+**MediTrack** is a comprehensive, AI-powered health management application designed to simplify how you track medicines, monitor health habits, and manage family well-being with extended public health support. By leveraging advanced AI (Google Gemini), MediTrack goes beyond simple scheduling to provide deep insights into your health data, organize your medication inventory, and analyze medical reports.
 
 ## ⚠️ License Notice
 
