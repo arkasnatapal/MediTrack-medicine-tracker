@@ -82,3 +82,8 @@
 .spaced-word {
   letter-spacing: 0.15em;
 }
+
+/* Leaflet Free OpenStreetMap Dark Mode Filter - 100% Key Free */
+.dark .leaflet-tile-pane {
+  filter: brightness(0.7) invert(1) contrast(1.2) hue-rotate(200deg) saturate(0.4);
+}

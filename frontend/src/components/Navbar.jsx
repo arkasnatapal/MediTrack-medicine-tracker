@@ -4,15 +4,16 @@ import HealthIntelligencePanel from './HealthIntelligencePanel';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert, Leaf } from 'lucide-react';
+import { useAppMode } from '../context/AppModeContext';
+import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert, Leaf, HeartPulse, Building2, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from './NotificationBell';
 import UserAvatar from './UserAvatar';
 
-
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { activeMode, setActiveMode, language, setLanguage, t } = useAppMode();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -134,35 +135,68 @@ const Navbar = () => {
     <nav className="bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link to={user ? "/dashboard" : "/"} className="flex-shrink-0 flex items-center gap-2">
-              <img src="/logo.png" className='h-10' alt="MediTrack Logo" />
-              <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight">Medi<span className='dark:text-white text-emerald-600'>Track</span></span>
+          <div className="flex items-center gap-3 sm:gap-6">
+            <Link to={user ? (activeMode === 'CARE_NETWORK' ? "/care-network" : "/dashboard") : "/"} className="flex-shrink-0 flex items-center gap-2">
+              <img src="/logo.png" className='h-9 w-auto' alt="MediTrack Logo" />
+              <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight hidden sm:inline">Medi<span className='dark:text-white text-emerald-600'>Track</span></span>
             </Link>
-            <div className="hidden md:ml-8 md:flex md:space-x-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-primary-600 hover:border-b-2 hover:border-primary-600 transition-colors duration-200"
+
+            {user && (
+              <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMode('MY_HEALTH');
+                    navigate('/dashboard');
+                  }}
+                  className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 ${
+                    activeMode === 'MY_HEALTH'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-emerald-600'
+                  }`}
                 >
-                  {link.name}
-                </Link>
-              ))}
-              {authLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-primary-600 hover:border-b-2 hover:border-primary-600 transition-colors duration-200"
+                  <HeartPulse className="w-3.5 h-3.5" />
+                  <span>MY HEALTH</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMode('CARE_NETWORK');
+                    navigate('/care-network');
+                  }}
+                  className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 ${
+                    activeMode === 'CARE_NETWORK'
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-blue-600'
+                  }`}
                 >
-                  {link.name}
-                </Link>
-              ))}
-            </div>
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>CARE NETWORK</span>
+                </button>
+              </div>
+            )}
           </div>
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
+            {/* Language Selector */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+              <Globe className="w-3.5 h-3.5 text-slate-500" />
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="bg-transparent text-slate-700 dark:text-slate-200 text-xs font-bold focus:outline-none cursor-pointer"
+              >
+                <option value="en">English (EN)</option>
+                <option value="hi">हिंदी (HI)</option>
+                <option value="mr">मराठी (MR)</option>
+                <option value="bn">বাংলা (BN)</option>
+                <option value="ta">தமிழ் (TA)</option>
+                <option value="pa">ਪੰਜਾਬੀ (PA)</option>
+              </select>
+            </div>
+
             {user ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 
                 {/* Predicted Threat Alert Pill - Dynamic & Auto-Collapsing */}
                 {intelligenceData?.predictedThreat && severityConfig && (

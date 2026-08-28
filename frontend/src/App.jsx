@@ -48,8 +48,22 @@ import HospitalDetailsPage from './emergency/HospitalDetailsPage'
 import EmergencyHistoryPage from './emergency/EmergencyHistoryPage'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { AppModeProvider } from './context/AppModeContext'
 import PublicProfile from './pages/PublicProfile'
 import AyurvedicCentre from './components/AyurvedicCentre'
+
+import CareNetworkDashboard from './pages/care-network/CareNetworkDashboard'
+import EmergencyPageCare from './pages/care-network/EmergencyPage'
+import FindCarePage from './pages/care-network/FindCarePage'
+import FacilityDetailPage from './pages/care-network/FacilityDetailPage'
+import DigitalTriagePage from './pages/care-network/DigitalTriagePage'
+import AppointmentsPage from './pages/care-network/AppointmentsPage'
+import ReferralTrackerPage from './pages/care-network/ReferralTrackerPage'
+import DiagnosticsSearchPage from './pages/care-network/DiagnosticsSearchPage'
+import MedicineAvailabilityPage from './pages/care-network/MedicineAvailabilityPage'
+import TeleconsultationPage from './pages/care-network/TeleconsultationPage'
+import CareJourneyPage from './pages/care-network/CareJourneyPage'
+import HospitalPortalPage from './pages/care-network/HospitalPortalPage'
 
 import Loader from './components/Loader'
 import Onboarding from './components/Onboarding'
@@ -309,6 +323,68 @@ function AppContent() {
                 </PrivateRoute>
               } />
 
+              {/* CARE NETWORK ROUTES */}
+              <Route path="/care-network" element={
+                <PrivateRoute>
+                  <CareNetworkDashboard />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/emergency" element={
+                <PrivateRoute>
+                  <EmergencyPageCare />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/find-care" element={
+                <PrivateRoute>
+                  <FindCarePage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/facility/:id" element={
+                <PrivateRoute>
+                  <FacilityDetailPage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/triage" element={
+                <PrivateRoute>
+                  <DigitalTriagePage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/appointments" element={
+                <PrivateRoute>
+                  <AppointmentsPage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/referrals" element={
+                <PrivateRoute>
+                  <ReferralTrackerPage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/diagnostics" element={
+                <PrivateRoute>
+                  <DiagnosticsSearchPage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/medicines" element={
+                <PrivateRoute>
+                  <MedicineAvailabilityPage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/teleconsultation" element={
+                <PrivateRoute>
+                  <TeleconsultationPage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/journey" element={
+                <PrivateRoute>
+                  <CareJourneyPage />
+                </PrivateRoute>
+              } />
+              <Route path="/care-network/hospital-portal" element={
+                <PrivateRoute>
+                  <HospitalPortalPage />
+                </PrivateRoute>
+              } />
+
               {/* 404 Page */}
               <Route path="*" element={<NotFound />} />
             </Routes>
@@ -324,11 +400,13 @@ function App() {
   
   return (
     <ThemeProvider isAuthenticated={!!user}>
-      <SidebarProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </SidebarProvider>
+      <AppModeProvider>
+        <SidebarProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </SidebarProvider>
+      </AppModeProvider>
     </ThemeProvider>
   )
 }
