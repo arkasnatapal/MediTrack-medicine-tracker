@@ -986,6 +986,7 @@ router.get('/drugs', async (req, res) => {
 router.post('/appointments', authMiddleware, async (req, res) => {
   try {
     const { facilityId, facilityName, department = 'General OPD', date, time, reasonForVisit, triagePriority } = req.body;
+    const mongoose = require('mongoose');
 
     const countToday = await Appointment.countDocuments({ facilityId, date });
     const tokenNumber = countToday + 1;
@@ -1006,6 +1007,77 @@ router.post('/appointments', authMiddleware, async (req, res) => {
     });
 
     await appointment.save();
+
+    // Cross-sync directly into care_backend MongoDB collections (careappointments & carequeues)
+    try {
+      let targetFacObj = null;
+      if (facilityId && mongoose.Types.ObjectId.isValid(facilityId)) {
+        targetFacObj = await mongoose.connection.collection('facilities').findOne({ _id: new mongoose.Types.ObjectId(facilityId) });
+      }
+      if (!targetFacObj) {
+        targetFacObj = await mongoose.connection.collection('facilities').findOne({});
+      }
+
+      if (targetFacObj) {
+        const careAppRecord = {
+          facilityId: targetFacObj._id,
+          patientId: req.user._id,
+          patientName: req.user.name || 'Patient',
+          department: department || 'General OPD',
+          appointmentDate: new Date(date || Date.now()),
+          timeSlot: time || '09:30 AM',
+          tokenNumber: tokenNumber + 100,
+          symptoms: reasonForVisit || 'General Consultation',
+          triagePriority: triagePriority || 'ROUTINE',
+          status: 'CONFIRMED',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        const insertedApp = await mongoose.connection.collection('careappointments').insertOne(careAppRecord);
+
+        // Add to carequeues collection for hospital and doctor live queue board
+        const todayStr = date || new Date().toISOString().split('T')[0];
+        const existingQueue = await mongoose.connection.collection('carequeues').findOne({
+          facilityId: targetFacObj._id,
+          date: todayStr
+        });
+
+        const queueEntry = {
+          _id: new mongoose.Types.ObjectId(),
+          appointmentId: insertedApp.insertedId,
+          patientId: req.user._id,
+          patientName: req.user.name || 'Patient',
+          tokenNumber: tokenNumber + 100,
+          checkInTime: new Date(),
+          status: 'WAITING'
+        };
+
+        if (existingQueue) {
+          await mongoose.connection.collection('carequeues').updateOne(
+            { _id: existingQueue._id },
+            {
+              $push: { entries: queueEntry },
+              $set: { currentToken: Math.max(existingQueue.currentToken || 100, tokenNumber + 100) }
+            }
+          );
+        } else {
+          await mongoose.connection.collection('carequeues').insertOne({
+            facilityId: targetFacObj._id,
+            department: department || 'General Medicine',
+            date: todayStr,
+            currentToken: tokenNumber + 100,
+            servingToken: 101,
+            entries: [queueEntry],
+            isPaused: false,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+        }
+      }
+    } catch (syncErr) {
+      console.error('Care backend appointment sync error:', syncErr.message);
+    }
 
     await CareJourneyEvent.create({
       patientId: req.user._id,
@@ -1029,8 +1101,27 @@ router.post('/appointments', authMiddleware, async (req, res) => {
 
 router.get('/appointments/my', authMiddleware, async (req, res) => {
   try {
-    const appointments = await Appointment.find({ patientId: req.user._id }).sort({ createdAt: -1 });
-    return res.json({ success: true, appointments });
+    const mongoose = require('mongoose');
+    const appointments = await Appointment.find({ patientId: req.user._id }).sort({ createdAt: -1 }).lean();
+    
+    // Also fetch CareAppointments from care_backend if any exist
+    try {
+      const careApps = await mongoose.connection.collection('careappointments').find({ patientId: req.user._id }).sort({ createdAt: -1 }).toArray();
+      const mapped = careApps.map(a => ({
+        _id: a._id,
+        appointmentId: `CARE-${a._id}`,
+        facilityName: 'Public Healthcare Center',
+        department: a.department || 'General OPD',
+        date: a.appointmentDate ? new Date(a.appointmentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        time: a.timeSlot || '10:00 AM',
+        tokenNumber: a.tokenNumber || 101,
+        reasonForVisit: a.symptoms || 'General OPD Consultation',
+        status: a.status || 'CONFIRMED'
+      }));
+      return res.json({ success: true, appointments: [...mapped, ...appointments] });
+    } catch (e) {
+      return res.json({ success: true, appointments });
+    }
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Error fetching patient appointments' });
   }
@@ -1040,6 +1131,31 @@ router.get('/queue/:facilityId', async (req, res) => {
   try {
     const { facilityId } = req.params;
     const { tokenNumber } = req.query;
+    const mongoose = require('mongoose');
+
+    // Attempt to fetch real live queue token from care_backend
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const realQueue = await mongoose.connection.collection('carequeues').findOne({ date: todayStr });
+      if (realQueue) {
+        const userToken = parseInt(tokenNumber) || realQueue.currentToken || 102;
+        const currentToken = realQueue.servingToken || 101;
+        const position = Math.max(0, userToken - currentToken);
+        const estimatedWaitMinutes = position * 10;
+        return res.json({
+          success: true,
+          facilityId,
+          userToken,
+          currentToken,
+          positionInLine: position,
+          estimatedWaitMinutes,
+          status: position === 0 ? 'NOW_SERVING' : 'WAITING',
+          lastUpdated: new Date()
+        });
+      }
+    } catch (qErr) {
+      // Fallback
+    }
 
     const currentToken = Math.max(1, (parseInt(tokenNumber) || 37) - 5);
     const userToken = parseInt(tokenNumber) || 37;
@@ -1104,7 +1220,26 @@ router.post('/referrals', authMiddleware, async (req, res) => {
 
 router.get('/referrals/my', authMiddleware, async (req, res) => {
   try {
-    const referrals = await Referral.find({ patientId: req.user._id }).sort({ createdAt: -1 });
+    const mongoose = require('mongoose');
+    let referrals = await Referral.find({ patientId: req.user._id }).sort({ createdAt: -1 }).lean();
+    try {
+      const careRefs = await mongoose.connection.collection('carereferrals').find().sort({ createdAt: -1 }).toArray();
+      if (careRefs && careRefs.length > 0) {
+        const mapped = careRefs.map(r => ({
+          _id: r._id,
+          referralId: `REF-${r._id}`,
+          patientId: r.patientId,
+          fromFacilityName: 'Primary Health Centre (PHC)',
+          toFacilityName: 'District Apex Hospital',
+          reason: r.referralReason || 'Specialist Evaluation',
+          specialtyRequired: r.requiredSpecialty || 'General Medicine',
+          priority: r.priority || 'URGENT',
+          status: r.status || 'IN_TRANSIT',
+          createdAt: r.createdAt || new Date()
+        }));
+        referrals = [...mapped, ...referrals];
+      }
+    } catch (e) {}
     return res.json({ success: true, referrals });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Error fetching patient referrals' });
@@ -1292,7 +1427,24 @@ router.get('/inventory', async (req, res) => {
 // -------------------------------------------------------------
 router.get('/care-journey', authMiddleware, async (req, res) => {
   try {
-    let events = await CareJourneyEvent.find({ patientId: req.user._id }).sort({ timestamp: 1 });
+    const mongoose = require('mongoose');
+    let events = await CareJourneyEvent.find({ patientId: req.user._id }).sort({ timestamp: 1 }).lean();
+
+    try {
+      const careEvents = await mongoose.connection.collection('carejourneytimelineevents').find().sort({ timestamp: 1 }).toArray();
+      if (careEvents && careEvents.length > 0) {
+        const mapped = careEvents.map(e => ({
+          _id: e._id,
+          type: e.eventType || 'CLINICAL',
+          facilityName: 'Public Healthcare Center',
+          title: e.title || 'Clinical Care Event',
+          description: e.description || 'Clinical evaluation performed',
+          timestamp: e.timestamp || new Date(),
+          status: 'COMPLETED'
+        }));
+        events = [...mapped, ...events];
+      }
+    } catch (e) {}
 
     if (events.length === 0) {
       events = [

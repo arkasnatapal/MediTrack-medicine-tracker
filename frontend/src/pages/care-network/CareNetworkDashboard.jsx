@@ -218,8 +218,19 @@ const CareNetworkDashboard = () => {
                 className="px-5 py-3 rounded-2xl bg-white/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm border border-slate-200 dark:border-slate-700 backdrop-blur-md transition-all flex items-center gap-2 shadow-sm active:scale-95"
               >
                 <Activity className="w-4 h-4 text-rose-500" />
-                <span>Find Diagnostics Map</span>
+                <span>Search Diagnostics</span>
               </button>
+
+              <a
+                href="http://localhost:5174"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-300 font-extrabold text-sm border border-amber-500/40 backdrop-blur-md transition-all flex items-center gap-2 shadow-md active:scale-95"
+                title="Launch MediTrack Care Network Provider Portal for Hospitals & Doctors"
+              >
+                <Building2 className="w-4 h-4 text-amber-500" />
+                <span>Provider Portal (Hospitals & Doctors)</span>
+              </a>
             </div>
           </div>
 
