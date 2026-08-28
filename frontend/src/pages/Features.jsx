@@ -1,17 +1,47 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import PublicPageLayout from '../components/PublicPageLayout';
-import { Pill, Bell, Users, Shield, Brain, Calendar, Heart, Smartphone, Network } from 'lucide-react';
+import { Pill, Bell, Users, Shield, Brain, Calendar, Heart, Smartphone, Network, Building2, Clock, Stethoscope, Activity, Video } from 'lucide-react';
 
 import SEO from '../components/SEO';
 
 const Features = () => {
   const features = [
     {
-      icon: Pill,
-      title: 'Medicine Management',
-      description: 'Track all your medications in one place with expiry alerts and dosage reminders.',
+      icon: Building2,
+      title: 'Public Healthcare Finder',
+      description: 'Locate PHC, CHC, Rural and District Hospitals with live bed status and specialty availability.',
+      color: 'from-blue-600 to-teal-500',
+    },
+    {
+      icon: Clock,
+      title: 'Live OPD Token Booking',
+      description: 'Book OPD consultation tokens digitally and monitor real-time queue position and estimated wait time.',
+      color: 'from-amber-500 to-orange-500',
+    },
+    {
+      icon: Stethoscope,
+      title: 'Digital AI Urgency Triage',
+      description: 'Evaluate health symptoms with AI clinical urgency analysis and rapid SOS emergency dispatch.',
       color: 'from-emerald-500 to-teal-500',
+    },
+    {
+      icon: Activity,
+      title: 'Diagnostic Availability',
+      description: 'Check real-time machine availability for ECG, X-Ray, CT Scan, and MRI across local public hubs.',
+      color: 'from-rose-500 to-pink-500',
+    },
+    {
+      icon: Video,
+      title: 'Specialist Teleconsultation',
+      description: 'Connect live with qualified government medical officers and remote specialists.',
+      color: 'from-indigo-500 to-purple-500',
+    },
+    {
+      icon: Pill,
+      title: 'Medicine & Generic Stock',
+      description: 'Search local public pharmacy stock and look up verified generic drug information.',
+      color: 'from-teal-500 to-emerald-500',
     },
     {
       icon: Bell,
@@ -24,12 +54,6 @@ const Features = () => {
       title: 'Family Care',
       description: 'Manage health records for your entire family from a single dashboard.',
       color: 'from-purple-500 to-pink-500',
-    },
-    {
-      icon: Shield,
-      title: 'Secure & Private',
-      description: 'Your health data is encrypted and protected with industry-standard security.',
-      color: 'from-amber-500 to-orange-500',
     },
     {
       icon: Brain,

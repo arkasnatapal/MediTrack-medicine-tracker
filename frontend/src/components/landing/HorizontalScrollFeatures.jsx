@@ -2,11 +2,29 @@ import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Bot, Utensils, FolderOpen, Bell, Users, Activity, ArrowRight, Zap, Shield, Sparkles } from "lucide-react";
+import { Bot, Utensils, FolderOpen, Bell, Users, Activity, ArrowRight, Zap, Shield, Sparkles, Building2, Clock } from "lucide-react";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const features = [
+  {
+    title: "Public Care Network",
+    description: "Locate nearby Primary Health Centers (PHC), CHCs, and District Hospitals with live bed availability and specialty triage.",
+    icon: <Building2 />,
+    image: "/hills-bg.png",
+    color: "bg-teal-600",
+    lightColor: "bg-teal-50",
+    textColor: "text-teal-600",
+  },
+  {
+    title: "Live OPD Token Booking",
+    description: "Reserve your digital consultation slot and monitor live OPD token queue positions in real-time.",
+    icon: <Clock />,
+    image: "/hills-bg.png",
+    color: "bg-indigo-600",
+    lightColor: "bg-indigo-50",
+    textColor: "text-indigo-600",
+  },
   {
     title: "AI Health Assistant",
     description: "Your 24/7 personal health companion. Ask about drug interactions or get personalized wellness advice instantly.",

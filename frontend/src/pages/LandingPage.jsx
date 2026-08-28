@@ -7,6 +7,7 @@ import { Pill, Menu, X } from "lucide-react";
 import EditorialHero from "../components/landing/EditorialHero";
 import TrustAndImpact from "../components/landing/TrustAndImpact";
 import InteractiveShowcase from "../components/landing/InteractiveShowcase";
+import PublicCareShowcase from "../components/landing/PublicCareShowcase";
 import HorizontalScrollFeatures from "../components/landing/HorizontalScrollFeatures";
 import StatsEditorial from "../components/landing/StatsEditorial";
 import SupportSection from "../components/landing/SupportSection";
@@ -31,6 +32,7 @@ const LandingPage = () => {
   }, []);
 
   const navLinks = [
+    { name: "Care Network", href: "/care-network" },
     { name: "Features", href: "#features" },
     { name: "Stats", href: "#stats" },
     { name: "Testimonials", href: "#testimonials" },
@@ -40,8 +42,8 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-white text-slate-900 relative overflow-x-hidden selection:bg-emerald-100 selection:text-emerald-900 font-sans">
       <SEO 
-        title="MediTrack - Medicine Tracking Redefined"
-        description="Experience a premium, AI-powered medicine tracking platform designed for the modern lifestyle."
+        title="MediTrack - Medicine Tracking & Public Care Network"
+        description="Experience a premium, AI-powered medicine tracking platform & integrated public care network designed for modern health management."
       />
 
       {/* Premium Minimal Navbar - Appears on Scroll */}
@@ -62,13 +64,26 @@ const LandingPage = () => {
               <div className="hidden md:flex items-center gap-12">
                 <div className="flex items-center gap-8">
                   {navLinks.map((link) => (
-                    <a 
-                      key={link.name} 
-                      href={link.href} 
-                      className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest"
-                    >
-                      {link.name}
-                    </a>
+                    link.href.startsWith("/") ? (
+                      <Link 
+                        key={link.name} 
+                        to={link.href} 
+                        className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest flex items-center gap-1"
+                      >
+                        {link.name}
+                        {link.name === "Care Network" && (
+                          <span className="px-2 py-0.5 text-[9px] font-black bg-emerald-100 text-emerald-700 rounded-full">NEW</span>
+                        )}
+                      </Link>
+                    ) : (
+                      <a 
+                        key={link.name} 
+                        href={link.href} 
+                        className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest"
+                      >
+                        {link.name}
+                      </a>
+                    )
                   ))}
                 </div>
                 <div className="flex items-center gap-4">
@@ -117,17 +132,31 @@ const LandingPage = () => {
 
             <div className="flex flex-col gap-6">
               {navLinks.map((link) => (
-                <a 
-                  key={link.name} 
-                  href={link.href} 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-3xl font-black text-slate-900 tracking-tighter flex items-center justify-between group"
-                >
-                  {link.name}
-                  <span className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
-                    <X size={16} className="rotate-45" /> {/* Using X as an arrow/plus placeholder or just a clean icon */}
-                  </span>
-                </a>
+                link.href.startsWith("/") ? (
+                  <Link 
+                    key={link.name} 
+                    to={link.href} 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-3xl font-black text-slate-900 tracking-tighter flex items-center justify-between group"
+                  >
+                    {link.name}
+                    <span className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                      <X size={16} className="rotate-45" />
+                    </span>
+                  </Link>
+                ) : (
+                  <a 
+                    key={link.name} 
+                    href={link.href} 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-3xl font-black text-slate-900 tracking-tighter flex items-center justify-between group"
+                  >
+                    {link.name}
+                    <span className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
+                      <X size={16} className="rotate-45" />
+                    </span>
+                  </a>
+                )
               ))}
               <div className="pt-12 flex flex-col gap-4">
                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="w-full py-4 text-center text-xl font-bold border border-slate-200 rounded-3xl">
@@ -150,6 +179,8 @@ const LandingPage = () => {
         <TrustAndImpact />
 
         <InteractiveShowcase />
+
+        <PublicCareShowcase />
 
         <div id="features" className="relative z-10">
           <HorizontalScrollFeatures />

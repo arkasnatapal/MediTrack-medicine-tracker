@@ -167,12 +167,13 @@ const Navbar = () => {
                   }}
                   className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 ${
                     activeMode === 'CARE_NETWORK'
-                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
+                      ? 'bg-gradient-to-r from-blue-600 via-teal-600 to-cyan-600 text-white shadow-md'
                       : 'text-slate-600 dark:text-slate-300 hover:text-blue-600'
                   }`}
                 >
                   <Building2 className="w-3.5 h-3.5" />
                   <span>CARE NETWORK</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
                 </button>
               </div>
             )}
