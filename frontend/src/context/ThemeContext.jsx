@@ -35,13 +35,22 @@ export const ThemeProvider = ({ children, isAuthenticated }) => {
       root.classList.add(themeToApply);
     };
 
-    if (activeTheme === 'system') {
+    // Force light mode on landing page regardless of inner app theme preference
+    const isLanding = window.location.pathname === '/';
+
+    if (isLanding) {
+      applyTheme('light');
+    } else if (activeTheme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       applyTheme(systemTheme);
       
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = (e) => {
-        applyTheme(e.matches ? 'dark' : 'light');
+        if (window.location.pathname === '/') {
+          applyTheme('light');
+        } else {
+          applyTheme(e.matches ? 'dark' : 'light');
+        }
       };
       
       mediaQuery.addEventListener('change', handleChange);

@@ -140,7 +140,7 @@ const SupportFooter = () => {
 
         {/* Bottom Footer Section */}
         <div className="pt-12 border-t border-slate-900/5 flex flex-col md:flex-row justify-between items-center gap-8">
-          <p className="text-sm font-bold text-white">
+          <p className="text-sm font-bold text-slate-900">
             @2025 MediTrack all rights reserved.
           </p>
 

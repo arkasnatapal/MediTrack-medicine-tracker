@@ -97,12 +97,12 @@ const InteractiveShowcase = () => {
                  </div>
                  
                  <div className="bg-white/20 p-4 rounded-3xl border border-white/20 group-hover/cal:bg-white group-hover/cal:text-emerald-900 transition-colors duration-500">
-                   <div className="flex items-center justify-between mb-3 gap-6">
-                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">Dosage</span>
-                     <Clock size={10} className="opacity-70" />
-                   </div>
-                   <h4 className="text-sm font-bold leading-tight text-white group-hover/cal:text-emerald-900">Next intake <br /> at 14:00</h4>
-                 </div>
+                    <div className="flex items-center justify-between mb-3 gap-6">
+                      <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">Dosage</span>
+                      <Clock size={10} className="opacity-70" />
+                    </div>
+                    <h4 className="text-sm font-bold leading-tight text-white group-hover/cal:text-emerald-900">Next intake <br /> at 14:00</h4>
+                  </div>
                </div>
 
                <div className="flex justify-between items-center pt-6 border-t border-white/10">

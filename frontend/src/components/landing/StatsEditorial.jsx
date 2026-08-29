@@ -45,7 +45,7 @@ const StatsEditorial = () => {
   }, []);
 
   return (
-    <section ref={sectionRef} className="py-32 bg-white overflow-hidden">
+    <section ref={sectionRef} className="py-32 bg-white text-slate-900 overflow-hidden">
       <div className="container mx-auto px-6 max-w-6xl">
         {/* Centered Stats Layout */}
         <div className="flex flex-col items-center">

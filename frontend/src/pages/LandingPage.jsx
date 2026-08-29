@@ -22,6 +22,10 @@ const LandingPage = () => {
   const [showNavbar, setShowNavbar] = useState(false);
 
   useEffect(() => {
+    // Ensure light mode is active when on landing page regardless of inner app theme
+    document.documentElement.classList.add('light');
+    document.documentElement.classList.remove('dark');
+
     const handleScroll = () => {
       // Show global navbar only after scrolling past the hero (e.g., 600px)
       setShowNavbar(window.scrollY > 600);

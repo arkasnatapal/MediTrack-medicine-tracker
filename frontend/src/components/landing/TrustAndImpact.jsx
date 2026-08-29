@@ -80,7 +80,7 @@ const TrustAndImpact = () => {
   ];
 
   return (
-    <section ref={sectionRef} className="py-32 bg-[#F9FBFF] overflow-hidden">
+    <section ref={sectionRef} className="py-32 bg-[#F9FBFF] text-slate-900 overflow-hidden">
       <div className="container mx-auto px-10 md:px-20 lg:px-32">
         
         {/* Integrating With Section - Infinite Marquee */}
