@@ -3,22 +3,57 @@ import { translations } from '../services/i18n';
 
 const AppModeContext = createContext();
 
+export const triggerGoogleTranslate = (langCode) => {
+  if (!langCode) return;
+  
+  // Set cookie for google translate engine
+  const hostname = window.location.hostname;
+  document.cookie = `googtrans=/en/${langCode}; path=/;`;
+  if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    document.cookie = `googtrans=/en/${langCode}; path=/; domain=${hostname};`;
+  }
+
+  // Update Google Translate widget select dropdown
+  let attempts = 0;
+  const interval = setInterval(() => {
+    attempts++;
+    const selectElem = document.querySelector('.goog-te-combo');
+    if (selectElem) {
+      selectElem.value = langCode;
+      selectElem.dispatchEvent(new Event('change'));
+      clearInterval(interval);
+    } else if (attempts >= 25) {
+      clearInterval(interval);
+    }
+  }, 100);
+};
+
 export const AppModeProvider = ({ children }) => {
   const [activeMode, setActiveMode] = useState(() => {
     return localStorage.getItem('meditrack_active_mode') || 'MY_HEALTH';
   });
 
-  const [language, setLanguage] = useState(() => {
+  const [language, setLanguageState] = useState(() => {
     return localStorage.getItem('meditrack_language') || 'en';
   });
+
+  const setLanguage = (langCode) => {
+    setLanguageState(langCode);
+    localStorage.setItem('meditrack_language', langCode);
+    triggerGoogleTranslate(langCode);
+  };
 
   useEffect(() => {
     localStorage.setItem('meditrack_active_mode', activeMode);
   }, [activeMode]);
 
   useEffect(() => {
-    localStorage.setItem('meditrack_language', language);
-  }, [language]);
+    // Initial sync on mount if saved language is not 'en'
+    const savedLang = localStorage.getItem('meditrack_language') || 'en';
+    if (savedLang !== 'en') {
+      triggerGoogleTranslate(savedLang);
+    }
+  }, []);
 
   const t = (key) => {
     const langDict = translations[language] || translations['en'];
@@ -39,3 +74,4 @@ export const useAppMode = () => {
   }
   return context;
 };
+

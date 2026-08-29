@@ -105,8 +105,17 @@ app.use((req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is currently in use. Stop any process occupying port ${PORT} before retrying.`);
+  } else {
+    console.error('❌ Server error:', error);
+  }
+  process.exit(1);
 });
 
 module.exports = app;

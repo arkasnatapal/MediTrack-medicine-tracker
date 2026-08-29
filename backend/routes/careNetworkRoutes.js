@@ -847,85 +847,142 @@ router.put('/facilities/:id/contact', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 2. DIGITAL TRIAGE ENGINE (Infermedica or Mock Provider)
+// 2. DIGITAL TRIAGE ENGINE (Gemini 1.5 Flash + Safety Engine)
 // -------------------------------------------------------------
 router.post('/triage', async (req, res) => {
+
+
   try {
-    const { symptoms = [], age, gender, freeTextDescription = '' } = req.body;
+    const { symptoms = [], freeTextDescription = '', message = '', age = 30, gender = 'male', session_id, vitals } = req.body;
+    const inputText = message || freeTextDescription || symptoms.join(', ');
 
-    const INFERMEDICA_APP_ID = process.env.INFERMEDICA_APP_ID;
-    const INFERMEDICA_API_KEY = process.env.INFERMEDICA_API_KEY;
-
-    let isRealProviderUsed = false;
     let triageResult = null;
 
-    if (INFERMEDICA_APP_ID && INFERMEDICA_API_KEY && INFERMEDICA_APP_ID !== 'placeholder' && INFERMEDICA_API_KEY !== 'placeholder') {
-      try {
-        const response = await axios.post(
-          'https://api.infermedica.com/v3/triage',
-          {
-            sex: gender === 'female' ? 'female' : 'male',
-            age: { value: age || 30 },
-            evidence: symptoms.map(s => ({ id: s, choice_id: 'present' }))
-          },
-          {
-            headers: {
-              'App-Id': INFERMEDICA_APP_ID,
-              'App-Key': INFERMEDICA_API_KEY,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        isRealProviderUsed = true;
-        triageResult = response.data;
-      } catch (apiErr) {
-        console.warn('Infermedica API call failed, switching to MockTriageProvider:', apiErr.message);
+    // 1. Attempt calling Python AI Service on port 8001
+    try {
+      const aiResponse = await axios.post('http://localhost:8001/api/v1/triage/message', {
+        session_id: session_id || `TRG-${Date.now()}`,
+        message: inputText,
+        symptoms_selected: symptoms,
+        vitals: vitals || null
+      }, { timeout: 30000 });
+
+
+      if (aiResponse.data) {
+        const data = aiResponse.data;
+        triageResult = {
+          session_id: data.session_id,
+          providerMode: data.provider_mode || 'AI-ASSISTED TRIAGE ENGINE',
+          isRealProviderUsed: data.ai_assistance_used,
+          triageLevel: data.triage_level,
+          urgencyLevel: data.urgency_level,
+          riskScore: data.risk_score || 20,
+          headline: data.headline,
+          recommendation: data.recommendation,
+          escalateToEmergency: data.escalate_to_emergency,
+          recommendedFacilityType: data.recommended_facility_type,
+          redFlags: data.red_flags || [],
+          followUpQuestions: data.follow_up_questions || [],
+          retrievedKnowledge: data.retrieved_knowledge || [],
+          firstAidSteps: data.first_aid_steps || [],
+          contraindications: data.contraindications || [],
+          possibleClinicalConcerns: data.possible_clinical_concerns || [],
+          careNavigation: data.care_navigation || [],
+          disclaimer: data.disclaimer
+        };
       }
+    } catch (aiErr) {
+      console.warn('⚠️ Python AI service unavailable/timed out. Executing Node.js Safety Fallback:', aiErr.message);
     }
 
-    if (!isRealProviderUsed) {
-      const text = (freeTextDescription + ' ' + symptoms.join(' ')).toLowerCase();
 
-      let priority = 'ROUTINE';
-      let urgencyLevel = 'LOW';
-      let headline = 'Routine Primary Healthcare Consultation Recommended';
-      let recommendation = 'Schedule an appointment at your nearest Primary Health Centre (PHC) or Community Health Centre (CHC).';
-      let escalateToEmergency = false;
-      let recommendedFacilityType = 'PHC';
-
-      if (text.includes('chest pain') || text.includes('breathing') || text.includes('unconscious') || text.includes('severe bleeding') || text.includes('heart')) {
-        priority = 'EMERGENCY';
-        urgencyLevel = 'CRITICAL_HIGH';
-        headline = 'HIGH PRIORITY: URGENT MEDICAL EVALUATION REQUIRED';
-        recommendation = 'Your symptoms may indicate a critical emergency. Connect immediately to National Emergency Response 112 or Emergency Medical Services (108) or proceed to the nearest emergency hospital.';
-        escalateToEmergency = true;
-        recommendedFacilityType = 'DISTRICT_HOSPITAL';
-      } else if (text.includes('fever') || text.includes('fracture') || text.includes('vomiting') || text.includes('dizziness') || text.includes('pain')) {
-        priority = 'MEDIUM';
-        urgencyLevel = 'MODERATE';
-        headline = 'Moderate Urgency Care Recommendation';
-        recommendation = 'Visit a nearby Rural Hospital or CHC equipped with OPD & basic diagnostics (ECG, X-Ray).';
-        recommendedFacilityType = 'RURAL_HOSPITAL';
-      }
+    // 2. Deterministic Node.js Safety Engine Fallback if AI Service is down
+    if (!triageResult) {
+      const lowerText = (inputText + ' ' + symptoms.join(' ')).toLowerCase();
+      const isEmergency = lowerText.includes('chest pain') || lowerText.includes('breathing') || 
+                          lowerText.includes('unconscious') || lowerText.includes('heart attack') || 
+                          lowerText.includes('stroke') || lowerText.includes('bleeding');
 
       triageResult = {
-        providerMode: 'DEMO / MOCK TRIAGE PROVIDER',
+        session_id: session_id || `TRG-${Date.now()}`,
+        providerMode: 'MediTrack Deterministic Safety Engine (Fallback)',
         isRealProviderUsed: false,
-        triageLevel: priority,
-        urgencyLevel,
-        headline,
-        recommendation,
-        escalateToEmergency,
-        recommendedFacilityType,
-        disclaimer: 'Notice: Automated guidance tool. NOT a formal medical diagnosis. Dial 112 or 108 in emergencies.'
+        triageLevel: isEmergency ? 'EMERGENCY' : 'ROUTINE',
+        urgencyLevel: isEmergency ? 'CRITICAL_HIGH' : 'LOW',
+        headline: isEmergency ? '⚠️ POSSIBLE MEDICAL EMERGENCY — IMMEDIATE CARE REQUIRED' : 'Routine Primary Healthcare Consultation',
+        recommendation: isEmergency 
+          ? 'Your symptoms include critical warning signs requiring immediate medical evaluation. Call 108 immediately or proceed to the nearest emergency trauma facility.'
+          : 'Schedule a routine consultation at your nearest Primary Health Centre (PHC) or Community Health Centre (CHC).',
+        escalateToEmergency: isEmergency,
+        recommendedFacilityType: isEmergency ? 'DISTRICT_HOSPITAL' : 'PHC',
+        redFlags: isEmergency ? ['Emergency Red-Flag Triggered: Suspected Acute Cardiac/Respiratory Risk'] : [],
+        followUpQuestions: [],
+        retrievedKnowledge: [],
+        careNavigation: isEmergency ? [
+          {
+            facility_type: 'DISTRICT_HOSPITAL',
+            title: 'Call 108 Ambulance Emergency',
+            description: 'Immediate emergency dispatch',
+            action_type: 'EMERGENCY_CALL',
+            phone_number: '108'
+          },
+          {
+            facility_type: 'DISTRICT_HOSPITAL',
+            title: 'Nearest District Emergency Hospital',
+            description: 'Proceed to nearest emergency department',
+            action_type: 'FIND_FACILITY',
+            action_url: '/care-network/emergency'
+          }
+        ] : [
+          {
+            facility_type: 'PHC',
+            title: 'Book Appointment at PHC/CHC',
+            description: 'Schedule outpatient assessment',
+            action_type: 'BOOK_APPOINTMENT',
+            action_url: '/care-network/appointments'
+          }
+        ],
+        disclaimer: 'Notice: Automated care-navigation tool. NOT a formal medical diagnosis. Dial 108 in emergencies.'
       };
     }
 
-    return res.json({ success: true, triage: triageResult });
+    // 3. Log CareJourneyEvent if user is authenticated
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const jwt = require('jsonwebtoken');
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'meditrack_secret_key');
+        if (decoded && decoded.id) {
+          await CareJourneyEvent.create({
+            patientId: decoded.id,
+            type: 'TRIAGE',
+            title: `Digital Triage Completed: ${triageResult.triageLevel}`,
+            description: `${triageResult.headline}. Urgency: ${triageResult.urgencyLevel}`,
+            status: 'COMPLETED',
+            metadata: {
+              triageLevel: triageResult.triageLevel,
+              urgencyLevel: triageResult.urgencyLevel,
+              recommendedFacilityType: triageResult.recommendedFacilityType,
+              sessionId: triageResult.session_id
+            }
+          });
+        }
+      }
+    } catch (evtErr) {
+      // Non-blocking care journey event error logging
+    }
+
+    return res.json({
+      success: true,
+      triage: triageResult
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, message: 'Digital triage processing error' });
+    console.error('Care Backend Triage error:', err);
+    return res.status(500).json({ success: false, message: 'Internal triage evaluation error' });
   }
 });
+
 
 // -------------------------------------------------------------
 // 3. OPENFDA MEDICINE INFORMATION API
@@ -1555,3 +1612,5 @@ router.get('/hospital-portal/:facilityId', async (req, res) => {
 });
 
 module.exports = router;
+
+

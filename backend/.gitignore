@@ -1,2 +1,13 @@
 .env
 simulate_cron.js
+.env.example
+node_modules
+.env
+.DS_Store
+dist
+coverage
+.vscode
+*.log
+.idea
+*.iml
+.env.example

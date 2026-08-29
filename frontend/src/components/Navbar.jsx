@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import HealthIntelligencePanel from './HealthIntelligencePanel';
+import LanguageSelector from './LanguageSelector';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -138,7 +139,7 @@ const Navbar = () => {
           <div className="flex items-center gap-3 sm:gap-6">
             <Link to={user ? (activeMode === 'CARE_NETWORK' ? "/care-network" : "/dashboard") : "/"} className="flex-shrink-0 flex items-center gap-2">
               <img src="/logo.png" className='h-9 w-auto' alt="MediTrack Logo" />
-              <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight hidden sm:inline">Medi<span className='dark:text-white text-emerald-600'>Track</span></span>
+              <span className="notranslate font-bold text-xl text-gray-900 dark:text-white tracking-tight hidden sm:inline" translate="no">Medi<span className='dark:text-white text-emerald-600'>Track</span></span>
             </Link>
 
             {user && (
@@ -180,21 +181,7 @@ const Navbar = () => {
           </div>
           <div className="hidden md:flex items-center gap-3">
             {/* Language Selector */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-              <Globe className="w-3.5 h-3.5 text-slate-500" />
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="bg-transparent text-slate-700 dark:text-slate-200 text-xs font-bold focus:outline-none cursor-pointer"
-              >
-                <option value="en">English (EN)</option>
-                <option value="hi">हिंदी (HI)</option>
-                <option value="mr">मराठी (MR)</option>
-                <option value="bn">বাংলা (BN)</option>
-                <option value="ta">தமிழ் (TA)</option>
-                <option value="pa">ਪੰਜਾਬੀ (PA)</option>
-              </select>
-            </div>
+            <LanguageSelector />
 
             {user ? (
               <div className="flex items-center gap-3">
@@ -448,12 +435,15 @@ const Navbar = () => {
             >
               <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
                 <span className="font-bold text-lg text-gray-900 dark:text-white">Menu</span>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <LanguageSelector />
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
 
                {/* Mobile Health Status Card (Inside Menu) */}
