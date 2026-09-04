@@ -1,28 +1,30 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Stethoscope, ShieldAlert, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Stethoscope, ShieldAlert, ArrowLeft, CheckCircle2, Sparkles, ArrowRight, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function DoctorAuthPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login, registerDoctor } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const [mode, setMode] = useState(searchParams.get('mode') === 'register' ? 'register' : 'login');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    medicalRegistrationNumber: '',
+    fullName: 'Dr. Rajesh Mukherjee',
+    medicalRegistrationNumber: 'WBMC-78421-REG',
     registrationAuthority: 'West Bengal Medical Council',
     specialization: 'Cardiology',
-    qualification: 'MBBS, MD, DM',
-    experienceYears: '10',
-    phone: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    qualification: 'MBBS, MD, DM (Cardiology)',
+    experienceYears: '12',
+    phone: '+91 98300 12345',
+    email: 'doctor.rajesh@meditrack.care',
+    password: 'password123',
+    confirmPassword: 'password123',
     languages: 'English, Bengali, Hindi',
     consultationType: 'BOTH',
     teleconsultationAvailable: true,
@@ -72,69 +74,99 @@ export default function DoctorAuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6 relative">
-      <div className="absolute top-6 left-6">
-        <Link to="/" className="text-slate-400 hover:text-white flex items-center gap-2 text-sm">
-          <ArrowLeft className="w-4 h-4" /> Back to Care Network Home
+    <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] flex items-center justify-center p-4 sm:p-6 relative selection:bg-teal-600 selection:text-white font-sans transition-colors duration-300">
+      <div className="atmospheric-bg" />
+
+      {/* Top Left Navigation Link */}
+      <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
+        <Link 
+          to="/" 
+          className="btn-arrow-secondary text-xs py-2 px-4 bg-[var(--bg-pill)] border-[var(--border-card)] text-[var(--text-main)] shadow-md"
+        >
+          <ArrowLeft className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <span>Back to Care Portal</span>
         </Link>
       </div>
 
-      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl my-8">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-            <Stethoscope className="w-6 h-6" />
+      {/* Top Right Theme Toggle */}
+      <div className="absolute top-6 right-6 z-20">
+        <button
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          className="w-10 h-10 rounded-full bg-[var(--bg-pill)] border border-[var(--border-card)] flex items-center justify-center text-[var(--text-main)] hover:border-teal-500 transition-all shadow-md"
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-teal-700" />}
+        </button>
+      </div>
+
+      {/* Main Card Container */}
+      <div className="w-full max-w-xl bg-[var(--bg-card)] border border-[var(--border-card)] p-6 sm:p-10 rounded-[32px] shadow-2xl relative z-10 my-12 transition-colors duration-300">
+        
+        {/* Header Title */}
+        <div className="flex items-center space-x-4 mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-inner shrink-0">
+            <Stethoscope className="w-7 h-7" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">Doctor Portal</h2>
-            <p className="text-xs text-slate-400">Individual Clinicians & Teleconsultants</p>
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-[var(--text-main)] tracking-tight">Doctor Portal</h2>
+            <p className="text-xs text-[var(--text-muted)] tracking-wide mt-0.5 font-medium">Individual Clinicians & Teleconsultants</p>
           </div>
         </div>
 
-        {/* Toggle Mode Tabs */}
-        <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 mb-6">
+        {/* Dynamic Mode Selector Tabs */}
+        <div className="flex bg-[var(--bg-pill)] p-1.5 rounded-2xl mb-8 border border-[var(--border-card)]">
           <button
             onClick={() => setMode('login')}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${mode === 'login' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              mode === 'login' 
+                ? 'bg-teal-600 text-white shadow-md' 
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
           >
             Doctor Login
           </button>
           <button
             onClick={() => setMode('register')}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${mode === 'register' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              mode === 'register' 
+                ? 'bg-teal-600 text-white shadow-md' 
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
           >
             Doctor Registration
           </button>
         </div>
 
         {error && (
-          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold mb-4 flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4" /> {error}
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-300 text-xs font-medium mb-6 flex items-center gap-2.5">
+            <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
         {mode === 'login' ? (
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
+          <form onSubmit={handleLoginSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Doctor Email</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-main)] mb-1.5">Doctor Email</label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm focus:border-cyan-500 outline-none"
+                className="w-full px-4 py-3 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-sm outline-none transition focus:border-teal-500"
                 placeholder="doctor.rajesh@meditrack.care"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-main)] mb-1.5">Password</label>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm focus:border-cyan-500 outline-none"
+                className="w-full px-4 py-3 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-sm outline-none transition focus:border-teal-500"
                 placeholder="••••••••"
               />
             </div>
@@ -142,76 +174,72 @@ export default function DoctorAuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm transition shadow-lg shadow-cyan-500/20"
+              className="btn-arrow-primary w-full py-3.5 text-sm font-bold mt-4 flex items-center justify-center gap-2"
             >
-              {loading ? 'Authenticating...' : 'Sign In as Doctor'}
+              <span>{loading ? 'Authenticating...' : 'Sign In as Doctor'}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         ) : (
           <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 mb-4 flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-400" />
-              <span>Registered doctors enter <strong>PENDING_VERIFICATION</strong> status until verified by System Admin.</span>
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 mb-5 flex items-center gap-2.5 font-medium">
+              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>Registered doctors will enter <strong>PENDING_VERIFICATION</strong> status until approved by System Admin.</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-slate-300 mb-1">Full Name *</label>
-                <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="Dr. Rajesh Sharma" />
+                <label className="block font-bold uppercase text-[10px] text-[var(--text-main)] mb-1">Full Name *</label>
+                <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-xs" placeholder="Dr. Rajesh Mukherjee" />
               </div>
               <div>
-                <label className="block text-slate-300 mb-1">Medical Registration No. *</label>
-                <input type="text" name="medicalRegistrationNumber" value={formData.medicalRegistrationNumber} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="MCI-WB-2015-8891" />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1">Registration Authority *</label>
-                <input type="text" name="registrationAuthority" value={formData.registrationAuthority} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="State Medical Council" />
-              </div>
-              <div>
-                <label className="block text-slate-300 mb-1">Specialization *</label>
-                <input type="text" name="specialization" value={formData.specialization} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="Cardiology" />
+                <label className="block font-bold uppercase text-[10px] text-[var(--text-main)] mb-1">Reg Number *</label>
+                <input type="text" name="medicalRegistrationNumber" value={formData.medicalRegistrationNumber} onChange={handleChange} required className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-xs" placeholder="WBMC-78421-REG" />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1">Qualification *</label>
-                <input type="text" name="qualification" value={formData.qualification} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="MBBS, MD, DM" />
+                <label className="block font-bold uppercase text-[10px] text-[var(--text-main)] mb-1">Specialization *</label>
+                <select name="specialization" value={formData.specialization} onChange={handleChange} className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-xs">
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Internal Medicine">Internal Medicine</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="Obstetrics & Gynecology">Obstetrics & Gynecology</option>
+                  <option value="General Surgery">General Surgery</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="Teleconsult Specialist">Teleconsult Specialist</option>
+                </select>
               </div>
               <div>
-                <label className="block text-slate-300 mb-1">Experience (Years)</label>
-                <input type="number" name="experienceYears" value={formData.experienceYears} onChange={handleChange} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" />
+                <label className="block font-bold uppercase text-[10px] text-[var(--text-main)] mb-1">Qualification *</label>
+                <input type="text" name="qualification" value={formData.qualification} onChange={handleChange} required className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-xs" placeholder="MBBS, MD, DM" />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1">Phone *</label>
-                <input type="text" name="phone" value={formData.phone} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="9870011223" />
+                <label className="block font-bold uppercase text-[10px] text-[var(--text-main)] mb-1">Phone *</label>
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-xs" placeholder="+91 98300 12345" />
               </div>
               <div>
-                <label className="block text-slate-300 mb-1">Email *</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="doctor@meditrack.care" />
+                <label className="block font-bold uppercase text-[10px] text-[var(--text-main)] mb-1">Email *</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-xs" placeholder="doctor.rajesh@meditrack.care" />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1">Password *</label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="••••••••" />
+                <label className="block font-bold uppercase text-[10px] text-[var(--text-main)] mb-1">Password *</label>
+                <input type="password" name="password" value={formData.password} onChange={handleChange} required className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-xs" placeholder="••••••••" />
               </div>
               <div>
-                <label className="block text-slate-300 mb-1">Confirm Password *</label>
-                <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg" placeholder="••••••••" />
-              </div>
-
-              <div className="col-span-2 flex items-center gap-2 pt-2">
-                <input type="checkbox" name="teleconsultationAvailable" checked={formData.teleconsultationAvailable} onChange={handleChange} id="tele-check" className="rounded bg-slate-950 border-slate-800 text-cyan-500" />
-                <label htmlFor="tele-check" className="text-slate-300">Available for Teleconsultation Services</label>
+                <label className="block font-bold uppercase text-[10px] text-[var(--text-main)] mb-1">Confirm Password *</label>
+                <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] text-xs" placeholder="••••••••" />
               </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm transition shadow-lg shadow-cyan-500/20 mt-4"
+              className="btn-arrow-primary w-full py-3.5 text-sm font-bold mt-4 flex items-center justify-center gap-2"
             >
-              {loading ? 'Submitting Registration...' : 'Submit Doctor Registration'}
+              <span>{loading ? 'Submitting Registration...' : 'Register Doctor Profile'}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         )}

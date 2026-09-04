@@ -6,7 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAppMode } from '../context/AppModeContext';
-import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert, Leaf, HeartPulse, Building2, Globe, Stethoscope } from 'lucide-react';
+import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert, Leaf, HeartPulse, Building2, Globe, Stethoscope, ShieldCheck, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from './NotificationBell';
 import UserAvatar from './UserAvatar';
@@ -260,6 +260,17 @@ const Navbar = () => {
                 >
                   <Leaf className="h-6 w-6" />
                 </button>
+
+                {/* ABHA Digital Health Button */}
+                <button
+                  type="button"
+                  onClick={() => navigate("/abdm")}
+                  className="p-2 rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-amber-600 dark:text-amber-400 hover:text-amber-500 relative"
+                  title="ABHA Digital Health Hub"
+                >
+                  <ShieldCheck className="h-6 w-6" />
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                </button>
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -317,6 +328,21 @@ const Navbar = () => {
                               {theme}
                             </span>
                           </button>
+
+                          {/* ABHA Digital Health */}
+                          <Link
+                            to="/abdm"
+                            onClick={() => setIsProfileOpen(false)}
+                            className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-lg bg-gradient-to-r from-orange-500/20 to-green-500/20 text-orange-600 dark:text-orange-400 group-hover:bg-orange-100 dark:group-hover:bg-orange-900/30 transition-colors">
+                                <ShieldCheck size={18} />
+                              </div>
+                              <span className="font-medium">ABHA Health Card</span>
+                            </div>
+                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30">ABDM</span>
+                          </Link>
 
                           {/* Manage Family */}
                           <Link

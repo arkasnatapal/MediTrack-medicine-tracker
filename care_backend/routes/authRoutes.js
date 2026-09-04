@@ -41,20 +41,32 @@ router.post('/register-facility', async (req, res) => {
       password,
     } = req.body;
 
-    const existingUser = await User.findOne({ email: adminEmail.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User with this email already exists' });
+    console.log('🏥 [REGISTER FACILITY REQUEST]:', { facilityName, adminEmail, licenseId });
+
+    if (!adminEmail || !password || !facilityName || !adminName) {
+      console.warn('⚠️ Missing required registration fields:', { adminEmail: !!adminEmail, password: !!password, facilityName: !!facilityName, adminName: !!adminName });
+      return res.status(400).json({ message: 'Please fill in all required fields: Facility Name, Admin Name, Admin Email, and Password.' });
     }
 
-    const existingFacility = await Facility.findOne({ licenseId });
+    const cleanAdminEmail = adminEmail.trim().toLowerCase();
+    let cleanLicenseId = (licenseId && licenseId.trim()) ? licenseId.trim() : `LIC-WB-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const existingUser = await User.findOne({ email: cleanAdminEmail });
+    if (existingUser) {
+      console.warn(`⚠️ User email already registered: ${cleanAdminEmail}`);
+      return res.status(400).json({ message: `An account with Admin Email '${cleanAdminEmail}' is already registered. Please login or use another email.` });
+    }
+
+    const existingFacility = await Facility.findOne({ licenseId: cleanLicenseId });
     if (existingFacility) {
-      return res.status(400).json({ message: 'Facility with this License ID is already registered' });
+      cleanLicenseId = `${cleanLicenseId}-${Math.floor(100 + Math.random() * 900)}`;
+      console.log(`ℹ️ License ID collision resolved: assigned unique license ID ${cleanLicenseId}`);
     }
 
     const facility = await Facility.create({
       name: facilityName,
       facilityType,
-      licenseId,
+      licenseId: cleanLicenseId,
       classification,
       address,
       state,
@@ -72,13 +84,13 @@ router.post('/register-facility', async (req, res) => {
       medicineCapability: medicineCapability !== false,
       operatingHours: operatingHours || '24/7 OPD & Emergency',
       adminName,
-      adminEmail,
+      adminEmail: cleanAdminEmail,
       verificationStatus: 'PENDING_VERIFICATION',
     });
 
     const user = await User.create({
       name: adminName,
-      email: adminEmail,
+      email: cleanAdminEmail,
       phone,
       password,
       role: 'FACILITY_ADMIN',

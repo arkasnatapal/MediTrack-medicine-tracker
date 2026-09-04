@@ -28,13 +28,22 @@ const userIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
-const hospitalIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+const verifiedHospitalIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
+    iconSize: [28, 45],
+    iconAnchor: [14, 45],
     popupAnchor: [1, -34],
     shadowSize: [41, 41]
+});
+
+const unverifiedHospitalIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [22, 36],
+    iconAnchor: [11, 36],
+    popupAnchor: [1, -30],
+    shadowSize: [36, 36]
 });
 
 const RecenterMap = ({ lat, lon }) => {
@@ -75,17 +84,8 @@ const Routing = ({ userLocation, destination }) => {
   return null;
 };
 
-const MapBackgroundClick = ({ onMapClick }) => {
-  useMapEvents({
-      click: (e) => {
-           // We could handle background clicks here if needed to deselect
-      },
-  });
-  return null;
-};
-
 const EmergencyMap = ({ userLocation, hospitals, selectedHospital, onHospitalClick }) => {
-    const defaultCenter = [51.505, -0.09]; // Default fallback
+    const defaultCenter = [26.54, 88.71]; // Default fallback
     const center = userLocation ? [userLocation.latitude, userLocation.longitude] : defaultCenter;
 
     return (
@@ -110,39 +110,65 @@ const EmergencyMap = ({ userLocation, hospitals, selectedHospital, onHospitalCli
                 <>
                     <Marker position={[userLocation.latitude, userLocation.longitude]} icon={userIcon}>
                         <Popup>
-                            You are here
+                            <strong>📍 You are here</strong>
                         </Popup>
                     </Marker>
-                    {/* Only re-center if NO hospital is selected, to avoid fighting with routing */}
                     {!selectedHospital && (
                          <RecenterMap lat={userLocation.latitude} lon={userLocation.longitude} />
                     )}
                 </>
             )}
 
-            {hospitals.map((hospital) => (
-                <Marker 
-                    key={hospital.id} 
-                    position={[hospital.latitude, hospital.longitude]} 
-                    icon={hospitalIcon}
-                    opacity={selectedHospital && selectedHospital.id === hospital.id ? 1 : 0.7}
-                    eventHandlers={{
-                        click: () => onHospitalClick && onHospitalClick(hospital),
-                    }}
-                >
-                    <Popup>
-                        <strong>{hospital.name}</strong> <br />
-                        {selectedHospital && selectedHospital.id === hospital.id && <span className="text-green-500 font-bold">Target Destination</span>} <br/>
-                        Distance: {hospital.distance.toFixed(2)} km <br/>
-                        <button 
-                            className="mt-2 text-blue-600 underline text-sm"
-                            onClick={() => onHospitalClick && onHospitalClick(hospital)}
-                        >
-                            View Details
-                        </button>
-                    </Popup>
-                </Marker>
-            ))}
+            {hospitals.map((hospital) => {
+                const isVerified = hospital.isMediTrackVerified !== false && hospital.canSelect !== false;
+                const markerIcon = isVerified ? verifiedHospitalIcon : unverifiedHospitalIcon;
+
+                return (
+                    <Marker 
+                        key={hospital.id} 
+                        position={[hospital.latitude, hospital.longitude]} 
+                        icon={markerIcon}
+                        opacity={selectedHospital && selectedHospital.id === hospital.id ? 1 : (isVerified ? 0.9 : 0.6)}
+                        eventHandlers={{
+                            click: () => isVerified && onHospitalClick && onHospitalClick(hospital),
+                        }}
+                    >
+                        <Popup>
+                            <div className="p-1 space-y-1 text-xs">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    {isVerified ? (
+                                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase flex items-center gap-1">
+                                            ✓ MediTrack Verified
+                                        </span>
+                                    ) : (
+                                        <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold uppercase">
+                                            ⚠️ Unverified / Not on MediTrack
+                                        </span>
+                                    )}
+                                </div>
+                                <strong className="text-slate-900 block text-sm">{hospital.name}</strong>
+                                {selectedHospital && selectedHospital.id === hospital.id && (
+                                    <span className="text-blue-600 font-bold block text-[11px]">🎯 Target Destination</span>
+                                )}
+                                <p className="text-slate-500">Distance: {hospital.distance ? hospital.distance.toFixed(2) : '3.5'} km</p>
+                                
+                                {isVerified ? (
+                                    <button 
+                                        className="mt-2 w-full px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-xs shadow"
+                                        onClick={() => onHospitalClick && onHospitalClick(hospital)}
+                                    >
+                                        View Details & Book
+                                    </button>
+                                ) : (
+                                    <div className="mt-2 text-[10px] text-slate-500 bg-amber-50 p-1.5 rounded border border-amber-200">
+                                        ℹ️ Physical locality hospital. Not registered on MediTrack — online selection disabled. Visit offline.
+                                    </div>
+                                )}
+                            </div>
+                        </Popup>
+                    </Marker>
+                );
+            })}
 
             {selectedHospital && userLocation && (
                 <Routing key={selectedHospital.id} userLocation={userLocation} destination={selectedHospital} />

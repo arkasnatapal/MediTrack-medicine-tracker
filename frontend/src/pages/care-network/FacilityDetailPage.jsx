@@ -82,7 +82,13 @@ const FacilityDetailPage = () => {
             </button>
 
             <button
-              onClick={() => navigate('/care-network/appointments')}
+              onClick={() => navigate('/care-network/appointments', {
+                state: {
+                  facilityId: facility.facilityId || facility._id,
+                  facilityName: facility.name,
+                  city: facility.city || facility.district || 'Jalpaiguri'
+                }
+              })}
               className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
             >
               <Calendar className="w-4 h-4" />

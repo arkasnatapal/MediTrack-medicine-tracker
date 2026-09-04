@@ -113,6 +113,10 @@ const EmergencyPage = () => {
 
     const handleHospitalClick = (hospital) => {
         if (!hospital) return;
+        if (hospital.isMediTrackVerified === false || hospital.canSelect === false) {
+            alert(`🏥 ${hospital.name}\n\nNotice: This hospital exists in your locality but is NOT registered on MediTrack.\n\nYou can use the map to find its physical location for an offline visit, but online booking/triage selection is disabled.`);
+            return;
+        }
         navigate(`/hospital-details/${hospital.id}`, { 
             state: { 
                 name: hospital.name,

@@ -4,7 +4,7 @@ import api from '../../services/api';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 import {
   Building2, Calendar, Users, ArrowUpRight, ArrowDownLeft, Stethoscope,
-  Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus
+  Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus, History
 } from 'lucide-react';
 
 
@@ -13,6 +13,8 @@ export default function FacilityDashboard() {
 
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyModalSubTab, setHistoryModalSubTab] = useState('appointments');
 
   // Data States
   const [appointments, setAppointments] = useState([]);
@@ -25,6 +27,20 @@ export default function FacilityDashboard() {
   const [registeredDoctors, setRegisteredDoctors] = useState([]);
   const [associations, setAssociations] = useState([]);
   const [teleSessions, setTeleSessions] = useState([]);
+  const [bedBookings, setBedBookings] = useState([]);
+
+  // Bed Admission Approval Modal States
+  const [showApproveBedModal, setShowApproveBedModal] = useState(false);
+  const [targetBedBooking, setTargetBedBooking] = useState(null);
+  const [allottedBedType, setAllottedBedType] = useState('ICU Bed');
+  const [allottedBedNumber, setAllottedBedNumber] = useState('');
+  const [hospitalNotes, setHospitalNotes] = useState('');
+
+  // Shift Ward Modal States
+  const [showShiftWardModal, setShowShiftWardModal] = useState(false);
+  const [shiftTargetBooking, setShiftTargetBooking] = useState(null);
+  const [shiftBedNumber, setShiftBedNumber] = useState('');
+  const [shiftNotes, setShiftNotes] = useState('');
 
 
   // LiveKit Call Modal States
@@ -88,6 +104,177 @@ export default function FacilityDashboard() {
     ventilatorsAvailable: 0,
   });
 
+  // OPD Appointment Doctor Assignment & Delay Modal States
+  const [showAssignDoctorModal, setShowAssignDoctorModal] = useState(false);
+  const [showDelayModal, setShowDelayModal] = useState(false);
+  const [targetAppointment, setTargetAppointment] = useState(null);
+  const [aptDoctorId, setAptDoctorId] = useState('');
+  const [delayDate, setDelayDate] = useState('');
+  const [delayTime, setDelayTime] = useState('10:00 AM');
+  const [delayReason, setDelayReason] = useState('');
+
+  const openAssignDoctorModal = (apt) => {
+    setTargetAppointment(apt);
+    setAptDoctorId(apt.doctorId?._id || apt.doctorId || (registeredDoctors[0]?._id || ''));
+    setShowAssignDoctorModal(true);
+  };
+
+  const openDelayModal = (apt) => {
+    setTargetAppointment(apt);
+    const dateStr = apt.appointmentDate ? new Date(apt.appointmentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    setDelayDate(dateStr);
+    setDelayTime(apt.timeSlot || '10:00 AM');
+    setDelayReason(apt.notes || 'Hospital schedule adjustment');
+    setShowDelayModal(true);
+  };
+
+  const handleAssignDoctorToAppointment = async (e) => {
+    e.preventDefault();
+    if (!targetAppointment || !aptDoctorId) {
+      return alert('Please select a doctor to assign');
+    }
+    try {
+      await api.put(`/appointments/${targetAppointment._id}/assign-doctor`, {
+        doctorId: aptDoctorId
+      });
+      alert('Doctor assigned successfully! Email notification and in-app alert dispatched to patient.');
+      setShowAssignDoctorModal(false);
+      loadDashboardData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to assign doctor');
+    }
+  };
+
+  const handleDelayAppointmentSubmit = async (e) => {
+    e.preventDefault();
+    if (!targetAppointment || !delayDate || !delayTime) {
+      return alert('Please select date and time for delay / reschedule');
+    }
+    try {
+      await api.put(`/appointments/${targetAppointment._id}/delay`, {
+        appointmentDate: delayDate,
+        timeSlot: delayTime,
+        delayReason,
+        status: 'RESCHEDULED'
+      });
+      alert('Appointment delayed/rescheduled! Email notice and in-app alert dispatched to patient.');
+      setShowDelayModal(false);
+      loadDashboardData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delay appointment');
+    }
+  };
+
+  const openApproveBedModal = (booking) => {
+    setTargetBedBooking(booking);
+    const category = booking.requestedBedType || 'GENERAL_WARD';
+    setAllottedBedType(category);
+    const bedPrefix = category === 'ICU' ? 'ICU-BED' : category === 'OXYGEN_BED' ? 'OXY-BED' : category === 'PEDIATRIC_WARD' ? 'PED-BED' : 'GEN-BED';
+    setAllottedBedNumber(`${bedPrefix}-${Math.floor(10 + Math.random() * 90)}`);
+    setHospitalNotes('Bed allocated & reserved by hospital admission desk.');
+    setShowApproveBedModal(true);
+  };
+
+  const handleApproveBedSubmit = async (e) => {
+    e.preventDefault();
+    if (!targetBedBooking) return;
+    try {
+      setLoading(true);
+      await api.put(`/appointments/bed-bookings/${targetBedBooking._id}/approve`, {
+        allottedBedType,
+        allottedBedNumber,
+        hospitalNotes
+      });
+      alert(`🎉 Bed #${allottedBedNumber} approved & allotted! Total available bed count occupied by 1.`);
+      setShowApproveBedModal(false);
+      setTargetBedBooking(null);
+      await loadDashboardData();
+    } catch (err) {
+      alert('Failed to approve bed admission: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openShiftWardModal = (booking) => {
+    setShiftTargetBooking(booking);
+    setShiftBedNumber(`GEN-WARD-${Math.floor(10 + Math.random() * 90)}`);
+    setShiftNotes('Patient transferred to General Ward for continued recovery.');
+    setShowShiftWardModal(true);
+  };
+
+  const handleShiftWardSubmit = async (e) => {
+    e.preventDefault();
+    if (!shiftTargetBooking) return;
+    try {
+      setLoading(true);
+      await api.put(`/appointments/bed-bookings/${shiftTargetBooking._id}/shift-ward`, {
+        newBedNumber: shiftBedNumber,
+        hospitalNotes: shiftNotes
+      });
+      alert(`🛏️ Patient shifted to General Ward Bed #${shiftBedNumber}! Email and in-app notifications dispatched.`);
+      setShowShiftWardModal(false);
+      setShiftTargetBooking(null);
+      await loadDashboardData();
+    } catch (err) {
+      alert('Failed to shift patient to general ward: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDispatchPatient = async (booking) => {
+    if (!window.confirm(`Are you sure you want to DISCHARGE patient ${booking.patientName || ''} (Pass #${booking.admissionPassNumber})?\n\nThis will release 1 occupied bed back to available inventory and send official discharge email & in-app notification.`)) {
+      return;
+    }
+    try {
+      setLoading(true);
+      await api.put(`/appointments/bed-bookings/${booking._id}/dispatch`, {
+        summaryNotes: 'Patient officially discharged from inpatient care in stable condition.'
+      });
+      alert(`🏥 Patient ${booking.patientName || ''} discharged successfully! Bed released (+1 available count). Moved to Discharged History.`);
+      await loadDashboardData();
+    } catch (err) {
+      alert('Failed to discharge patient: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBedBookingRecord = async (bookingId) => {
+    if (!window.confirm('⚠️ Are you sure you want to PERMANENTLY delete this discharged bed admission record?\n\nThis action cannot be undone.')) {
+      return;
+    }
+    try {
+      setLoading(true);
+      await api.delete(`/appointments/bed-bookings/${bookingId}`);
+      alert('🗑️ Bed admission record permanently deleted!');
+      await loadDashboardData();
+    } catch (err) {
+      alert('Failed to delete bed admission record: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAppointmentRecord = async (aptId) => {
+    if (!window.confirm('⚠️ Are you sure you want to PERMANENTLY delete this completed appointment record?\n\nThis action cannot be undone.')) {
+      return;
+    }
+    try {
+      setLoading(true);
+      await api.delete(`/appointments/${aptId}`);
+      alert('🗑️ Appointment record permanently deleted!');
+      await loadDashboardData();
+    } catch (err) {
+      alert('Failed to delete appointment record: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
   // Transfer Request Form
   const [transferForm, setTransferForm] = useState({
     patientId: '',
@@ -137,6 +324,15 @@ export default function FacilityDashboard() {
         setTeleSessions(teleRes.data || []);
         setRegisteredDoctors(regDocRes.data || []);
         setAssociations(assocRes.data || []);
+
+        try {
+          const bbRes = await api.get('/appointments/bed-bookings/all');
+          if (bbRes.data && bbRes.data.bookings) {
+            setBedBookings(bbRes.data.bookings);
+          }
+        } catch (bbErr) {
+          console.warn('Could not fetch bed bookings:', bbErr);
+        }
 
         if (regDocRes.data && regDocRes.data.length > 0 && !doctorAssociationForm.doctorId) {
           setDoctorAssociationForm(prev => ({ ...prev, doctorId: regDocRes.data[0]._id }));
@@ -275,28 +471,36 @@ export default function FacilityDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col md:flex-row relative overflow-hidden selection:bg-teal-500 selection:text-slate-950 font-sans">
+      {/* Grainy Texture Overlay */}
+      <div className="grainy-overlay" />
+
+      {/* Floating Ambient Mesh Orbs */}
+      <div className="ambient-orb-teal -top-20 -left-20 animate-float-slow" />
+      <div className="ambient-orb-cyan bottom-10 right-10 animate-float-reverse" />
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between">
+      <aside className="w-full md:w-64 liquid-glass border-r border-white/10 p-6 flex flex-col justify-between shrink-0 relative z-20 backdrop-blur-2xl">
         <div>
           <div className="flex items-center space-x-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-500/20 to-emerald-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 shadow-lg shadow-teal-500/20">
               <Building2 className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white truncate max-w-[140px]">{user?.facility?.name || 'Care Facility'}</h2>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${user?.verificationStatus === 'VERIFIED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}`}>
+              <h2 className="font-display text-sm font-extrabold text-white truncate max-w-[140px]">{user?.facility?.name || 'Care Facility'}</h2>
+              <span className={`text-[10px] font-tech px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${user?.verificationStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}`}>
                 {user?.verificationStatus || 'PENDING'}
               </span>
             </div>
           </div>
 
-          <nav className="space-y-1 text-xs font-semibold">
+          <nav className="space-y-1.5 text-xs font-tech font-semibold">
             {[
               { id: 'overview', label: 'Overview', icon: Activity },
               { id: 'doctors', label: 'Doctors & Staff', icon: Stethoscope },
               { id: 'teleconsultations', label: 'Teleconsult Allocations', icon: Video },
-              { id: 'appointments', label: 'Appointments', icon: Calendar },
+              { id: 'appointments', label: 'OPD Appointments', icon: Calendar },
+              { id: 'bed-admissions', label: 'Bed Admissions', icon: Bed },
               { id: 'transfers', label: 'Emergency Transfers', icon: ArrowUpRight },
               { id: 'referrals', label: 'Referrals', icon: Layers },
               { id: 'inventory', label: 'Medicine Inventory', icon: Package },
@@ -332,9 +536,29 @@ export default function FacilityDashboard() {
             <h1 className="text-2xl font-bold text-white capitalize">{activeTab} Dashboard</h1>
             <p className="text-xs text-slate-400">MediTrack Care Network Provider Portal • Facility ID: {facilityId || 'N/A'}</p>
           </div>
-          <button onClick={loadDashboardData} className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (activeTab === 'bed-admissions') {
+                  setHistoryModalSubTab('beds');
+                } else {
+                  setHistoryModalSubTab('appointments');
+                }
+                setShowHistoryModal(true);
+              }}
+              className="px-3.5 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 font-bold text-xs flex items-center gap-1.5 border border-teal-500/30 shadow-sm transition"
+              title="Open Hospital History Archive Modal"
+            >
+              <History className="w-3.5 h-3.5 text-teal-400" />
+              <span>History</span>
+              <span className="px-1.5 py-0.2 bg-teal-400/20 text-teal-300 text-[10px] rounded-full font-extrabold">
+                {appointments.filter(a => a.status === 'COMPLETED').length + bedBookings.filter(b => b.status === 'DISCHARGED').length}
+              </span>
+            </button>
+            <button onClick={loadDashboardData} className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            </button>
+          </div>
         </div>
 
         {/* Overview Tab */}
@@ -810,8 +1034,251 @@ export default function FacilityDashboard() {
           </div>
         )}
 
-        {/* Fallback for other tabs */}
-        {['transfers', 'inventory', 'appointments', 'referrals'].includes(activeTab) && (
+        {/* OPD Appointments Console Tab */}
+        {activeTab === 'appointments' && (
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-teal-400" />
+                  <span>Facility Active OPD Appointments Console</span>
+                </h3>
+                <p className="text-xs text-slate-400">Active and upcoming patient OPD appointments for this healthcare facility.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setHistoryModalSubTab('appointments');
+                    setShowHistoryModal(true);
+                  }}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-300 font-bold text-xs rounded-xl border border-teal-500/30 flex items-center gap-1.5 transition"
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-400" /> View History Modal ({appointments.filter(a => a.status === 'COMPLETED').length})
+                </button>
+                <span className="px-3 py-1 bg-teal-500/20 text-teal-300 font-extrabold text-xs rounded-full border border-teal-500/30">
+                  Active: {appointments.filter(a => a.status !== 'COMPLETED').length}
+                </span>
+              </div>
+            </div>
+
+            {appointments.filter(a => a.status !== 'COMPLETED').length === 0 ? (
+              <div className="p-8 text-center bg-slate-950 rounded-xl border border-slate-800 text-slate-400 text-xs">
+                No active pending OPD appointments right now. Click the <strong className="text-teal-400">History</strong> button above to view completed consultation records.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Token & Patient</th>
+                      <th className="p-3">Department & Assigned Doctor</th>
+                      <th className="p-3">Slot & Date</th>
+                      <th className="p-3">Symptoms / Notes</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Hospital Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {appointments.filter(a => a.status !== 'COMPLETED').map((apt) => {
+                      const docName = apt.doctorId?.fullName ? (apt.doctorId.fullName.startsWith('Dr.') ? apt.doctorId.fullName : `Dr. ${apt.doctorId.fullName}`) : (apt.doctorName || null);
+                      return (
+                        <tr key={apt._id} className="hover:bg-slate-950/50 transition">
+                          <td className="p-3 font-bold text-white">
+                            <span className="inline-block px-2 py-0.5 mr-2 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px]">
+                              Token #{apt.tokenNumber || 1}
+                            </span>
+                            {apt.patientName || apt.patientId?.name || 'Patient'}
+                            <span className="block text-[10px] text-slate-500 font-normal">{apt.patientId?.email || apt.patientId?.phone || 'Registered Patient'}</span>
+                          </td>
+                          <td className="p-3">
+                            <span className="font-semibold text-cyan-300 block">{apt.department || 'General OPD'}</span>
+                            <span className={`text-[11px] font-bold ${docName ? 'text-teal-400' : 'text-amber-400/80 italic'}`}>
+                              {docName ? `👨‍⚕️ ${docName}` : '⚠️ Doctor Unassigned'}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span className="font-semibold">{apt.appointmentDate ? new Date(apt.appointmentDate).toLocaleDateString() : 'Today'}</span> at <span className="text-teal-300 font-bold">{apt.timeSlot || '09:30 AM'}</span>
+                          </td>
+                          <td className="p-3 text-slate-400 max-w-xs">
+                            <span className="truncate block">{apt.symptoms || apt.reasonForVisit || 'General Consultation'}</span>
+                            {apt.notes && <span className="text-[10px] text-amber-400 italic block">Note: {apt.notes}</span>}
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${
+                              apt.status === 'IN_CONSULTATION' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
+                              apt.status === 'RESCHEDULED' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                              'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                            }`}>
+                              {apt.status || 'CONFIRMED'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => openAssignDoctorModal(apt)}
+                                className="px-2.5 py-1.5 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/30 font-bold text-[10px] flex items-center gap-1 transition"
+                              >
+                                <UserPlus className="w-3 h-3" /> Assign Doctor
+                              </button>
+                              <button
+                                onClick={() => openDelayModal(apt)}
+                                className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-bold text-[10px] flex items-center gap-1 transition"
+                              >
+                                <Clock className="w-3 h-3" /> Delay / Reschedule
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bed Admissions & Emergency Requests Console Tab */}
+        {activeTab === 'bed-admissions' && (
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Bed className="w-5 h-5 text-teal-400" />
+                  <span>Hospital Active Bed Admissions & Booking Console</span>
+                </h3>
+                <p className="text-xs text-slate-400">Current active inpatient bed requests and admitted patients.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setHistoryModalSubTab('beds');
+                    setShowHistoryModal(true);
+                  }}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-300 font-bold text-xs rounded-xl border border-teal-500/30 flex items-center gap-1.5 transition"
+                >
+                  <Clock className="w-4 h-4 text-cyan-400" /> View History Modal ({bedBookings.filter(b => b.status === 'DISCHARGED').length})
+                </button>
+                <span className="px-3 py-1 bg-amber-500/20 text-amber-300 font-extrabold text-xs rounded-full border border-amber-500/30">
+                  Pending: {bedBookings.filter(b => (b.status === 'PENDING' || b.status === 'WAITLISTED')).length}
+                </span>
+                <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-xs rounded-full border border-emerald-500/30">
+                  Active Inpatients: {bedBookings.filter(b => b.status !== 'DISCHARGED').length}
+                </span>
+              </div>
+            </div>
+
+            {bedBookings.filter(b => b.status !== 'DISCHARGED').length === 0 ? (
+              <div className="p-8 text-center bg-slate-950 rounded-xl border border-slate-800 text-slate-400 text-xs">
+                No active inpatient bed admission requests right now. Click the <strong className="text-teal-400">History</strong> button above to view discharged patient records.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Pass # & Patient</th>
+                      <th className="p-3">Requested Bed Mode</th>
+                      <th className="p-3">Priority & Department</th>
+                      <th className="p-3">Reason / Diagnosis</th>
+                      <th className="p-3">Status / Allotted Bed</th>
+                      <th className="p-3 text-right">Hospital Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {bedBookings.filter(b => b.status !== 'DISCHARGED').map((booking) => (
+                      <tr key={booking._id} className="hover:bg-slate-950/50 transition">
+                        <td className="p-3 font-bold text-white">
+                          <span className="inline-block px-2 py-0.5 mr-2 rounded bg-teal-500/20 text-teal-300 font-extrabold text-[10px]">
+                            #{booking.admissionPassNumber || 'PASS-00'}
+                          </span>
+                          {booking.patientName || 'Patient'}
+                          <span className="block text-[10px] text-slate-500 font-normal">{booking.contactPhone || 'Contact N/A'}</span>
+                        </td>
+                        <td className="p-3 font-semibold text-cyan-300">
+                          {booking.requestedBedType ? booking.requestedBedType.replace('_', ' ') : 'General Ward'}
+                        </td>
+                        <td className="p-3">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                            booking.urgencyLevel === 'URGENT' || booking.urgencyLevel === 'EMERGENCY' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-slate-800 text-slate-300'
+                          }`}>
+                            {booking.urgencyLevel || 'NORMAL'}
+                          </span>
+                          <span className="block text-[10px] text-slate-400 mt-0.5">{booking.department || 'Emergency / General'}</span>
+                        </td>
+                        <td className="p-3 text-slate-400 max-w-xs">
+                          <span className="truncate block">{booking.reasonForAdmission || 'Hospital Admission'}</span>
+                          {booking.preferredDate && <span className="text-[10px] text-teal-400 block">Date: {new Date(booking.preferredDate).toLocaleDateString()}</span>}
+                        </td>
+                        <td className="p-3">
+                          {booking.status === 'APPROVED_BED_ALLOTTED' ? (
+                            <div>
+                              <span className="px-2.5 py-1 rounded-full font-bold text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                🟢 BED ALLOTTED
+                              </span>
+                              <span className="block text-[11px] font-extrabold text-teal-300 mt-1">
+                                #{booking.allottedBedNumber || 'BED-01'} ({booking.allottedBedType || 'ICU'})
+                              </span>
+                            </div>
+                          ) : booking.status === 'SHIFTED_TO_GENERAL_WARD' ? (
+                            <div>
+                              <span className="px-2.5 py-1 rounded-full font-bold text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                🛏️ GENERAL WARD SHIFT
+                              </span>
+                              <span className="block text-[11px] font-extrabold text-purple-300 mt-1">
+                                #{booking.allottedBedNumber || 'GEN-WARD-01'}
+                              </span>
+                            </div>
+                          ) : booking.status === 'WAITLISTED' ? (
+                            <span className="px-2.5 py-1 rounded-full font-bold text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                              ⚠️ WAITLISTED
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full font-bold text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              ⏳ PENDING APPROVAL
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {booking.status === 'APPROVED_BED_ALLOTTED' || booking.status === 'SHIFTED_TO_GENERAL_WARD' ? (
+                            <div className="flex items-center justify-end gap-2">
+                              {booking.status !== 'SHIFTED_TO_GENERAL_WARD' && booking.allottedBedType !== 'GENERAL_WARD' && (
+                                <button
+                                  onClick={() => openShiftWardModal(booking)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 font-bold text-[10px] flex items-center gap-1 transition shadow-sm"
+                                  title="Shift patient to General Medicine Ward"
+                                >
+                                  <Bed className="w-3.5 h-3.5" /> Shift to General Ward
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDispatchPatient(booking)}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-[10px] flex items-center gap-1 transition shadow-sm"
+                                title="Discharge patient & release occupied bed"
+                              >
+                                <LogOut className="w-3.5 h-3.5" /> Dispatch Patient
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => openApproveBedModal(booking)}
+                              className="px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-[11px] shadow-md shadow-teal-500/20 transition flex items-center gap-1 ml-auto"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" /> Approve & Allot Bed
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Fallback for remaining tabs */}
+        {['transfers', 'inventory', 'referrals'].includes(activeTab) && (
           <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800">
             <h3 className="text-base font-bold text-white mb-4 capitalize">{activeTab} Console</h3>
             <p className="text-xs text-slate-400">Manage all facility records for {activeTab}.</p>
@@ -829,8 +1296,524 @@ export default function FacilityDashboard() {
           />
         )}
 
+        {/* Assign Doctor Modal */}
+        {showAssignDoctorModal && targetAppointment && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 text-xs shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-teal-400" /> Assign Doctor for Patient
+                </h3>
+                <button onClick={() => setShowAssignDoctorModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <div className="text-slate-300 font-bold text-sm">
+                  Token #{targetAppointment.tokenNumber || 1} • {targetAppointment.patientName || targetAppointment.patientId?.name || 'Patient'}
+                </div>
+                <div className="text-slate-400 text-xs">
+                  Department: <span className="text-cyan-300 font-semibold">{targetAppointment.department || 'General OPD'}</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleAssignDoctorToAppointment} className="space-y-4">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1.5">Select Doctor to Allocate *</label>
+                  <select
+                    value={aptDoctorId}
+                    onChange={e => setAptDoctorId(e.target.value)}
+                    required
+                    className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white font-semibold text-xs focus:outline-none focus:border-teal-500"
+                  >
+                    <option value="">-- Choose Registered Doctor --</option>
+                    {registeredDoctors.map(d => (
+                      <option key={d._id} value={d._id}>
+                        {d.fullName?.startsWith('Dr.') ? d.fullName : `Dr. ${d.fullName}`} ({d.specialization})
+                      </option>
+                    ))}
+                    {doctors.map(d => (
+                      <option key={d._id} value={d._id}>
+                        {d.fullName?.startsWith('Dr.') ? d.fullName : `Dr. ${d.fullName}`} ({d.specialization})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="p-3 bg-teal-500/10 border border-teal-500/30 rounded-xl text-[11px] text-teal-300">
+                  ℹ️ Submitting will automatically send an email confirmation and in-app notification to the patient.
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAssignDoctorModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold flex items-center gap-1.5 shadow-lg shadow-teal-500/20"
+                  >
+                    <Send className="w-4 h-4" /> Confirm & Send Notification
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delay / Reschedule Appointment Modal */}
+        {showDelayModal && targetAppointment && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 text-xs shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 className="text-base font-bold text-amber-400 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-400" /> Delay / Reschedule Appointment
+                </h3>
+                <button onClick={() => setShowDelayModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <div className="text-slate-300 font-bold text-sm">
+                  Token #{targetAppointment.tokenNumber || 1} • {targetAppointment.patientName || targetAppointment.patientId?.name || 'Patient'}
+                </div>
+                <div className="text-slate-400 text-xs">
+                  Department: <span className="text-cyan-300 font-semibold">{targetAppointment.department || 'General OPD'}</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleDelayAppointmentSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">New Date *</label>
+                    <input
+                      type="date"
+                      value={delayDate}
+                      onChange={e => setDelayDate(e.target.value)}
+                      required
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-semibold text-xs [color-scheme:dark]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">New Slot / Time *</label>
+                    <select
+                      value={delayTime}
+                      onChange={e => setDelayTime(e.target.value)}
+                      required
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-semibold text-xs"
+                    >
+                      <option value="09:00 AM">09:00 AM</option>
+                      <option value="10:00 AM">10:00 AM</option>
+                      <option value="11:30 AM">11:30 AM</option>
+                      <option value="01:30 PM">01:30 PM</option>
+                      <option value="03:00 PM">03:00 PM</option>
+                      <option value="04:30 PM">04:30 PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Reason for Delay / Note to Patient</label>
+                  <textarea
+                    rows={2}
+                    value={delayReason}
+                    onChange={e => setDelayReason(e.target.value)}
+                    placeholder="e.g. Emergency surgery delay, Doctor on rounds..."
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-[11px] text-amber-300">
+                  ⚠️ This action will notify the patient via Email & In-App alert about the revised timing.
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDelayModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold flex items-center gap-1.5 shadow-lg shadow-amber-500/20"
+                  >
+                    <Send className="w-4 h-4" /> Save Schedule & Send Alerts
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Approve & Allot Bed Modal */}
+        {showApproveBedModal && targetBedBooking && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 text-xs shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 className="text-base font-bold text-teal-400 flex items-center gap-2">
+                  <Bed className="w-5 h-5 text-teal-400" /> Allot Bed & Approve Admission
+                </h3>
+                <button onClick={() => setShowApproveBedModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <div className="text-slate-300 font-bold text-sm">
+                  Pass #{targetBedBooking.admissionPassNumber} • {targetBedBooking.patientName || 'Patient'}
+                </div>
+                <div className="text-slate-400 text-xs">
+                  Requested Bed Mode: <span className="text-teal-300 font-semibold">{targetBedBooking.requestedBedType || 'General Ward'}</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleApproveBedSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Assign Bed Number / Tag *</label>
+                  <input
+                    type="text"
+                    value={allottedBedNumber}
+                    onChange={e => setAllottedBedNumber(e.target.value)}
+                    required
+                    placeholder="e.g. ICU-BED-04, WARD-3-BED-12"
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono font-bold text-xs focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Confirmed Bed Category *</label>
+                  <select
+                    value={allottedBedType}
+                    onChange={e => setAllottedBedType(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-semibold text-xs"
+                  >
+                    <option value="ICU">ICU Bed (Intensive Care)</option>
+                    <option value="OXYGEN_BED">Oxygen Bed Support</option>
+                    <option value="GENERAL_WARD">General Ward Bed</option>
+                    <option value="PEDIATRIC_WARD">Pediatric Ward Bed</option>
+                    <option value="EMERGENCY_ISOLATION">Emergency Isolation Unit</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Hospital Notes for Patient</label>
+                  <textarea
+                    rows={2}
+                    value={hospitalNotes}
+                    onChange={e => setHospitalNotes(e.target.value)}
+                    placeholder="e.g. Please report directly to Trauma Center Gate 2..."
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+
+                <div className="p-3 bg-teal-500/10 border border-teal-500/30 rounded-xl text-[11px] text-teal-300">
+                  ⚡ Approving will assign bed number to patient's pass and <strong>occupy 1 available bed</strong> from facility capacity.
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowApproveBedModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold flex items-center gap-1.5 shadow-lg shadow-teal-500/20"
+                  >
+                    <CheckCircle className="w-4 h-4" /> Allot Bed (Occupies 1 Bed)
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Shift to General Ward Modal */}
+        {showShiftWardModal && shiftTargetBooking && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 text-xs shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 className="text-base font-bold text-purple-400 flex items-center gap-2">
+                  <Bed className="w-5 h-5 text-purple-400" /> Shift Patient to General Ward
+                </h3>
+                <button onClick={() => setShowShiftWardModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <div className="text-slate-300 font-bold text-sm">
+                  Pass #{shiftTargetBooking.admissionPassNumber} • {shiftTargetBooking.patientName || 'Patient'}
+                </div>
+                <div className="text-slate-400 text-xs">
+                  Current Bed: <span className="text-cyan-300 font-semibold">#{shiftTargetBooking.allottedBedNumber || 'N/A'} ({shiftTargetBooking.allottedBedType || 'ICU'})</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleShiftWardSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">New General Ward Bed Tag / Number *</label>
+                  <input
+                    type="text"
+                    value={shiftBedNumber}
+                    onChange={e => setShiftBedNumber(e.target.value)}
+                    required
+                    placeholder="e.g. GEN-WARD-14, WARD-B-BED-08"
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono font-bold text-xs focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Ward Transfer Notes for Patient</label>
+                  <textarea
+                    rows={2}
+                    value={shiftNotes}
+                    onChange={e => setShiftNotes(e.target.value)}
+                    placeholder="e.g. Patient condition stabilized, transferred to General Ward Room 204..."
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-[11px] text-purple-300">
+                  ℹ️ Submitting will update the patient's pass to General Ward and send an automated email & in-app notification.
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowShiftWardModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-bold flex items-center gap-1.5 shadow-lg shadow-purple-500/20"
+                  >
+                    <Bed className="w-4 h-4" /> Confirm Ward Shift
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Hospital History & Archives Modal */}
+        {showHistoryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+              
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <History className="w-6 h-6 text-teal-400" />
+                    <span>Hospital Completed Records & History Archive</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Review completed OPD consultations and discharged inpatient bed records. Delete individual records to permanently free up database storage.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowHistoryModal(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Sub-Navigation Tabs */}
+              <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setHistoryModalSubTab('appointments')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      historyModalSubTab === 'appointments'
+                        ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/20'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>OPD Completed Appointments ({appointments.filter(a => a.status === 'COMPLETED').length})</span>
+                  </button>
+                  <button
+                    onClick={() => setHistoryModalSubTab('beds')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      historyModalSubTab === 'beds'
+                        ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" />
+                    <span>Discharged Bed Admissions ({bedBookings.filter(b => b.status === 'DISCHARGED').length})</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content Body */}
+              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+                
+                {/* SUBTAB 1: OPD COMPLETED APPOINTMENTS HISTORY */}
+                {historyModalSubTab === 'appointments' && (
+                  <div>
+                    {appointments.filter(a => a.status === 'COMPLETED').length === 0 ? (
+                      <div className="p-12 text-center bg-slate-950 rounded-2xl border border-slate-800 text-slate-400 text-xs">
+                        No completed appointment history records found in system database.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950">
+                        <table className="w-full text-left text-xs text-slate-300">
+                          <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
+                            <tr>
+                              <th className="p-3.5">Token & Patient</th>
+                              <th className="p-3.5">Department & Doctor</th>
+                              <th className="p-3.5">Date & Slot</th>
+                              <th className="p-3.5">Symptoms / Notes</th>
+                              <th className="p-3.5">Status</th>
+                              <th className="p-3.5 text-right">Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60">
+                            {appointments.filter(a => a.status === 'COMPLETED').map((apt) => {
+                              const docName = apt.doctorId?.fullName ? (apt.doctorId.fullName.startsWith('Dr.') ? apt.doctorId.fullName : `Dr. ${apt.doctorId.fullName}`) : (apt.doctorName || 'Attending Physician');
+                              return (
+                                <tr key={apt._id} className="hover:bg-slate-900/50 transition">
+                                  <td className="p-3.5 font-bold text-white">
+                                    <span className="inline-block px-2 py-0.5 mr-2 rounded bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px]">
+                                      Token #{apt.tokenNumber || 1}
+                                    </span>
+                                    {apt.patientName || apt.patientId?.name || 'Patient'}
+                                  </td>
+                                  <td className="p-3.5">
+                                    <span className="font-semibold text-cyan-300 block">{apt.department || 'General OPD'}</span>
+                                    <span className="text-[11px] font-bold text-teal-400">👨‍⚕️ {docName}</span>
+                                  </td>
+                                  <td className="p-3.5">
+                                    <span className="font-semibold">{apt.appointmentDate ? new Date(apt.appointmentDate).toLocaleDateString() : 'Completed'}</span> at <span className="text-teal-300 font-bold">{apt.timeSlot || '09:30 AM'}</span>
+                                  </td>
+                                  <td className="p-3.5 text-slate-400 max-w-xs">
+                                    <span className="truncate block">{apt.symptoms || apt.reasonForVisit || 'General Consultation'}</span>
+                                  </td>
+                                  <td className="p-3.5">
+                                    <span className="px-2.5 py-1 rounded-full font-bold text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                      ✓ COMPLETED
+                                    </span>
+                                  </td>
+                                  <td className="p-3.5 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <span className="text-[10px] text-slate-500 italic mr-1">Buttons Disabled</span>
+                                      <button
+                                        onClick={() => handleDeleteAppointmentRecord(apt._id)}
+                                        className="p-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-500/40 transition shadow-sm"
+                                        title="Permanently delete record"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SUBTAB 2: DISCHARGED BED ADMISSIONS HISTORY */}
+                {historyModalSubTab === 'beds' && (
+                  <div>
+                    {bedBookings.filter(b => b.status === 'DISCHARGED').length === 0 ? (
+                      <div className="p-12 text-center bg-slate-950 rounded-2xl border border-slate-800 text-slate-400 text-xs">
+                        No discharged bed admission history records found in system database.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950">
+                        <table className="w-full text-left text-xs text-slate-300">
+                          <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
+                            <tr>
+                              <th className="p-3.5">Pass # & Patient</th>
+                              <th className="p-3.5">Last Allotted Bed</th>
+                              <th className="p-3.5">Discharge Date & Time</th>
+                              <th className="p-3.5">Discharge Summary / Notes</th>
+                              <th className="p-3.5">Status</th>
+                              <th className="p-3.5 text-right">Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60">
+                            {bedBookings.filter(b => b.status === 'DISCHARGED').map((booking) => (
+                              <tr key={booking._id} className="hover:bg-slate-900/50 transition">
+                                <td className="p-3.5 font-bold text-white">
+                                  <span className="inline-block px-2 py-0.5 mr-2 rounded bg-slate-800 text-slate-300 font-extrabold text-[10px]">
+                                    #{booking.admissionPassNumber || 'PASS-00'}
+                                  </span>
+                                  {booking.patientName || 'Patient'}
+                                  <span className="block text-[10px] text-slate-500 font-normal">{booking.contactPhone || 'Contact N/A'}</span>
+                                </td>
+                                <td className="p-3.5 font-semibold text-cyan-300">
+                                  #{booking.allottedBedNumber || 'BED-01'} ({booking.allottedBedType || 'General Ward'})
+                                </td>
+                                <td className="p-3.5 text-slate-300">
+                                  {booking.dischargedAt ? new Date(booking.dischargedAt).toLocaleString() : 'Discharged'}
+                                </td>
+                                <td className="p-3.5 text-slate-400 max-w-xs">
+                                  <span className="truncate block">{booking.dischargeNotes || booking.hospitalNotes || 'Discharged in stable condition.'}</span>
+                                </td>
+                                <td className="p-3.5">
+                                  <span className="px-2.5 py-1 rounded-full font-bold text-[10px] bg-slate-800 text-slate-400 border border-slate-700">
+                                    🏁 DISCHARGED (Bed Freed +1)
+                                  </span>
+                                </td>
+                                <td className="p-3.5 text-right">
+                                  <button
+                                    onClick={() => handleDeleteBedBookingRecord(booking._id)}
+                                    className="p-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-500/40 transition shadow-sm"
+                                    title="Permanently delete record"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-xs text-slate-400">
+                <span>Total Historical Records: {appointments.filter(a => a.status === 'COMPLETED').length + bedBookings.filter(b => b.status === 'DISCHARGED').length}</span>
+                <button
+                  onClick={() => setShowHistoryModal(false)}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition"
+                >
+                  Close History
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
 }
+
 

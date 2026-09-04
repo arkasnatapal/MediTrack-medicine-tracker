@@ -58,12 +58,12 @@ import FindCarePage from './pages/care-network/FindCarePage'
 import FacilityDetailPage from './pages/care-network/FacilityDetailPage'
 import DigitalTriagePage from './pages/care-network/DigitalTriagePage'
 import AppointmentsPage from './pages/care-network/AppointmentsPage'
+import AbdmHubPage from './pages/AbdmHubPage'
 import ReferralTrackerPage from './pages/care-network/ReferralTrackerPage'
 import DiagnosticsSearchPage from './pages/care-network/DiagnosticsSearchPage'
 import MedicineAvailabilityPage from './pages/care-network/MedicineAvailabilityPage'
 import TeleconsultationPage from './pages/care-network/TeleconsultationPage'
-import CareJourneyPage from './pages/care-network/CareJourneyPage'
-import HospitalPortalPage from './pages/care-network/HospitalPortalPage'
+import PrescriptionsPage from './pages/care-network/PrescriptionsPage'
 
 import Loader from './components/Loader'
 import Onboarding from './components/Onboarding'
@@ -323,6 +323,12 @@ function AppContent() {
                 </PrivateRoute>
               } />
 
+              <Route path="/abdm" element={
+                <PrivateRoute>
+                  <AbdmHubPage />
+                </PrivateRoute>
+              } />
+
               {/* CARE NETWORK ROUTES */}
               <Route path="/care-network" element={
                 <PrivateRoute>
@@ -374,16 +380,12 @@ function AppContent() {
                   <TeleconsultationPage />
                 </PrivateRoute>
               } />
-              <Route path="/care-network/journey" element={
+              <Route path="/care-network/prescriptions" element={
                 <PrivateRoute>
-                  <CareJourneyPage />
+                  <PrescriptionsPage />
                 </PrivateRoute>
               } />
-              <Route path="/care-network/hospital-portal" element={
-                <PrivateRoute>
-                  <HospitalPortalPage />
-                </PrivateRoute>
-              } />
+
 
               {/* 404 Page */}
               <Route path="*" element={<NotFound />} />

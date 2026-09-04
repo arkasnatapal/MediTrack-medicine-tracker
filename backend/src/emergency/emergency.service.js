@@ -144,7 +144,41 @@ exports.triggerEmergency = async (userId, data) => {
   return emergency;
 };
 
-exports.fetchNearbyHospitals = async (lat, lon, radius = 20000) => {
+exports.fetchNearbyHospitals = async (lat, lon, radius = 25000) => {
+  let registeredFacilities = [];
+  const mongoose = require('mongoose');
+
+  // 1. Fetch MediTrack Registered Facilities from MongoDB
+  try {
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      const rawFacs = await mongoose.connection.collection('facilities').find({}).toArray();
+      registeredFacilities = rawFacs.map(fac => {
+        const hLat = parseFloat(fac.latitude) || lat;
+        const hLon = parseFloat(fac.longitude) || lon;
+        const dist = getDistance(lat, lon, hLat, hLon);
+        return {
+          id: fac._id.toString(),
+          _id: fac._id.toString(),
+          name: fac.name,
+          latitude: hLat,
+          longitude: hLon,
+          distance: dist,
+          isMediTrackVerified: true,
+          verificationStatus: fac.verificationStatus || 'VERIFIED',
+          canSelect: true,
+          badgeText: 'MediTrack Verified',
+          address: fac.address || 'MediTrack Healthcare Network',
+          phone: fac.phone || '+91 108',
+          operatingHours: fac.operatingHours || '24/7 OPD & Emergency'
+        };
+      });
+    }
+  } catch (err) {
+    console.warn('Could not query MongoDB facilities collection:', err.message);
+  }
+
+  // 2. Query Overpass API for all locality hospitals in the area
+  let osmHospitals = [];
   const query = `
     [out:json];
     (
@@ -160,25 +194,51 @@ exports.fetchNearbyHospitals = async (lat, lon, radius = 20000) => {
       headers: {
         'User-Agent': 'MediTrack-Emergency-Service/1.0',
         'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-    const hospitals = response.data.elements.map(el => {
-        const hLat = el.lat || el.center.lat;
-        const hLon = el.lon || el.center.lon;
-        return {
-          id: el.id,
-          name: el.tags.name || 'Unknown Hospital',
-          latitude: hLat,
-          longitude: hLon,
-          distance: getDistance(lat, lon, hLat, hLon)
-        };
+      },
+      timeout: 5000
     });
 
-    return hospitals.sort((a, b) => a.distance - b.distance);
+    if (response.data && response.data.elements) {
+      osmHospitals = response.data.elements.map(el => {
+        const hLat = el.lat || (el.center && el.center.lat) || lat;
+        const hLon = el.lon || (el.center && el.center.lon) || lon;
+        const rawName = el.tags?.name || 'Local Public Hospital / Clinic';
+        const dist = getDistance(lat, lon, hLat, hLon);
+
+        // Check if matched with registered MongoDB facility
+        const matched = registeredFacilities.find(rf => 
+          rf.name.toLowerCase().includes(rawName.toLowerCase()) || 
+          rawName.toLowerCase().includes(rf.name.toLowerCase()) ||
+          getDistance(rf.latitude, rf.longitude, hLat, hLon) < 0.3
+        );
+
+        if (matched) {
+          return null; // Skip duplicate since registered facility is already present
+        }
+
+        return {
+          id: `OSM-${el.id}`,
+          name: rawName,
+          latitude: hLat,
+          longitude: hLon,
+          distance: dist,
+          isMediTrackVerified: false,
+          verificationStatus: 'UNVERIFIED',
+          canSelect: false,
+          badgeText: 'Unverified / Not on MediTrack',
+          address: el.tags?.['addr:full'] || el.tags?.['addr:street'] || `Locality Facility (${dist.toFixed(1)} km)`,
+          phone: el.tags?.phone || 'Offline Visit Only',
+          operatingHours: 'Public Locality Hospital'
+        };
+      }).filter(Boolean);
+    }
   } catch (error) {
-    console.error('Overpass API Error:', error.message);
-    return []; 
+    console.warn('Overpass API Error in emergency service:', error.message);
   }
+
+  // Combine registered verified facilities and OSM unverified locality hospitals
+  const combined = [...registeredFacilities, ...osmHospitals];
+  return combined.sort((a, b) => a.distance - b.distance);
 };
 
 exports.assignDoctor = async (emergencyId) => {

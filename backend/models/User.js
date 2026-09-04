@@ -104,6 +104,28 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // ABDM / ABHA Health Identity Fields
+  abhaNumber: {
+    type: String,
+    default: null
+  },
+  abhaAddress: {
+    type: String,
+    default: null
+  },
+  abhaStatus: {
+    type: String,
+    enum: ['UNLINKED', 'ACTIVE', 'VERIFIED'],
+    default: 'UNLINKED'
+  },
+  abhaQrCode: {
+    type: String,
+    default: null
+  },
+  abhaLinkedAt: {
+    type: Date,
+    default: null
+  },
     settings: {
     notifications: {
       emailReminders: { type: Boolean, default: true },

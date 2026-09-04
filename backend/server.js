@@ -35,7 +35,13 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -81,6 +87,7 @@ app.use('/api/emergency', require('./src/emergency/emergency.routes'));
 app.use('/api/hospital-details', require('./src/hospital-detail/hospital-detail.routes'));
 app.use('/api/checkups', require('./routes/checkupRoutes'));
 app.use('/api/care-network', require('./routes/careNetworkRoutes'));
+app.use('/api/abdm', require('./routes/abdmRoutes'));
 
 const googleRoutes = require("./routes/googleRoutes");
 app.use("/api/google", googleRoutes);

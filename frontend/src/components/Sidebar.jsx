@@ -46,6 +46,7 @@ const Sidebar = () => {
     { name: t('family'), path: '/family', icon: Users, badge: unreadCount },
     { name: t('healthReview'), path: '/health-review', icon: Network },
     { name: t('reports'), path: '/reports', icon: FileText },
+    { name: 'Prescriptions', path: '/care-network/prescriptions', icon: FileText },
     { name: t('settings'), path: '/settings', icon: Settings },
     { name: t('help'), path: '/contact', icon: HelpCircle },
   ];
@@ -56,12 +57,11 @@ const Sidebar = () => {
     { name: t('findPublicHealthcare'), path: '/care-network/find-care', icon: Search },
     { name: t('digitalTriage'), path: '/care-network/triage', icon: Stethoscope },
     { name: t('appointments'), path: '/care-network/appointments', icon: Calendar },
+    { name: 'Prescriptions', path: '/care-network/prescriptions', icon: FileText },
     { name: t('referralTracking'), path: '/care-network/referrals', icon: GitMerge },
     { name: t('diagnosticAvailability'), path: '/care-network/diagnostics', icon: Activity },
     { name: t('medicineAvailability'), path: '/care-network/medicines', icon: Pill },
     { name: t('teleconsultation'), path: '/care-network/teleconsultation', icon: Video },
-    { name: t('careJourney'), path: '/care-network/journey', icon: Milestone },
-    { name: 'Hospital Portal', path: '/care-network/hospital-portal', icon: Building },
   ];
 
   const links = activeMode === 'CARE_NETWORK' ? careNetworkLinks : myHealthLinks;

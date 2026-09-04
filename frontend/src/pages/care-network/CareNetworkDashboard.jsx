@@ -5,7 +5,7 @@ import {
   ShieldAlert, Search, Stethoscope, Calendar, Clock, GitMerge, Activity, 
   Pill, Video, Milestone, Building2, PhoneCall, ChevronRight, MapPin, 
   Sparkles, CheckCircle2, AlertCircle, ArrowRight, Sun, Moon, RefreshCw,
-  Bed, HeartPulse, ShieldCheck, Radio, Zap
+  Bed, HeartPulse, ShieldCheck, Radio, Zap, Ticket
 } from 'lucide-react';
 import { useAppMode } from '../../context/AppModeContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -24,9 +24,74 @@ const CareNetworkDashboard = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [isRefreshingLoc, setIsRefreshingLoc] = useState(false);
 
+  const [userAppointments, setUserAppointments] = useState([]);
+  const [queueDataMap, setQueueDataMap] = useState({});
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+
   useEffect(() => {
     initLocationAndFacilities();
+    fetchUserAppointments();
   }, []);
+
+  useEffect(() => {
+    if (!userAppointments || userAppointments.length === 0) return;
+    const interval = setInterval(() => {
+      fetchQueueStatuses(userAppointments);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [userAppointments]);
+
+  const fetchUserAppointments = async () => {
+    setLoadingAppointments(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/care-network/appointments/my`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.data && res.data.appointments) {
+        // Exclude COMPLETED and CANCELLED appointments from Active Tokens widget
+        const activeOnly = res.data.appointments.filter(
+          a => a.status !== 'COMPLETED' && a.status !== 'CANCELLED'
+        );
+        setUserAppointments(activeOnly);
+        fetchQueueStatuses(activeOnly);
+      }
+    } catch (err) {
+      console.warn('Error fetching patient appointments for widget:', err);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  const fetchQueueStatuses = async (apts) => {
+    if (!apts || apts.length === 0) return;
+    const newMap = {};
+    for (const apt of apts) {
+      const aptKey = apt.appointmentId || apt._id;
+      const facId = apt.facilityId || 'FAC-DEFAULT';
+      const userAptToken = apt.tokenNumber || 0;
+      try {
+        const dept = apt.department || 'General OPD';
+        const res = await axios.get(`${API_BASE}/care-network/queue/${facId}?department=${encodeURIComponent(dept)}&tokenNumber=${userAptToken || ''}`);
+        if (res.data && res.data.success) {
+          newMap[aptKey] = {
+            userToken: userAptToken > 0 ? (res.data.userToken || userAptToken) : 0,
+            currentToken: res.data.currentToken || 0,
+            positionInLine: userAptToken > 0 ? (res.data.positionInLine !== undefined ? res.data.positionInLine : Math.max(0, userAptToken - (res.data.currentToken || 1))) : 0,
+            estimatedWaitMinutes: userAptToken > 0 ? (res.data.estimatedWaitMinutes || 0) : 0
+          };
+        }
+      } catch (err) {
+        newMap[aptKey] = {
+          userToken: userAptToken,
+          currentToken: 0,
+          positionInLine: userAptToken > 0 ? Math.max(0, userAptToken - 1) : 0,
+          estimatedWaitMinutes: userAptToken > 0 ? Math.max(0, userAptToken - 1) * 5 : 0
+        };
+      }
+    }
+    setQueueDataMap(newMap);
+  };
 
   const initLocationAndFacilities = async () => {
     setLoadingFacilities(true);
@@ -149,17 +214,6 @@ const CareNetworkDashboard = () => {
       borderColor: 'hover:border-indigo-500/50',
       iconColor: 'text-indigo-500',
       badge: 'Specialist Hub'
-    },
-    {
-      id: 'journey',
-      title: t('careJourney') || 'Longitudinal Care Journey',
-      subtitle: t('careJourneyDesc') || 'Complete history from triage to treatment',
-      icon: Milestone,
-      path: '/care-network/journey',
-      gradient: 'from-slate-500/20 via-slate-700/10 to-transparent',
-      borderColor: 'hover:border-slate-500/50',
-      iconColor: 'text-slate-400',
-      badge: 'Care Timeline'
     }
   ];
 
@@ -220,17 +274,6 @@ const CareNetworkDashboard = () => {
                 <Activity className="w-4 h-4 text-rose-500" />
                 <span>Search Diagnostics</span>
               </button>
-
-              <a
-                href="http://localhost:5174"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-300 font-extrabold text-sm border border-amber-500/40 backdrop-blur-md transition-all flex items-center gap-2 shadow-md active:scale-95"
-                title="Launch MediTrack Care Network Provider Portal for Hospitals & Doctors"
-              >
-                <Building2 className="w-4 h-4 text-amber-500" />
-                <span>Provider Portal (Hospitals & Doctors)</span>
-              </a>
             </div>
           </div>
 
@@ -307,6 +350,134 @@ const CareNetworkDashboard = () => {
         </div>
       </motion.div>
 
+      {/* DYNAMIC ACTIVE TOKEN QUEUE WIDGET (ONLY SHOWN IF USER HAS MADE AN APPOINTMENT) */}
+      {userAppointments && userAppointments.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-xl transition-all duration-300"
+        >
+          {/* Glowing background ambient lights */}
+          <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/10 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-black uppercase tracking-wider border border-emerald-500/30">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span>Live Token & Queue Tracker</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                <Ticket className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <span>Active Appointment Tokens ({userAppointments.length})</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-300">
+                Real-time OPD queue status, active doctor token & your position in line
+              </p>
+            </div>
+
+            <button
+              onClick={() => fetchUserAppointments()}
+              disabled={loadingAppointments}
+              className="self-start sm:self-auto px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white text-xs font-bold border border-slate-300 dark:border-white/20 backdrop-blur-md transition-all flex items-center gap-2 active:scale-95 shadow-sm"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingAppointments ? 'animate-spin' : ''}`} />
+              <span>Refresh Token Live</span>
+            </button>
+          </div>
+
+          {/* TOKEN CARDS GRID */}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {userAppointments.map((apt, index) => {
+              const qData = queueDataMap[apt.appointmentId || apt._id] || {};
+              const currentServing = qData.currentToken || 1;
+              const userTokenNum = apt.tokenNumber || qData.userToken || 1;
+              const peopleAhead = Math.max(0, userTokenNum - currentServing);
+              const estWait = peopleAhead * 5;
+              const isNowServing = peopleAhead === 0 && apt.status !== 'COMPLETED';
+
+              return (
+                <div
+                  key={apt.appointmentId || apt._id || index}
+                  className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-4 backdrop-blur-md hover:border-emerald-500/50 transition-all duration-300 shadow-md relative overflow-hidden"
+                >
+                  {/* Status indicator bar */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black tracking-wider uppercase px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                      {apt.department || 'General OPD'}
+                    </span>
+
+                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+                      isNowServing 
+                        ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 animate-pulse' 
+                        : 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40'
+                    }`}>
+                      <Clock className="w-3 h-3" />
+                      <span>{isNowServing ? 'NOW SERVING YOU' : `${peopleAhead} LEFT IN QUEUE`}</span>
+                    </span>
+                  </div>
+
+                  {/* Facility Name & Time */}
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-1 flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>{apt.facilityName || 'Healthcare Center'}</span>
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 flex items-center gap-2">
+                      <span>📅 {apt.date || 'Today'}</span>
+                      <span>•</span>
+                      <span>⏰ {apt.time || '10:00 AM'}</span>
+                    </p>
+                  </div>
+
+                  {/* Main Token & Queue Comparison Stats */}
+                  <div className="grid grid-cols-3 gap-2 bg-white dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 text-center shadow-inner">
+                    {/* PATIENT TOKEN */}
+                    <div className="space-y-0.5">
+                      <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Your Token</div>
+                      <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">#{userTokenNum}</div>
+                    </div>
+
+                    {/* CURRENTLY SERVING TOKEN */}
+                    <div className="space-y-0.5 border-x border-slate-200 dark:border-slate-700/80">
+                      <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Active Token</div>
+                      <div className="text-xl font-black text-blue-600 dark:text-blue-400">#{currentServing}</div>
+                    </div>
+
+                    {/* PEOPLE LEFT IN QUEUE */}
+                    <div className="space-y-0.5">
+                      <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">People Left</div>
+                      <div className={`text-xl font-black ${peopleAhead === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {peopleAhead}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer with estimated wait time & navigation action */}
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs">
+                    <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
+                      <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Est. Wait: <strong className="text-slate-900 dark:text-white">{peopleAhead === 0 ? 'Direct Entry' : `~${estWait} mins`}</strong></span>
+                    </span>
+
+                    <button
+                      onClick={() => navigate('/care-network/appointments')}
+                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold flex items-center gap-1 transition-colors"
+                    >
+                      <span>Full Queue</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
       {/* DASHBOARD LIVE NETWORK STATS GRID */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
@@ -332,7 +503,7 @@ const CareNetworkDashboard = () => {
           </div>
           <div>
             <div className="text-2xl font-black text-slate-900 dark:text-white">
-              Token #37
+              {userAppointments.length > 0 ? `Token #${userAppointments[0].tokenNumber}` : 'No Tokens'}
             </div>
             <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Live OPD Queue Token

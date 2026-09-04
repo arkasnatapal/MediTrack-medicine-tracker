@@ -57,21 +57,28 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col md:flex-row relative overflow-hidden selection:bg-amber-400 selection:text-slate-950 font-sans">
+      {/* Grainy Texture Overlay */}
+      <div className="grainy-overlay" />
+
+      {/* Floating Ambient Mesh Orbs */}
+      <div className="ambient-orb-purple -top-20 -left-20 animate-float-slow" />
+      <div className="ambient-orb-cyan bottom-10 right-10 animate-float-reverse" />
+
       {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between">
+      <aside className="w-full md:w-64 liquid-glass border-r border-white/10 p-6 flex flex-col justify-between shrink-0 relative z-20 backdrop-blur-2xl">
         <div>
           <div className="flex items-center space-x-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/20">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">System Admin</h2>
-              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Root Oversight</span>
+              <h2 className="font-display text-sm font-extrabold text-white">System Admin</h2>
+              <span className="text-[10px] font-tech text-amber-300 font-bold uppercase tracking-wider block">Root Oversight</span>
             </div>
           </div>
 
-          <nav className="space-y-1 text-xs font-semibold">
+          <nav className="space-y-1.5 text-xs font-tech font-semibold">
             {[
               { id: 'verification', label: 'Provider Verification', icon: CheckCircle },
               { id: 'metrics', label: 'Platform Analytics', icon: Building2 },

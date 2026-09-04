@@ -5,7 +5,7 @@ import {
   Stethoscope, Calendar, Clock, UserCheck, Video, VideoOff, Mic, MicOff, FileText, Building2,
   PhoneOff, RefreshCw, Send, CheckCircle2, AlertCircle, Plus, ShieldCheck,
   LogOut, MessageSquare, UserPlus, Filter, Check, ArrowRight, ShieldAlert,
-  Mail, Phone, Info, Award, Radio, Trash2, Maximize2, Minimize2, Volume2
+  Mail, Phone, Info, Award, Radio, Trash2, Maximize2, Minimize2, Volume2, History
 } from 'lucide-react';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 
@@ -23,6 +23,7 @@ export default function DoctorDashboard() {
   const [associations, setAssociations] = useState([]);
   const [teleSessions, setTeleSessions] = useState([]);
   const [facilities, setFacilities] = useState([]);
+  const [showDoctorHistoryModal, setShowDoctorHistoryModal] = useState(false);
 
   // Filter States
   const [appointmentFilter, setAppointmentFilter] = useState('ALL');
@@ -65,10 +66,26 @@ export default function DoctorDashboard() {
   // Prescription Form State
   const [prescriptionForm, setPrescriptionForm] = useState({
     appointmentId: '',
+    isOfflinePrescription: false,
     diagnosis: '',
     medicines: [{ name: 'Paracetamol', dosage: '500mg', frequency: '1-0-1', duration: '5 days' }],
     advice: 'Drink plenty of warm fluids & rest adequately.',
   });
+
+  const handleAddMedicineRow = () => {
+    setPrescriptionForm(prev => ({
+      ...prev,
+      medicines: [...prev.medicines, { name: '', dosage: '', frequency: '1-0-1', duration: '5 days' }]
+    }));
+  };
+
+  const handleRemoveMedicineRow = (index) => {
+    setPrescriptionForm(prev => ({
+      ...prev,
+      medicines: prev.medicines.filter((_, idx) => idx !== index)
+    }));
+  };
+
 
   // Facility Association Request Form State
   const [associationForm, setAssociationForm] = useState({
@@ -421,14 +438,26 @@ export default function DoctorDashboard() {
   const handlePrescriptionSubmit = async (e) => {
     e.preventDefault();
     if (!prescriptionForm.appointmentId) return alert('Select patient appointment first');
+
+    if (!prescriptionForm.isOfflinePrescription) {
+      if (!prescriptionForm.diagnosis.trim()) {
+        return alert('Please enter a Diagnosis for online prescription');
+      }
+      const validMeds = prescriptionForm.medicines.filter(m => m.name.trim().length > 0);
+      if (validMeds.length === 0) {
+        return alert('Please add at least one medicine with a name for online prescription');
+      }
+    }
+
     try {
       await api.put(`/appointments/${prescriptionForm.appointmentId}/status`, {
         status: 'COMPLETED',
         prescription: prescriptionForm,
       });
-      alert('Prescription issued & saved to patient Care Journey!');
+      alert(`Prescription issued (${prescriptionForm.isOfflinePrescription ? 'Offline Handwritten' : 'Online Digital PDF'}) & saved to patient Care Journey! Email PDF generated & sent.`);
       setPrescriptionForm({
         appointmentId: '',
+        isOfflinePrescription: false,
         diagnosis: '',
         medicines: [{ name: 'Paracetamol', dosage: '500mg', frequency: '1-0-1', duration: '5 days' }],
         advice: '',
@@ -438,6 +467,7 @@ export default function DoctorDashboard() {
       alert(err.response?.data?.message || 'Prescription issue failed');
     }
   };
+
 
   // Doctor Requests Association with a Healthcare Facility
   const handleRequestAssociation = async (e) => {
@@ -493,25 +523,32 @@ export default function DoctorDashboard() {
   const doctorReg = user?.doctor?.medicalRegistrationNumber || 'MCI-WB-2015-8891';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col md:flex-row relative overflow-hidden selection:bg-cyan-500 selection:text-slate-950 font-sans">
+      {/* Grainy Texture Overlay */}
+      <div className="grainy-overlay" />
+
+      {/* Floating Ambient Mesh Orbs */}
+      <div className="ambient-orb-cyan -top-20 -left-20 animate-float-slow" />
+      <div className="ambient-orb-teal bottom-10 right-10 animate-float-reverse" />
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
+      <aside className="w-full md:w-64 liquid-glass border-r border-white/10 p-6 flex flex-col justify-between shrink-0 relative z-20 backdrop-blur-2xl">
         <div>
           <div className="flex items-center space-x-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-teal-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-lg shadow-cyan-500/20">
               <Stethoscope className="w-6 h-6" />
             </div>
             <div className="overflow-hidden">
-              <h2 className="text-sm font-bold text-white truncate max-w-[140px]">
+              <h2 className="font-display text-sm font-extrabold text-white truncate max-w-[140px]">
                 {doctorName.startsWith('Dr.') ? doctorName : `Dr. ${doctorName}`}
               </h2>
-              <span className="text-[10px] text-cyan-400 font-semibold block truncate">
+              <span className="text-[10px] font-tech text-cyan-400 font-semibold block truncate uppercase tracking-wider">
                 {doctorSpec}
               </span>
             </div>
           </div>
 
-          <nav className="space-y-1 text-xs font-semibold">
+          <nav className="space-y-1.5 text-xs font-tech font-semibold">
             {[
               { id: 'queue', label: 'Clinical Queue', icon: Clock, badge: queue?.entries?.length || 0 },
               { id: 'teleconsultation', label: 'Teleconsultation Room', icon: Video, badge: teleSessions.filter(s => s.status === 'CONFIRMED' || s.status === 'PENDING').length },
@@ -562,9 +599,18 @@ export default function DoctorDashboard() {
               Doctor License Reg: <strong className="text-slate-200">{doctorReg}</strong> • Specialization: <strong className="text-cyan-400">{doctorSpec}</strong>
             </p>
           </div>
-          <button onClick={loadDoctorData} className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-800 transition">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDoctorHistoryModal(true)}
+              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-teal-300 text-xs font-semibold flex items-center gap-2 border border-teal-500/30 transition shadow-sm"
+              title="Open Teleconsultation History Modal"
+            >
+              <History className="w-3.5 h-3.5 text-teal-400" /> History ({teleSessions.filter(s => s.status === 'CLOSED' || s.status === 'COMPLETED').length})
+            </button>
+            <button onClick={loadDoctorData} className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-800 transition">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
+            </button>
+          </div>
         </div>
 
         {/* ----------------- TAB 1: CLINICAL QUEUE ----------------- */}
@@ -619,106 +665,169 @@ export default function DoctorDashboard() {
 
               {/* Prescription Writer */}
               <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-                <h3 className="text-base font-bold text-white">Issue Clinical Prescription to Care Journey</h3>
+                <h3 className="text-base font-bold text-white flex items-center justify-between">
+                  <span>Issue Clinical Prescription to Care Journey</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${prescriptionForm.isOfflinePrescription ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'}`}>
+                    {prescriptionForm.isOfflinePrescription ? 'Offline Paper Mode' : 'Online PDF Mode'}
+                  </span>
+                </h3>
+
                 <form onSubmit={handlePrescriptionSubmit} className="space-y-3 text-xs">
+                  {/* Offline Prescription Toggle Switch */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <div>
+                      <span className="font-bold text-white text-xs block">Offline Prescription Given (Hardcopy Handed to Patient)</span>
+                      <span className="text-[10px] text-slate-400">If enabled, online diagnosis & medicine entries become optional.</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={prescriptionForm.isOfflinePrescription}
+                        onChange={e => setPrescriptionForm({ ...prescriptionForm, isOfflinePrescription: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                  </div>
+
                   <div>
                     <label className="block text-slate-400 mb-1 font-semibold">Select Patient Appointment *</label>
                     <select
                       value={prescriptionForm.appointmentId}
                       onChange={e => setPrescriptionForm({ ...prescriptionForm, appointmentId: e.target.value })}
                       required
-                      className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-medium"
                     >
                       <option value="">-- Choose Patient Appointment --</option>
                       {appointments.map(a => (
                         <option key={a._id} value={a._id}>
-                          {a.patientId?.name || 'Patient'} ({a.timeSlot} - {a.type} - {a.status})
+                          Token #{a.tokenNumber || 1} - {a.patientName || a.patientId?.name || 'Patient'} ({a.timeSlot || '09:30 AM'} - {a.status || 'CONFIRMED'})
                         </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-slate-400 mb-1 font-semibold">Diagnosis *</label>
+                    <label className="block text-slate-400 mb-1 font-semibold">
+                      Diagnosis {prescriptionForm.isOfflinePrescription ? '(Optional for Offline)' : '*'}
+                    </label>
                     <input
                       type="text"
                       value={prescriptionForm.diagnosis}
                       onChange={e => setPrescriptionForm({ ...prescriptionForm, diagnosis: e.target.value })}
-                      required
+                      required={!prescriptionForm.isOfflinePrescription}
                       className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
-                      placeholder="Hypertension & Recurrent Angina"
+                      placeholder={prescriptionForm.isOfflinePrescription ? "e.g. Hardcopy Rx #1092 issued at counter (Optional)" : "Hypertension & Recurrent Angina"}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-400 mb-1 font-semibold">Medicines & Dosage</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-slate-400 font-semibold">
+                        Medicines & Dosage {prescriptionForm.isOfflinePrescription ? '(Optional)' : '*'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddMedicineRow}
+                        className="px-2.5 py-1 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 font-bold text-[11px] flex items-center gap-1 border border-teal-500/30 transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Medicine
+                      </button>
+                    </div>
+
                     {prescriptionForm.medicines.map((m, idx) => (
-                      <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
-                        <input
-                          type="text"
-                          placeholder="Medicine"
-                          value={m.name}
-                          onChange={e => {
-                            const newMeds = [...prescriptionForm.medicines];
-                            newMeds[idx].name = e.target.value;
-                            setPrescriptionForm({ ...prescriptionForm, medicines: newMeds });
-                          }}
-                          className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Dosage"
-                          value={m.dosage}
-                          onChange={e => {
-                            const newMeds = [...prescriptionForm.medicines];
-                            newMeds[idx].dosage = e.target.value;
-                            setPrescriptionForm({ ...prescriptionForm, medicines: newMeds });
-                          }}
-                          className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Frequency"
-                          value={m.frequency}
-                          onChange={e => {
-                            const newMeds = [...prescriptionForm.medicines];
-                            newMeds[idx].frequency = e.target.value;
-                            setPrescriptionForm({ ...prescriptionForm, medicines: newMeds });
-                          }}
-                          className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Duration"
-                          value={m.duration}
-                          onChange={e => {
-                            const newMeds = [...prescriptionForm.medicines];
-                            newMeds[idx].duration = e.target.value;
-                            setPrescriptionForm({ ...prescriptionForm, medicines: newMeds });
-                          }}
-                          className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                        />
+                      <div key={idx} className="flex items-center gap-2 mb-2">
+                        <div className="grid grid-cols-4 gap-2 flex-1">
+                          <input
+                            type="text"
+                            placeholder="Medicine Name"
+                            value={m.name}
+                            onChange={e => {
+                              const newMeds = [...prescriptionForm.medicines];
+                              newMeds[idx].name = e.target.value;
+                              setPrescriptionForm({ ...prescriptionForm, medicines: newMeds });
+                            }}
+                            className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white font-medium focus:border-cyan-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Dosage (500mg)"
+                            value={m.dosage}
+                            onChange={e => {
+                              const newMeds = [...prescriptionForm.medicines];
+                              newMeds[idx].dosage = e.target.value;
+                              setPrescriptionForm({ ...prescriptionForm, medicines: newMeds });
+                            }}
+                            className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white font-medium focus:border-cyan-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Frequency (1-0-1)"
+                            value={m.frequency}
+                            onChange={e => {
+                              const newMeds = [...prescriptionForm.medicines];
+                              newMeds[idx].frequency = e.target.value;
+                              setPrescriptionForm({ ...prescriptionForm, medicines: newMeds });
+                            }}
+                            className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white font-medium focus:border-cyan-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Duration (5 days)"
+                            value={m.duration}
+                            onChange={e => {
+                              const newMeds = [...prescriptionForm.medicines];
+                              newMeds[idx].duration = e.target.value;
+                              setPrescriptionForm({ ...prescriptionForm, medicines: newMeds });
+                            }}
+                            className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white font-medium focus:border-cyan-500"
+                          />
+                        </div>
+
+                        {prescriptionForm.medicines.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMedicineRow(idx)}
+                            className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 rounded-lg transition"
+                            title="Remove medicine"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
 
                   <div>
-                    <label className="block text-slate-400 mb-1 font-semibold">Doctor Clinical Advice</label>
+                    <label className="block text-slate-400 mb-1 font-semibold">Doctor Clinical Advice / Notes</label>
                     <textarea
                       rows={2}
                       value={prescriptionForm.advice}
                       onChange={e => setPrescriptionForm({ ...prescriptionForm, advice: e.target.value })}
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
-                      placeholder="Lifestyle guidance, follow-up date..."
+                      placeholder="Lifestyle guidance, follow-up date, or offline Rx notes..."
                     />
                   </div>
 
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition">
-                    Issue Prescription to Care Journey
+                  <button
+                    type="submit"
+                    className={`w-full py-3 rounded-xl font-extrabold flex items-center justify-center gap-2 shadow-lg transition ${
+                      prescriptionForm.isOfflinePrescription
+                        ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
+                        : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-cyan-500/20'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>
+                      {prescriptionForm.isOfflinePrescription
+                        ? 'Confirm & Save Offline Prescription to Care Journey'
+                        : 'Issue Online Digital PDF Prescription & Email Patient'}
+                    </span>
                   </button>
                 </form>
               </div>
             </div>
+
           </div>
         )}
 
@@ -1279,6 +1388,90 @@ export default function DoctorDashboard() {
             onClose={() => setShowLiveKitModal(false)}
             onCallEnded={() => setInCall(false)}
           />
+        )}
+        {/* Doctor Teleconsultation History Modal */}
+        {showDoctorHistoryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <History className="w-6 h-6 text-teal-400" />
+                    <span>Doctor Completed Teleconsultations History</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Past completed virtual doctor sessions. Click trash to permanently clear records.</p>
+                </div>
+                <button
+                  onClick={() => setShowDoctorHistoryModal(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+                {teleSessions.filter(s => s.status === 'CLOSED' || s.status === 'COMPLETED').length === 0 ? (
+                  <div className="p-12 text-center bg-slate-950 rounded-2xl border border-slate-800 text-slate-400 text-xs">
+                    No completed teleconsultation session history found.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950">
+                    <table className="w-full text-left text-xs text-slate-300">
+                      <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
+                        <tr>
+                          <th className="p-3.5">Session & Patient</th>
+                          <th className="p-3.5">Room & Call Type</th>
+                          <th className="p-3.5">Date & Time</th>
+                          <th className="p-3.5">Status</th>
+                          <th className="p-3.5 text-right">Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {teleSessions.filter(s => s.status === 'CLOSED' || s.status === 'COMPLETED').map((s) => (
+                          <tr key={s._id} className="hover:bg-slate-900/50 transition">
+                            <td className="p-3.5 font-bold text-white">
+                              {s.patientName || 'Patient'}
+                              <span className="block text-[10px] text-slate-500 font-normal">{s.chiefComplaint || 'Consultation'}</span>
+                            </td>
+                            <td className="p-3.5 text-cyan-300 font-mono">
+                              {s.roomName || 'ROOM-01'} ({s.consultationType || 'VIDEO'})
+                            </td>
+                            <td className="p-3.5 text-slate-400">
+                              {new Date(s.updatedAt || s.createdAt).toLocaleString()}
+                            </td>
+                            <td className="p-3.5">
+                              <span className="px-2.5 py-1 rounded-full font-bold text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                ✓ CLOSED
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-right">
+                              <button
+                                onClick={(e) => handleDeleteDoctorSession(s._id, e)}
+                                className="p-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-500/40 transition shadow-sm"
+                                title="Delete & Clear Record"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-xs text-slate-400">
+                <span>Total Archived Sessions: {teleSessions.filter(s => s.status === 'CLOSED' || s.status === 'COMPLETED').length}</span>
+                <button
+                  onClick={() => setShowDoctorHistoryModal(false)}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition"
+                >
+                  Close History
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

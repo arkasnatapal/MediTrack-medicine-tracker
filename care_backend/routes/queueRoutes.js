@@ -24,6 +24,13 @@ router.get('/', async (req, res) => {
       .populate('entries.appointmentId')
       .sort({ updatedAt: -1 });
 
+    if (!queue && department) {
+      queue = await Queue.findOne({ department })
+        .populate('entries.patientId')
+        .populate('entries.appointmentId')
+        .sort({ updatedAt: -1 });
+    }
+
     if (!queue) {
       queue = await Queue.findOne({})
         .populate('entries.patientId')
@@ -38,12 +45,12 @@ router.get('/', async (req, res) => {
           department: department || 'General Medicine',
           doctorId: (doctorId && mongoose.Types.ObjectId.isValid(doctorId)) ? doctorId : null,
           date: todayStr,
-          currentToken: 100,
-          servingToken: 0,
+          currentToken: 0,
+          servingToken: 1,
           entries: [],
         });
       } else {
-        return res.json({ servingToken: 0, currentToken: 100, entries: [] });
+        return res.json({ servingToken: 1, currentToken: 0, entries: [] });
       }
     }
 
@@ -71,8 +78,8 @@ router.post('/checkin', async (req, res) => {
         department: department || 'General Medicine',
         doctorId: doctorId || null,
         date: todayStr,
-        currentToken: 100,
-        servingToken: 0,
+        currentToken: 0,
+        servingToken: 1,
         entries: [],
       });
     }

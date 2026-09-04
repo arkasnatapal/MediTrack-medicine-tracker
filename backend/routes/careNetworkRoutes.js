@@ -272,164 +272,193 @@ const generateLocalFacilitiesForCoordinates = (userLat, userLng, userCity = 'Jal
 };
 
 // Real OpenStreetMap Hospital, PHC & Public Healthcare Fetcher for any city (Jalpaiguri & Pan-India)
-const fetchRealOSMHospitals = async (userLat, userLng, userCity = 'Jalpaiguri') => {
+const fetchRealOSMHospitals = async (userLat, userLng, userCity = 'Jalpaiguri', radius = 50000) => {
   try {
+    const lat = userLat || 26.54;
+    const lon = userLng || 88.71;
     const searchCity = userCity || 'Jalpaiguri';
-    const terms = [
-      `hospital+${encodeURIComponent(searchCity)}`,
-      `health+centre+${encodeURIComponent(searchCity)}`,
-      `primary+health+centre+${encodeURIComponent(searchCity)}`,
-      `rural+hospital+${encodeURIComponent(searchCity)}`,
-      `clinic+${encodeURIComponent(searchCity)}`
-    ];
-    const promises = terms.map(term => 
-      axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${term}&limit=15`, {
-        headers: { 'User-Agent': 'MediTrackApp/1.0 (contact@meditrack.org)' },
-        timeout: 3500
-      }).catch(() => ({ data: [] }))
-    );
 
-    const responses = await Promise.allSettled(promises);
-    let rawPlaces = [];
+    const query = `
+      [out:json][timeout:10];
+      (
+        node["amenity"="hospital"](around:${radius},${lat},${lon});
+        way["amenity"="hospital"](around:${radius},${lat},${lon});
+        node["amenity"="clinic"](around:${radius},${lat},${lon});
+        way["amenity"="clinic"](around:${radius},${lat},${lon});
+        node["healthcare"="hospital"](around:${radius},${lat},${lon});
+        node["healthcare"="clinic"](around:${radius},${lat},${lon});
+        node["healthcare"="centre"](around:${radius},${lat},${lon});
+        node["healthcare"="health_centre"](around:${radius},${lat},${lon});
+      );
+      out center;
+    `;
 
-    responses.forEach(res => {
-      if (res.status === 'fulfilled' && res.value && Array.isArray(res.value.data)) {
-        rawPlaces.push(...res.value.data);
-      }
+    const res = await axios.post('https://overpass-api.de/api/interpreter', query, {
+      headers: {
+        'User-Agent': 'MediTrack-Care-Network/1.0',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      timeout: 8000
     });
 
     const uniqueMap = new Map();
 
-    rawPlaces.forEach((item, idx) => {
-      if (!item.display_name) return;
-      const rawName = item.display_name.split(',')[0].trim();
-      const placeLat = parseFloat(item.lat);
-      const placeLng = parseFloat(item.lon);
+    if (res.data && res.data.elements) {
+      res.data.elements.forEach((el, idx) => {
+        const placeLat = el.lat || (el.center && el.center.lat);
+        const placeLng = el.lon || (el.center && el.center.lon);
+        if (!placeLat || !placeLng) return;
 
-      if (isNaN(placeLat) || isNaN(placeLng)) return;
-
-      const placeId = `OSM-FAC-${item.place_id || idx}`;
-      if (!uniqueMap.has(rawName)) {
-        let fType = 'HOSPITAL';
+        const rawName = el.tags?.name || el.tags?.['name:en'] || `Locality Healthcare Unit ${idx + 1}`;
         const lowerName = rawName.toLowerCase();
-        if (lowerName.includes('primary health') || lowerName.includes('phc')) fType = 'PHC';
-        else if (lowerName.includes('community health') || lowerName.includes('chc')) fType = 'CHC';
-        else if (lowerName.includes('rural hospital')) fType = 'RURAL_HOSPITAL';
-        else if (lowerName.includes('district hospital')) fType = 'DISTRICT_HOSPITAL';
 
-        const dist = (userLat !== null && userLng !== null)
-          ? calculateDistanceKm(userLat, userLng, placeLat, placeLng)
-          : 3.5;
+        // Skip diagnostic centers and standalone labs on hospital map
+        if (
+          lowerName.includes('diagnostic') ||
+          lowerName.includes('pathology') ||
+          (lowerName.includes('lab') && !lowerName.includes('hospital')) ||
+          lowerName.includes('imaging center') ||
+          lowerName.includes('scan center')
+        ) {
+          return;
+        }
 
-        uniqueMap.set(rawName, {
-          facilityId: placeId,
-          name: rawName,
-          facilityType: fType,
-          state: 'West Bengal',
-          district: searchCity,
-          taluka: `${searchCity} Division`,
-          address: item.display_name,
-          latitude: placeLat,
-          longitude: placeLng,
-          phone: `+91 3561 ${220000 + ((idx + 3) * 163) % 90000}`,
-          email: `contact@${rawName.toLowerCase().replace(/[^a-z0-9]/g, '')}.org`,
-          website: `https://www.google.com/search?q=${encodeURIComponent(rawName + ' ' + searchCity)}`,
-          emergencyAvailable: true,
-          ambulanceSupported: true,
-          opdAvailable: true,
-          teleconsultationAvailable: true,
-          distanceKm: Math.round(dist * 10) / 10,
-          estimatedTravelTimeMinutes: Math.round(dist * 2.5),
-          specialties: ['General Medicine', 'Emergency Care', 'Pediatrics', 'Maternity', 'OPD'],
-          diagnostics: [
-            { name: 'ECG', available: true, waitTimeMinutes: 5 },
-            { name: 'X-Ray', available: true, waitTimeMinutes: 10 },
-            { name: 'Blood Test', available: true, waitTimeMinutes: 5 }
-          ],
-          operatingHours: '24/7 Public Healthcare & Emergency',
-          isPublicFacility: true,
-          rating: 4.8
-        });
+        const placeId = `OSM-FAC-${el.id}`;
+
+        if (!uniqueMap.has(rawName)) {
+          let fType = 'HOSPITAL';
+          if (lowerName.includes('primary health') || lowerName.includes('phc')) fType = 'PHC';
+          else if (lowerName.includes('community health') || lowerName.includes('chc')) fType = 'CHC';
+          else if (lowerName.includes('rural hospital')) fType = 'RURAL_HOSPITAL';
+          else if (lowerName.includes('district hospital')) fType = 'DISTRICT_HOSPITAL';
+
+          const dist = calculateDistanceKm(lat, lon, placeLat, placeLng);
+
+          uniqueMap.set(rawName, {
+            facilityId: placeId,
+            name: rawName,
+            facilityType: fType,
+            state: 'State Healthcare',
+            district: searchCity,
+            taluka: `${searchCity} Sub-Division`,
+            address: el.tags?.['addr:full'] || el.tags?.['addr:street'] || `${rawName}, ${searchCity}`,
+            latitude: placeLat,
+            longitude: placeLng,
+            phone: el.tags?.phone || `+91 108`,
+            email: `contact@${rawName.toLowerCase().replace(/[^a-z0-9]/g, '')}.org`,
+            website: `https://www.google.com/search?q=${encodeURIComponent(rawName + ' ' + searchCity)}`,
+            emergencyAvailable: true,
+            ambulanceSupported: true,
+            opdAvailable: true,
+            teleconsultationAvailable: true,
+            distanceKm: Math.round(dist * 10) / 10,
+            estimatedTravelTimeMinutes: Math.round(dist * 2.5) || 5,
+            specialties: ['General OPD', 'Emergency Care', 'Pediatrics', 'Maternity'],
+            diagnostics: [
+              { name: 'ECG', available: true, waitTimeMinutes: 5 },
+              { name: 'X-Ray', available: true, waitTimeMinutes: 10 },
+              { name: 'Blood Test', available: true, waitTimeMinutes: 5 }
+            ],
+            operatingHours: 'Public Locality Facility',
+            isPublicFacility: true,
+            rating: 4.6
+          });
+        }
+      });
+    }
+
+    const osmList = Array.from(uniqueMap.values());
+    const fallbackLocal = generateLocalFacilitiesForCoordinates(userLat, userLng, searchCity);
+    const combinedLocal = [...osmList, ...fallbackLocal];
+    
+    const finalUniqueMap = new Map();
+    combinedLocal.forEach(f => {
+      if (f && f.name && !finalUniqueMap.has(f.name.toLowerCase())) {
+        finalUniqueMap.set(f.name.toLowerCase(), f);
       }
     });
 
-    return Array.from(uniqueMap.values());
+    return Array.from(finalUniqueMap.values());
   } catch (err) {
-    console.warn('Error fetching OSM hospitals:', err.message);
-    return [];
+    console.warn('Error fetching OSM hospitals via Overpass:', err.message);
+    return generateLocalFacilitiesForCoordinates(userLat, userLng, userCity);
   }
 };
 
-// Real OpenStreetMap Healthcare & Diagnostic Center Fetcher for any city (Jalpaiguri, Pan-India & Global)
-const fetchRealOSMDiagnosticCenters = async (lat, lng, city = 'Jalpaiguri') => {
+const fetchRealOSMDiagnosticCenters = async (lat, lng, city = 'Jalpaiguri', radius = 30000) => {
   try {
+    const userLat = lat || 26.54;
+    const userLng = lng || 88.71;
     const searchCity = city || 'Jalpaiguri';
-    const terms = [`hospital+${encodeURIComponent(searchCity)}`, `clinic+${encodeURIComponent(searchCity)}`, `health+${encodeURIComponent(searchCity)}`];
-    let rawPlaces = [];
 
-    for (const term of terms) {
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${term}&limit=15`;
-        const res = await axios.get(url, {
-          headers: { 'User-Agent': 'MediTrackApp/1.0 (contact@meditrack.org)' },
-          timeout: 4000
-        });
-        if (res.data && Array.isArray(res.data)) {
-          rawPlaces.push(...res.data);
-        }
-      } catch (err) {
-        // Skip on single term failure
-      }
-    }
+    const query = `
+      [out:json];
+      (
+        node["healthcare"="laboratory"](around:${radius},${userLat},${userLng});
+        node["amenity"="clinic"](around:${radius},${userLat},${userLng});
+      );
+      out center;
+    `;
+
+    const res = await axios.post('https://overpass-api.de/api/interpreter', query, {
+      headers: {
+        'User-Agent': 'MediTrack-Care-Network/1.0',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      timeout: 6000
+    });
 
     const uniqueMap = new Map();
 
-    rawPlaces.forEach((item, idx) => {
-      if (!item.display_name) return;
-      const rawName = item.display_name.split(',')[0].trim();
-      const placeLat = parseFloat(item.lat);
-      const placeLng = parseFloat(item.lon);
+    if (res.data && res.data.elements) {
+      res.data.elements.forEach((el, idx) => {
+        const placeLat = el.lat || (el.center && el.center.lat);
+        const placeLng = el.lon || (el.center && el.center.lon);
+        if (!placeLat || !placeLng) return;
 
-      if (isNaN(placeLat) || isNaN(placeLng)) return;
+        const rawName = el.tags?.name || `Diagnostic & Lab Unit ${idx + 1}`;
+        const placeId = `OSM-DIAG-${el.id}`;
 
-      const placeId = `OSM-DIAG-${item.place_id || idx}`;
-      if (!uniqueMap.has(rawName)) {
-        let isDiagName = rawName.toLowerCase().includes('diag') || rawName.toLowerCase().includes('path') || rawName.toLowerCase().includes('lab') || rawName.toLowerCase().includes('scan');
-        const displayName = isDiagName ? rawName : `${rawName} Diagnostic & Lab Unit`;
-        const fType = isDiagName ? (rawName.toLowerCase().includes('path') ? 'PATHOLOGY_LAB' : 'DIAGNOSTIC_CENTER') : 'DIAGNOSTIC_CENTER';
+        if (!uniqueMap.has(rawName)) {
+          let isDiagName = rawName.toLowerCase().includes('diag') || rawName.toLowerCase().includes('path') || rawName.toLowerCase().includes('lab') || rawName.toLowerCase().includes('scan');
+          const displayName = isDiagName ? rawName : `${rawName} Diagnostic & Lab Unit`;
+          const fType = isDiagName ? (rawName.toLowerCase().includes('path') ? 'PATHOLOGY_LAB' : 'DIAGNOSTIC_CENTER') : 'DIAGNOSTIC_CENTER';
+          const dist = calculateDistanceKm(userLat, userLng, placeLat, placeLng);
 
-        uniqueMap.set(rawName, {
-          facilityId: placeId,
-          name: displayName,
-          facilityType: fType,
-          state: 'West Bengal',
-          district: searchCity,
-          taluka: `${searchCity} Sub-Division`,
-          address: item.display_name,
-          latitude: placeLat,
-          longitude: placeLng,
-          phone: `+91 3561 ${220000 + ((idx + 7) * 149) % 90000}`,
-          email: `contact@${rawName.toLowerCase().replace(/[^a-z0-9]/g, '')}.org`,
-          website: `https://www.google.com/search?q=${encodeURIComponent(displayName + ' ' + searchCity)}`,
-          emergencyAvailable: true,
-          ambulanceSupported: false,
-          opdAvailable: true,
-          teleconsultationAvailable: true,
-          specialties: ['Radiology', 'Pathology', 'Blood Test', 'Ultrasonography'],
-          diagnostics: [
-            { name: 'ECG', available: true, waitTimeMinutes: 5 },
-            { name: 'X-Ray', available: true, waitTimeMinutes: 10 },
-            { name: 'CT Scan', available: true, waitTimeMinutes: 15 },
-            { name: 'Blood Test', available: true, waitTimeMinutes: 5 },
-            { name: 'Ultrasound', available: true, waitTimeMinutes: 10 },
-            { name: 'Pathology', available: true, waitTimeMinutes: 10 }
-          ],
-          operatingHours: '24/7 Diagnostic & Lab Services',
-          isPublicFacility: true,
-          rating: 4.8
-        });
-      }
-    });
+          uniqueMap.set(rawName, {
+            facilityId: placeId,
+            name: displayName,
+            facilityType: fType,
+            state: 'State Health Network',
+            district: searchCity,
+            taluka: `${searchCity} Sub-Division`,
+            address: el.tags?.['addr:full'] || el.tags?.['addr:street'] || `${displayName}, ${searchCity}`,
+            latitude: placeLat,
+            longitude: placeLng,
+            phone: el.tags?.phone || `+91 108`,
+            email: `contact@${displayName.toLowerCase().replace(/[^a-z0-9]/g, '')}.org`,
+            website: `https://www.google.com/search?q=${encodeURIComponent(displayName + ' ' + searchCity)}`,
+            emergencyAvailable: true,
+            ambulanceSupported: false,
+            opdAvailable: true,
+            teleconsultationAvailable: true,
+            distanceKm: Math.round(dist * 10) / 10,
+            specialties: ['Radiology', 'Pathology', 'Blood Test', 'Ultrasonography'],
+            diagnostics: [
+              { name: 'ECG', available: true, waitTimeMinutes: 5 },
+              { name: 'X-Ray', available: true, waitTimeMinutes: 10 },
+              { name: 'CT Scan', available: true, waitTimeMinutes: 15 },
+              { name: 'Blood Test', available: true, waitTimeMinutes: 5 },
+              { name: 'Ultrasound', available: true, waitTimeMinutes: 10 },
+              { name: 'Pathology', available: true, waitTimeMinutes: 10 }
+            ],
+            operatingHours: '24/7 Diagnostic & Lab Services',
+            isPublicFacility: true,
+            rating: 4.8
+          });
+        }
+      });
+    }
 
     return Array.from(uniqueMap.values());
   } catch (err) {
@@ -682,9 +711,24 @@ router.get('/facilities', async (req, res) => {
   try {
     const { query, facilityType, emergency, service, lat, lng, city, maxDistance } = req.query;
 
-    const userLat = lat ? parseFloat(lat) : null;
-    const userLng = lng ? parseFloat(lng) : null;
+    const CITY_COORDS = {
+      'jalpaiguri': { lat: 26.5400, lng: 88.7100 },
+      'delhi': { lat: 28.6139, lng: 77.2090 },
+      'pune': { lat: 18.5204, lng: 73.8567 },
+      'kolkata': { lat: 22.5726, lng: 88.3639 },
+      'mumbai': { lat: 19.0760, lng: 72.8777 },
+      'chennai': { lat: 13.0827, lng: 80.2707 },
+      'amritsar': { lat: 31.6340, lng: 74.8723 },
+      'bengaluru': { lat: 12.9716, lng: 77.5946 },
+      'satara': { lat: 17.6805, lng: 74.0183 }
+    };
+
     const userCity = city || 'Jalpaiguri';
+    const cityKey = userCity.toLowerCase();
+    const defaultCoords = CITY_COORDS[cityKey] || CITY_COORDS['jalpaiguri'];
+
+    const userLat = lat ? parseFloat(lat) : defaultCoords.lat;
+    const userLng = lng ? parseFloat(lng) : defaultCoords.lng;
 
     let dbFacilities = [];
     try {
@@ -701,35 +745,103 @@ router.get('/facilities', async (req, res) => {
       console.warn('DB query warning, utilizing local generated facilities:', dbErr.message);
     }
 
-    let allFacilities = [];
+    // Fetch registered MediTrack-Linked Facilities directly from 'facilities' MongoDB collection
+    let registeredCareFacs = [];
+    try {
+      const mongoose = require('mongoose');
+      let rawFacs = await mongoose.connection.collection('facilities').find({}).toArray();
 
-    if (userLat !== null && userLng !== null) {
-      // 1. Fetch real OpenStreetMap hospitals & healthcare centers in Jalpaiguri / user location
-      const osmHospitals = await fetchRealOSMHospitals(userLat, userLng, userCity);
-
-      // 2. Generate local public facilities for user city
-      const localGenerated = generateLocalFacilitiesForCoordinates(userLat, userLng, userCity).map(f => {
-        const dist = calculateDistanceKm(userLat, userLng, f.latitude, f.longitude);
+      registeredCareFacs = rawFacs.map(f => {
+        const dist = calculateDistanceKm(userLat, userLng, f.latitude || userLat, f.longitude || userLng);
+        const isVer = f.verificationStatus === 'VERIFIED' || !f.verificationStatus || f.verificationStatus === 'PENDING_VERIFICATION';
         return {
-          ...f,
+          facilityId: f._id.toString(),
+          _id: f._id,
+          name: f.name,
+          facilityType: f.facilityType || 'DISTRICT_HOSPITAL',
+          state: f.state || 'India Health Network',
+          district: f.district || userCity,
+          address: f.address || `${f.name}, ${userCity}`,
+          latitude: f.latitude || userLat,
+          longitude: f.longitude || userLng,
+          phone: f.phone || '+91 3561 222100',
+          email: f.email || 'facility@meditrack.care',
+          emergencyAvailable: f.emergencyAvailable ?? true,
+          ambulanceSupported: true,
+          opdAvailable: true,
+          teleconsultationAvailable: true,
+          isPublicFacility: true,
+          isMediTrackLinked: true,
+          verificationStatus: f.verificationStatus || 'VERIFIED',
+          operatingHours: f.operatingHours || '24/7 Emergency & OPD Services',
           distanceKm: Math.round(dist * 10) / 10,
-          estimatedTravelTimeMinutes: Math.round(dist * 2.5)
+          isMediTrackVerified: isVer,
+          canSelect: isVer,
+          badgeText: isVer ? 'MediTrack Verified' : 'Unverified / Not on MediTrack'
         };
       });
+    } catch (e) {
+      console.warn('Care facilities collection query warning:', e.message);
+    }
 
-      // 3. Filter DB facilities strictly by user city to prevent Pune/Maharashtra leaking into Jalpaiguri
-      const filteredDb = dbFacilities.filter(f => f.district && f.district.toLowerCase().includes(userCity.toLowerCase())).map(f => {
-        const dist = calculateDistanceKm(userLat, userLng, f.latitude, f.longitude);
+    // Also fetch real OpenStreetMap locality hospitals for the current city
+    let osmLocalityFacs = [];
+    try {
+      const rawOsm = await fetchRealOSMHospitals(userLat, userLng, userCity);
+      osmLocalityFacs = rawOsm.map(f => {
+        const isMatched = registeredCareFacs.some(rf =>
+          rf.name.toLowerCase().includes(f.name.toLowerCase()) ||
+          f.name.toLowerCase().includes(rf.name.toLowerCase())
+        );
+        if (isMatched) return null;
+
         return {
           ...f,
-          distanceKm: Math.round(dist * 10) / 10,
-          estimatedTravelTimeMinutes: Math.round(dist * 2.5)
+          isMediTrackVerified: false,
+          verificationStatus: 'UNVERIFIED',
+          canSelect: false,
+          badgeText: 'Unverified / Not on MediTrack'
         };
-      });
+      }).filter(Boolean);
+    } catch (errOsm) {
+      console.warn('OSM fetch warning:', errOsm.message);
+    }
 
-      allFacilities = [...osmHospitals, ...localGenerated, ...filteredDb];
-    } else {
-      allFacilities = dbFacilities;
+    // Combine MediTrack Verified facilities, Unverified Locality Hospitals, DB facilities, and generated fallback local facilities
+    const generatedLocal = generateLocalFacilitiesForCoordinates(userLat, userLng, userCity);
+    let rawCombined = [...registeredCareFacs, ...osmLocalityFacs, ...dbFacilities, ...generatedLocal];
+    
+    // Recalculate distance for ALL facilities relative to current user coordinates
+    rawCombined = rawCombined.map(f => {
+      if (!f || !f.latitude || !f.longitude) return null;
+      const dist = calculateDistanceKm(userLat, userLng, f.latitude, f.longitude);
+      return {
+        ...f,
+        distanceKm: Math.round(dist * 10) / 10,
+        estimatedTravelTimeMinutes: Math.round(dist * 2.5) || 5
+      };
+    }).filter(Boolean);
+
+    const uniqueMap = new Map();
+    rawCombined.forEach(f => {
+      if (f && f.name && !uniqueMap.has(f.name.toLowerCase())) {
+        uniqueMap.set(f.name.toLowerCase(), f);
+      }
+    });
+    let allFacilities = Array.from(uniqueMap.values());
+
+    // Proximity Filter: Default max distance threshold 80km (unless searching another specific city explicitly)
+    const effectiveMaxDist = maxDistance ? parseFloat(maxDistance) : 80;
+    const qLower = (query || '').toLowerCase().trim();
+    const isExplicitDistantSearch = qLower.includes('pune') || qLower.includes('delhi') || qLower.includes('mumbai') || qLower.includes('kolkata') || qLower.includes('chennai') || qLower.includes('amritsar');
+
+    if (!isExplicitDistantSearch) {
+      let localOnly = allFacilities.filter(f => f.distanceKm <= effectiveMaxDist);
+      if (localOnly.length >= 2) {
+        allFacilities = localOnly;
+      } else {
+        allFacilities = allFacilities.filter(f => f.distanceKm <= 120);
+      }
     }
 
     // Facility Type Filter
@@ -1045,7 +1157,10 @@ router.post('/appointments', authMiddleware, async (req, res) => {
     const { facilityId, facilityName, department = 'General OPD', date, time, reasonForVisit, triagePriority } = req.body;
     const mongoose = require('mongoose');
 
-    const countToday = await Appointment.countDocuments({ facilityId, date });
+    const todayStr = date || new Date().toISOString().split('T')[0];
+
+    // Count appointments for this specific facility & department & date
+    const countToday = await Appointment.countDocuments({ facilityId, department, date: todayStr });
     const tokenNumber = countToday + 1;
     const appointmentId = `APT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
@@ -1055,7 +1170,7 @@ router.post('/appointments', authMiddleware, async (req, res) => {
       facilityId,
       facilityName,
       department,
-      date: date || new Date().toISOString().split('T')[0],
+      date: todayStr,
       time: time || '09:30 AM',
       tokenNumber,
       reasonForVisit: reasonForVisit || 'General Consultation',
@@ -1072,66 +1187,119 @@ router.post('/appointments', authMiddleware, async (req, res) => {
         targetFacObj = await mongoose.connection.collection('facilities').findOne({ _id: new mongoose.Types.ObjectId(facilityId) });
       }
       if (!targetFacObj) {
+        targetFacObj = await mongoose.connection.collection('facilities').findOne({ facilityId: facilityId });
+      }
+      if (!targetFacObj) {
         targetFacObj = await mongoose.connection.collection('facilities').findOne({});
       }
 
-      if (targetFacObj) {
-        const careAppRecord = {
-          facilityId: targetFacObj._id,
-          patientId: req.user._id,
-          patientName: req.user.name || 'Patient',
+      const facIdKey = targetFacObj ? targetFacObj._id : facilityId;
+
+      // Upsert patient record in patientrecords collection for care_backend population
+      await mongoose.connection.collection('patientrecords').updateOne(
+        { _id: req.user._id },
+        {
+          $set: {
+            name: req.user.name || 'Patient',
+            email: req.user.email || 'patient@meditrack.org',
+            phone: req.user.phone || '+91 9876543210',
+            updatedAt: new Date()
+          }
+        },
+        { upsert: true }
+      );
+
+      const careAppRecord = {
+        facilityId: facIdKey,
+        patientId: req.user._id,
+        patientName: req.user.name || 'Patient',
+        facilityName: facilityName || targetFacObj?.name || 'Healthcare Facility',
+        department: department || 'General OPD',
+        appointmentDate: new Date(date || Date.now()),
+        timeSlot: time || '09:30 AM',
+        tokenNumber: tokenNumber,
+        symptoms: reasonForVisit || 'General Consultation',
+        triagePriority: triagePriority || 'ROUTINE',
+        status: 'CONFIRMED',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const insertedApp = await mongoose.connection.collection('careappointments').insertOne(careAppRecord);
+
+      // Add to carequeues collection scoped by facility AND department AND date
+      let existingQueue = await mongoose.connection.collection('carequeues').findOne({
+        department: department,
+        date: todayStr,
+        $or: [
+          { facilityId: facIdKey },
+          { facilityIdStr: facilityId }
+        ]
+      });
+
+      if (!existingQueue) {
+        // Fallback search without department for initial migration
+        existingQueue = await mongoose.connection.collection('carequeues').findOne({
+          date: todayStr,
+          $or: [
+            { facilityId: facIdKey },
+            { facilityIdStr: facilityId }
+          ]
+        });
+      }
+
+      const queueEntry = {
+        _id: new mongoose.Types.ObjectId(),
+        appointmentId: insertedApp.insertedId,
+        patientId: req.user._id,
+        patientName: req.user.name || 'Patient',
+        tokenNumber: tokenNumber,
+        checkInTime: new Date(),
+        status: 'WAITING'
+      };
+
+      if (existingQueue && existingQueue.department === department) {
+        const nextServingToken = existingQueue.servingToken > 0 ? existingQueue.servingToken : 1;
+        await mongoose.connection.collection('carequeues').updateOne(
+          { _id: existingQueue._id },
+          {
+            $push: { entries: queueEntry },
+            $set: {
+              currentToken: Math.max(existingQueue.currentToken || 0, tokenNumber),
+              servingToken: nextServingToken,
+              facilityIdStr: facilityId,
+              updatedAt: new Date()
+            }
+          }
+        );
+      } else {
+        await mongoose.connection.collection('carequeues').insertOne({
+          facilityId: facIdKey,
+          facilityIdStr: facilityId,
           department: department || 'General OPD',
-          appointmentDate: new Date(date || Date.now()),
-          timeSlot: time || '09:30 AM',
-          tokenNumber: tokenNumber + 100,
-          symptoms: reasonForVisit || 'General Consultation',
-          triagePriority: triagePriority || 'ROUTINE',
-          status: 'CONFIRMED',
+          date: todayStr,
+          currentToken: tokenNumber,
+          servingToken: 1,
+          entries: [queueEntry],
+          isPaused: false,
           createdAt: new Date(),
           updatedAt: new Date()
-        };
-
-        const insertedApp = await mongoose.connection.collection('careappointments').insertOne(careAppRecord);
-
-        // Add to carequeues collection for hospital and doctor live queue board
-        const todayStr = date || new Date().toISOString().split('T')[0];
-        const existingQueue = await mongoose.connection.collection('carequeues').findOne({
-          facilityId: targetFacObj._id,
-          date: todayStr
         });
-
-        const queueEntry = {
-          _id: new mongoose.Types.ObjectId(),
-          appointmentId: insertedApp.insertedId,
-          patientId: req.user._id,
-          patientName: req.user.name || 'Patient',
-          tokenNumber: tokenNumber + 100,
-          checkInTime: new Date(),
-          status: 'WAITING'
-        };
-
-        if (existingQueue) {
-          await mongoose.connection.collection('carequeues').updateOne(
-            { _id: existingQueue._id },
-            {
-              $push: { entries: queueEntry },
-              $set: { currentToken: Math.max(existingQueue.currentToken || 100, tokenNumber + 100) }
-            }
-          );
-        } else {
-          await mongoose.connection.collection('carequeues').insertOne({
-            facilityId: targetFacObj._id,
-            department: department || 'General Medicine',
-            date: todayStr,
-            currentToken: tokenNumber + 100,
-            servingToken: 101,
-            entries: [queueEntry],
-            isPaused: false,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-        }
       }
+
+      // Upsert QueueStatus model
+      await QueueStatus.updateOne(
+        { facilityId, department },
+        {
+          $set: {
+            facilityId,
+            department,
+            lastAssignedToken: tokenNumber,
+            lastUpdated: new Date()
+          }
+        },
+        { upsert: true }
+      );
     } catch (syncErr) {
       console.error('Care backend appointment sync error:', syncErr.message);
     }
@@ -1141,17 +1309,18 @@ router.post('/appointments', authMiddleware, async (req, res) => {
       type: 'APPOINTMENT',
       facilityId,
       facilityName,
-      title: `Token #${tokenNumber} Booked at ${facilityName}`,
+      title: `Token #${tokenNumber} Booked at ${facilityName} (${department})`,
       description: `Appointment reserved for ${department} on ${appointment.date} at ${appointment.time}.`,
       status: 'COMPLETED'
     });
 
     return res.json({
       success: true,
-      message: `Appointment booked successfully! Your Token Number is #${tokenNumber}`,
+      message: `Appointment booked successfully! Your ${department} Token Number is #${tokenNumber}`,
       appointment
     });
   } catch (err) {
+    console.error('Appointment booking error:', err);
     return res.status(500).json({ success: false, message: 'Appointment booking error' });
   }
 });
@@ -1161,21 +1330,87 @@ router.get('/appointments/my', authMiddleware, async (req, res) => {
     const mongoose = require('mongoose');
     const appointments = await Appointment.find({ patientId: req.user._id }).sort({ createdAt: -1 }).lean();
     
-    // Also fetch CareAppointments from care_backend if any exist
+    // Fetch careappointments to supplement & enrich doctor/delay details
     try {
       const careApps = await mongoose.connection.collection('careappointments').find({ patientId: req.user._id }).sort({ createdAt: -1 }).toArray();
-      const mapped = careApps.map(a => ({
-        _id: a._id,
-        appointmentId: `CARE-${a._id}`,
-        facilityName: 'Public Healthcare Center',
-        department: a.department || 'General OPD',
-        date: a.appointmentDate ? new Date(a.appointmentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        time: a.timeSlot || '10:00 AM',
-        tokenNumber: a.tokenNumber || 101,
-        reasonForVisit: a.symptoms || 'General OPD Consultation',
-        status: a.status || 'CONFIRMED'
-      }));
-      return res.json({ success: true, appointments: [...mapped, ...appointments] });
+      const doctorsMap = new Map();
+
+      // Collect doctor IDs to fetch doctor names
+      const docIds = careApps.map(a => a.doctorId).filter(Boolean);
+      if (docIds.length > 0) {
+        const docObjs = await mongoose.connection.collection('doctors').find({ _id: { $in: docIds } }).toArray();
+        docObjs.forEach(d => {
+          doctorsMap.set(d._id.toString(), {
+            name: d.fullName?.startsWith('Dr.') ? d.fullName : `Dr. ${d.fullName}`,
+            specialization: d.specialization || 'Specialist Doctor'
+          });
+        });
+      }
+
+      // Map careappointments by token & dept for enrichment
+      const careAppMap = new Map();
+      careApps.forEach(a => {
+        const key = `${a.facilityName || ''}-${a.department || 'General OPD'}-${a.tokenNumber}`;
+        const docInfo = a.doctorId ? doctorsMap.get(a.doctorId.toString()) : null;
+        careAppMap.set(key, {
+          careAppId: a._id,
+          doctorName: docInfo?.name || (a.doctorName || null),
+          doctorSpecialization: docInfo?.specialization || null,
+          appointmentDate: a.appointmentDate,
+          timeSlot: a.timeSlot,
+          notes: a.notes,
+          status: a.status
+        });
+      });
+
+      // Enrich main appointments list with latest doctor and delay details from careappointments
+      const enrichedAppointments = appointments.map(apt => {
+        const key = `${apt.facilityName || ''}-${apt.department || 'General OPD'}-${apt.tokenNumber}`;
+        const careInfo = careAppMap.get(key);
+        if (careInfo) {
+          return {
+            ...apt,
+            doctorName: careInfo.doctorName || apt.doctorName || 'Duty Medical Officer',
+            doctorSpecialization: careInfo.doctorSpecialization || apt.doctorSpecialization || null,
+            date: careInfo.appointmentDate ? new Date(careInfo.appointmentDate).toISOString().split('T')[0] : apt.date,
+            time: careInfo.timeSlot || apt.time,
+            notes: careInfo.notes || apt.notes,
+            status: careInfo.status || apt.status,
+            isDelayed: careInfo.status === 'RESCHEDULED' || apt.isDelayed || false,
+            delayReason: careInfo.notes || apt.delayReason
+          };
+        }
+        return apt;
+      });
+
+      const existingTokenMap = new Set(enrichedAppointments.map(a => `${a.facilityName}-${a.department}-${a.tokenNumber}`));
+
+      const extraApps = [];
+      for (const a of careApps) {
+        const key = `${a.facilityName || 'Public Healthcare Center'}-${a.department || 'General OPD'}-${a.tokenNumber}`;
+        if (!existingTokenMap.has(key)) {
+          const docInfo = a.doctorId ? doctorsMap.get(a.doctorId.toString()) : null;
+          extraApps.push({
+            _id: a._id,
+            appointmentId: `CARE-${a._id}`,
+            facilityId: a.facilityId ? a.facilityId.toString() : 'FAC-DEFAULT',
+            facilityName: a.facilityName || 'Public Healthcare Center',
+            department: a.department || 'General OPD',
+            date: a.appointmentDate ? new Date(a.appointmentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            time: a.timeSlot || '10:00 AM',
+            tokenNumber: a.tokenNumber || 1,
+            reasonForVisit: a.symptoms || 'General OPD Consultation',
+            status: a.status || 'CONFIRMED',
+            doctorName: docInfo?.name || 'Duty Medical Officer',
+            doctorSpecialization: docInfo?.specialization || null,
+            notes: a.notes,
+            isDelayed: a.status === 'RESCHEDULED',
+            delayReason: a.notes
+          });
+        }
+      }
+
+      return res.json({ success: true, appointments: [...enrichedAppointments, ...extraApps] });
     } catch (e) {
       return res.json({ success: true, appointments });
     }
@@ -1184,53 +1419,807 @@ router.get('/appointments/my', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/prescriptions/my', authMiddleware, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    let prescriptions = await mongoose.connection.collection('prescriptions')
+      .find({ patientId: req.user._id })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    const events = await CareJourneyEvent.find({
+      patientId: req.user._id,
+      eventType: 'PRESCRIPTION_ISSUED'
+    }).sort({ createdAt: -1 }).lean();
+
+    const combinedPrescriptions = [...prescriptions];
+
+    events.forEach(ev => {
+      const isAlreadyAdded = combinedPrescriptions.some(p => String(p.appointmentId) === String(ev.relatedAppointmentId));
+      if (!isAlreadyAdded && (ev.prescriptionDetails || ev.pdfDataUrl)) {
+        combinedPrescriptions.push({
+          _id: ev._id,
+          appointmentId: ev.relatedAppointmentId,
+          facilityName: ev.facilityName || 'Healthcare Center',
+          department: 'General OPD',
+          doctorName: ev.doctorName || 'Doctor Specialist',
+          doctorSpecialization: 'Specialist Officer',
+          date: new Date(ev.createdAt).toLocaleDateString(),
+          diagnosis: ev.prescriptionDetails?.diagnosis || 'OPD Clinical Evaluation',
+          medicines: ev.prescriptionDetails?.medicines || [],
+          advice: ev.prescriptionDetails?.advice || '',
+          isOfflinePrescription: ev.prescriptionDetails?.isOfflinePrescription || false,
+          pdfDataUrl: ev.pdfDataUrl || null,
+          createdAt: ev.createdAt
+        });
+      }
+    });
+
+    return res.json({ success: true, prescriptions: combinedPrescriptions });
+  } catch (err) {
+    console.error('Error fetching patient prescriptions:', err);
+    return res.status(500).json({ success: false, message: 'Error fetching patient prescriptions' });
+  }
+});
+
+// Delete a Prescription record by ID
+router.delete('/prescriptions/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mongoose = require('mongoose');
+
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(id);
+    } catch (e) {
+      objectId = null;
+    }
+
+    const filter = objectId ? { $or: [{ _id: objectId }, { appointmentId: objectId }] } : { _id: id };
+    await mongoose.connection.collection('prescriptions').deleteOne(filter);
+
+    if (objectId) {
+      await CareJourneyEvent.deleteOne({ _id: objectId, eventType: 'PRESCRIPTION_ISSUED' });
+    }
+
+    return res.json({ success: true, message: 'Prescription record deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting prescription:', err);
+    return res.status(500).json({ success: false, message: 'Failed to delete prescription' });
+  }
+});
+// ---------------------------------------------------------------------------
+// BED BOOKING & ADMISSION REQUEST ROUTES
+// ---------------------------------------------------------------------------
+
+// 1. Submit Bed Booking & Admission Request
+router.post('/bed-bookings', authMiddleware, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const {
+      facilityId,
+      facilityName,
+      department = 'Emergency Trauma',
+      requestedBedType = 'GENERAL_WARD',
+      patientName,
+      patientAge,
+      patientGender,
+      contactPhone,
+      reasonForAdmission
+    } = req.body;
+
+    if (!facilityName) {
+      return res.status(400).json({ success: false, message: 'Facility Name is required' });
+    }
+
+    // Check facility available bed count
+    let availableBeds = 8;
+    try {
+      const fac = await HealthcareFacility.findOne({ $or: [{ facilityId }, { name: facilityName }] }).lean();
+      if (fac && fac.bedCount && fac.bedCount.available !== undefined) {
+        availableBeds = fac.bedCount.available;
+      }
+    } catch (fErr) {
+      console.warn('Facility bed count lookup warning:', fErr.message);
+    }
+
+    const passNum = `ADM-${(facilityName || 'FAC').substring(0, 3).toUpperCase()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const status = availableBeds > 0 ? 'PENDING' : 'WAITLISTED';
+
+    const bookingRecord = {
+      patientId: req.user._id,
+      facilityId: facilityId || 'FAC-DEFAULT',
+      facilityName: facilityName,
+      department: department,
+      requestedBedType: requestedBedType,
+      allottedBedType: '',
+      allottedBedNumber: '',
+      patientName: patientName || req.user.name || 'Patient',
+      patientAge: patientAge || 'N/A',
+      patientGender: patientGender || 'N/A',
+      contactPhone: contactPhone || req.user.phone || 'N/A',
+      reasonForAdmission: reasonForAdmission || 'Emergency Admission Required',
+      status: status,
+      admissionPassNumber: passNum,
+      hospitalNotes: availableBeds > 0 ? 'Awaiting hospital bed allocation & staff confirmation' : 'Beds currently at 100% capacity. Waitlisted for next available opening.',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const insertRes = await mongoose.connection.collection('bedadmissions').insertOne(bookingRecord);
+
+    // Create Care Journey Event
+    try {
+      await CareJourneyEvent.create({
+        patientId: req.user._id,
+        eventType: 'EMERGENCY',
+        facilityId: facilityId || 'FAC-DEFAULT',
+        facilityName: facilityName,
+        title: status === 'PENDING'
+          ? `🛏️ Hospital Bed & Admission Requested at ${facilityName}`
+          : `⏳ Bed Admission Request Waitlisted at ${facilityName}`,
+        description: `Department: ${department}. Requested Bed: ${requestedBedType.replace('_', ' ')}. Admission Pass #${passNum}. Status: ${status}`,
+        relatedAppointmentId: insertRes.insertedId
+      });
+    } catch (cjErr) {
+      console.warn('Care journey event warning:', cjErr.message);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: status === 'PENDING' ? 'Bed admission request submitted successfully.' : 'Request registered on hospital waitlist.',
+      booking: { _id: insertRes.insertedId, ...bookingRecord }
+    });
+  } catch (err) {
+    console.error('Error submitting bed booking:', err);
+    return res.status(500).json({ success: false, message: 'Failed to submit bed booking request' });
+  }
+});
+
+// 2. Get Logged-in Patient's Bed Booking Requests
+router.get('/bed-bookings/my', authMiddleware, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const bookings = await mongoose.connection.collection('bedadmissions')
+      .find({ patientId: req.user._id })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return res.json({ success: true, bookings });
+  } catch (err) {
+    console.error('Error fetching patient bed bookings:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch bed bookings' });
+  }
+});
+
+// 3. Hospital Approve Bed Request & Allot Specific Bed (Decrements Available Beds by 1)
+router.put('/bed-bookings/:id/approve', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { allottedBedType, allottedBedNumber, hospitalNotes } = req.body;
+    const mongoose = require('mongoose');
+
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(id);
+    } catch (e) {
+      objectId = id;
+    }
+
+    const booking = await mongoose.connection.collection('bedadmissions').findOne({ _id: objectId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Bed admission request not found' });
+    }
+
+    const bedTypeLabel = allottedBedType || booking.requestedBedType || 'GENERAL_WARD';
+    const bedNo = allottedBedNumber || `BED-${Math.floor(10 + Math.random() * 90)}`;
+
+    // Update booking status to APPROVED_BED_ALLOTTED
+    await mongoose.connection.collection('bedadmissions').updateOne(
+      { _id: objectId },
+      {
+        $set: {
+          status: 'APPROVED_BED_ALLOTTED',
+          allottedBedType: bedTypeLabel,
+          allottedBedNumber: bedNo,
+          hospitalNotes: hospitalNotes || 'Bed allocated & reserved by hospital admission desk.',
+          approvedAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    );
+
+    // Decrement hospital available bed count by 1
+    try {
+      await HealthcareFacility.updateOne(
+        { $or: [{ facilityId: booking.facilityId }, { name: booking.facilityName }] },
+        { $inc: { 'bedCount.available': -1 } }
+      );
+    } catch (bErr) {
+      console.warn('Bed count decrement warning:', bErr.message);
+    }
+
+    // Log Care Journey Event
+    try {
+      await CareJourneyEvent.create({
+        patientId: booking.patientId,
+        eventType: 'EMERGENCY',
+        facilityId: booking.facilityId,
+        facilityName: booking.facilityName,
+        title: `🟢 Bed Allotted: ${bedTypeLabel.replace('_', ' ')} #${bedNo} at ${booking.facilityName}`,
+        description: `Hospital admission confirmed. Bed ${bedNo} reserved. Pass #${booking.admissionPassNumber}.`,
+        relatedAppointmentId: booking._id
+      });
+    } catch (cjErr) {
+      console.warn('Care journey event warning:', cjErr.message);
+    }
+
+    // Send In-App Notification to Patient
+    try {
+      const Notification = require('../models/Notification');
+      if (booking.patientId) {
+        await Notification.create({
+          user: booking.patientId,
+          type: 'general',
+          title: `🟢 Hospital Bed Allotted: Bed #${bedNo}`,
+          message: `Your hospital bed admission pass (#${booking.admissionPassNumber}) at ${booking.facilityName} has been approved. Allotted Bed: #${bedNo} (${bedTypeLabel.replace('_', ' ')}).`,
+          severity: 'success',
+          read: false,
+          meta: {
+            admissionPassNumber: booking.admissionPassNumber,
+            facilityName: booking.facilityName,
+            allottedBedNumber: bedNo,
+            allottedBedType: bedTypeLabel
+          }
+        });
+        console.log('✅ In-App notification created for patient:', booking.patientId);
+      }
+    } catch (nErr) {
+      console.warn('In-app notification warning:', nErr.message);
+    }
+
+    // Send Email Notification to Patient
+    try {
+      let patientEmail = booking.contactPhone && booking.contactPhone.includes('@') ? booking.contactPhone : null;
+      if (!patientEmail && booking.patientId) {
+        try {
+          const User = require('../models/User');
+          const u = await User.findById(booking.patientId);
+          if (u && u.email) patientEmail = u.email;
+        } catch(e) {}
+      }
+
+      if (patientEmail) {
+        const { sendEmail } = require('../utils/sendEmail');
+        const emailHTML = `
+          <div style="font-family: Arial, sans-serif; padding: 25px; background-color: #0f172a; color: #f8fafc; border-radius: 12px; border: 1px solid #1e293b; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #14b8a6; margin: 0;">🏥 MediTrack Hospital Admission & Bed Allotted</h2>
+              <p style="color: #94a3b8; font-size: 13px;">Official Inpatient Admission Confirmation Pass</p>
+            </div>
+            
+            <p>Dear <strong>${booking.patientName || 'Valued Patient'}</strong>,</p>
+            <p>Your bed booking & hospital admission request for <strong>${booking.facilityName}</strong> has been <strong style="color: #22c55e;">APPROVED</strong> and a bed has been successfully allotted by the hospital admission desk.</p>
+            
+            <div style="background-color: #1e293b; padding: 18px; border-radius: 10px; border-left: 4px solid #14b8a6; margin: 20px 0;">
+              <p style="margin: 6px 0; color: #94a3b8;">Admission Pass #: <strong style="color: #f8fafc; font-family: monospace;">#${booking.admissionPassNumber}</strong></p>
+              <p style="margin: 6px 0; color: #94a3b8;">Allotted Bed Tag: <strong style="color: #38bdf8; font-size: 1.15em;">#${bedNo}</strong></p>
+              <p style="margin: 6px 0; color: #94a3b8;">Bed Category: <strong style="color: #22c55e;">${bedTypeLabel.replace('_', ' ')}</strong></p>
+              <p style="margin: 6px 0; color: #94a3b8;">Hospital Unit: <strong>${booking.department || 'Emergency / General'}</strong></p>
+            </div>
+
+            ${hospitalNotes ? `
+              <div style="background-color: #334155; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #cbd5e1; margin-bottom: 20px;">
+                <strong>Hospital Admission Notes:</strong> ${hospitalNotes}
+              </div>
+            ` : ''}
+
+            <p style="font-size: 13px; color: #cbd5e1;">Please present your Admission Pass Number (<strong>#${booking.admissionPassNumber}</strong>) and government ID when arriving at <strong>${booking.facilityName}</strong>.</p>
+            
+            <hr style="border: 0; border-top: 1px solid #334155; margin-top: 25px;" />
+            <p style="font-size: 11px; color: #64748b; text-align: center;">MediTrack Healthcare Ecosystem • Automated Admission Notification</p>
+          </div>
+        `;
+
+        await sendEmail({
+          to: patientEmail,
+          subject: `🟢 Confirmed: Hospital Bed #${bedNo} Allotted at ${booking.facilityName}`,
+          html: emailHTML
+        });
+        console.log('✅ Bed allotment email dispatched to:', patientEmail);
+      }
+    } catch (eErr) {
+      console.warn('Bed approval email dispatch warning:', eErr.message);
+    }
+
+    return res.json({
+      success: true,
+      message: `Bed ${bedNo} successfully allotted. Hospital available bed count occupied by 1. Email and in-app notifications sent.`,
+      allottedBedNumber: bedNo,
+      allottedBedType: bedTypeLabel
+    });
+  } catch (err) {
+    console.error('Error approving bed booking:', err);
+    return res.status(500).json({ success: false, message: 'Failed to approve bed booking' });
+  }
+});
+
+// 4. Cancel Bed Booking Request
+router.delete('/bed-bookings/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mongoose = require('mongoose');
+
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(id);
+    } catch (e) {
+      objectId = id;
+    }
+
+    await mongoose.connection.collection('bedadmissions').deleteOne({ _id: objectId });
+    return res.json({ success: true, message: 'Bed admission request cancelled' });
+  } catch (err) {
+    console.error('Error cancelling bed booking:', err);
+    return res.status(500).json({ success: false, message: 'Failed to cancel bed booking' });
+  }
+});
+
+// 5. Dispatch / Discharge Patient (Releases 1 Bed back to available count)
+router.put('/bed-bookings/:id/dispatch', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { summaryNotes } = req.body;
+    const mongoose = require('mongoose');
+
+    let objectId;
+    try { objectId = new mongoose.Types.ObjectId(id); } catch (e) { objectId = id; }
+
+    const booking = await mongoose.connection.collection('bedadmissions').findOne({ _id: objectId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Bed admission request not found' });
+    }
+
+    const dischargedAt = new Date();
+
+    await mongoose.connection.collection('bedadmissions').updateOne(
+      { _id: objectId },
+      {
+        $set: {
+          status: 'DISCHARGED',
+          dischargedAt,
+          dischargeNotes: summaryNotes || 'Patient discharged in stable condition.',
+          updatedAt: new Date()
+        }
+      }
+    );
+
+    // Release 1 bed back to facility available count
+    try {
+      await HealthcareFacility.updateOne(
+        { $or: [{ facilityId: booking.facilityId }, { name: booking.facilityName }] },
+        { $inc: { 'bedCount.available': 1 } }
+      );
+    } catch (fErr) {
+      console.warn('Bed release increment warning:', fErr.message);
+    }
+
+    // Log Care Journey Event
+    try {
+      await CareJourneyEvent.create({
+        patientId: booking.patientId,
+        eventType: 'EMERGENCY',
+        facilityId: booking.facilityId,
+        facilityName: booking.facilityName,
+        title: `🏁 Discharged from ${booking.facilityName}`,
+        description: `Patient officially discharged. Bed ${booking.allottedBedNumber || ''} released. Pass #${booking.admissionPassNumber}.`,
+        relatedAppointmentId: booking._id
+      });
+    } catch (cjErr) {
+      console.warn('Care journey discharge event warning:', cjErr.message);
+    }
+
+    // Send In-App Notification
+    try {
+      const Notification = require('../models/Notification');
+      if (booking.patientId) {
+        await Notification.create({
+          user: booking.patientId,
+          type: 'general',
+          title: `🏥 Official Hospital Discharge Complete`,
+          message: `You have been officially discharged from ${booking.facilityName}. Reserved bed #${booking.allottedBedNumber || ''} has been released.`,
+          severity: 'info',
+          read: false,
+          meta: { admissionPassNumber: booking.admissionPassNumber, facilityName: booking.facilityName }
+        });
+      }
+    } catch (nErr) {
+      console.warn('In-app discharge notification warning:', nErr.message);
+    }
+
+    // Send Email Notification
+    try {
+      let patientEmail = booking.contactPhone && booking.contactPhone.includes('@') ? booking.contactPhone : null;
+      if (!patientEmail && booking.patientId) {
+        try {
+          const User = require('../models/User');
+          const u = await User.findById(booking.patientId);
+          if (u && u.email) patientEmail = u.email;
+        } catch(e) {}
+      }
+
+      if (patientEmail) {
+        const { sendEmail } = require('../utils/sendEmail');
+        const emailHTML = `
+          <div style="font-family: Arial, sans-serif; padding: 25px; background-color: #0f172a; color: #f8fafc; border-radius: 12px; border: 1px solid #1e293b; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #38bdf8; margin: 0;">🏥 Official Hospital Discharge Summary</h2>
+              <p style="color: #94a3b8; font-size: 13px;">Inpatient Discharge & Recovery Clearance</p>
+            </div>
+            
+            <p>Dear <strong>${booking.patientName || 'Valued Patient'}</strong>,</p>
+            <p>You have been officially <strong style="color: #38bdf8;">DISCHARGED</strong> from inpatient care at <strong>${booking.facilityName}</strong>. Your reserved hospital bed has been released.</p>
+            
+            <div style="background-color: #1e293b; padding: 18px; border-radius: 10px; border-left: 4px solid #38bdf8; margin: 20px 0;">
+              <p style="margin: 6px 0; color: #94a3b8;">Admission Pass #: <strong style="color: #f8fafc; font-family: monospace;">#${booking.admissionPassNumber}</strong></p>
+              <p style="margin: 6px 0; color: #94a3b8;">Discharge Date & Time: <strong style="color: #38bdf8;">${new Date(dischargedAt).toLocaleString()}</strong></p>
+              <p style="margin: 6px 0; color: #94a3b8;">Status: <strong style="color: #22c55e;">COMPLETED / DISCHARGED</strong></p>
+            </div>
+
+            ${summaryNotes ? `
+              <div style="background-color: #334155; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #cbd5e1; margin-bottom: 20px;">
+                <strong>Discharge Summary & Instructions:</strong> ${summaryNotes}
+              </div>
+            ` : ''}
+
+            <p style="font-size: 13px; color: #cbd5e1;">Thank you for choosing <strong>${booking.facilityName}</strong>. We wish you a fast and full recovery!</p>
+            
+            <hr style="border: 0; border-top: 1px solid #334155; margin-top: 25px;" />
+            <p style="font-size: 11px; color: #64748b; text-align: center;">MediTrack Healthcare Ecosystem • Automated Discharge Notification</p>
+          </div>
+        `;
+
+        await sendEmail({
+          to: patientEmail,
+          subject: `🏥 Hospital Discharge Summary: Pass #${booking.admissionPassNumber} at ${booking.facilityName}`,
+          html: emailHTML
+        });
+      }
+    } catch (eErr) {
+      console.warn('Discharge email warning:', eErr.message);
+    }
+
+    return res.json({ success: true, message: 'Patient discharged. Bed count released by +1.' });
+  } catch (err) {
+    console.error('Error discharging patient:', err);
+    return res.status(500).json({ success: false, message: 'Failed to discharge patient' });
+  }
+});
+
+// 6. Shift Patient to General Ward
+router.put('/bed-bookings/:id/shift-ward', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newBedNumber, hospitalNotes } = req.body;
+    const mongoose = require('mongoose');
+
+    let objectId;
+    try { objectId = new mongoose.Types.ObjectId(id); } catch (e) { objectId = id; }
+
+    const booking = await mongoose.connection.collection('bedadmissions').findOne({ _id: objectId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Bed admission request not found' });
+    }
+
+    const wardBedNo = newBedNumber || `GEN-WARD-${Math.floor(10 + Math.random() * 90)}`;
+
+    await mongoose.connection.collection('bedadmissions').updateOne(
+      { _id: objectId },
+      {
+        $set: {
+          status: 'SHIFTED_TO_GENERAL_WARD',
+          allottedBedType: 'GENERAL_WARD',
+          allottedBedNumber: wardBedNo,
+          hospitalNotes: hospitalNotes || 'Patient shifted to General Ward for recovery.',
+          shiftedAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    );
+
+    // Log Care Journey Event
+    try {
+      await CareJourneyEvent.create({
+        patientId: booking.patientId,
+        eventType: 'EMERGENCY',
+        facilityId: booking.facilityId,
+        facilityName: booking.facilityName,
+        title: `🛏️ Shifted to General Ward Bed #${wardBedNo} at ${booking.facilityName}`,
+        description: `Patient transferred to General Ward. Bed Tag: #${wardBedNo}. Pass #${booking.admissionPassNumber}.`,
+        relatedAppointmentId: booking._id
+      });
+    } catch (cjErr) {
+      console.warn('Care journey ward shift event warning:', cjErr.message);
+    }
+
+    // Send In-App Notification
+    try {
+      const Notification = require('../models/Notification');
+      if (booking.patientId) {
+        await Notification.create({
+          user: booking.patientId,
+          type: 'general',
+          title: `🛏️ Shifted to General Ward: Bed #${wardBedNo}`,
+          message: `Your bed at ${booking.facilityName} has been transferred to General Ward Bed #${wardBedNo}. Pass #${booking.admissionPassNumber}.`,
+          severity: 'info',
+          read: false,
+          meta: { admissionPassNumber: booking.admissionPassNumber, facilityName: booking.facilityName, allottedBedNumber: wardBedNo }
+        });
+      }
+    } catch (nErr) {
+      console.warn('In-app ward shift notification warning:', nErr.message);
+    }
+
+    // Send Email Notification
+    try {
+      let patientEmail = booking.contactPhone && booking.contactPhone.includes('@') ? booking.contactPhone : null;
+      if (!patientEmail && booking.patientId) {
+        try {
+          const User = require('../models/User');
+          const u = await User.findById(booking.patientId);
+          if (u && u.email) patientEmail = u.email;
+        } catch(e) {}
+      }
+
+      if (patientEmail) {
+        const { sendEmail } = require('../utils/sendEmail');
+        const emailHTML = `
+          <div style="font-family: Arial, sans-serif; padding: 25px; background-color: #0f172a; color: #f8fafc; border-radius: 12px; border: 1px solid #1e293b; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #a855f7; margin: 0;">🛏️ Patient General Ward Shift Notice</h2>
+              <p style="color: #94a3b8; font-size: 13px;">Inpatient Ward Transfer Confirmation</p>
+            </div>
+            
+            <p>Dear <strong>${booking.patientName || 'Valued Patient'}</strong>,</p>
+            <p>Your inpatient bed at <strong>${booking.facilityName}</strong> has been transferred to the <strong style="color: #a855f7;">General Medicine Ward</strong> for continued recovery.</p>
+            
+            <div style="background-color: #1e293b; padding: 18px; border-radius: 10px; border-left: 4px solid #a855f7; margin: 20px 0;">
+              <p style="margin: 6px 0; color: #94a3b8;">Admission Pass #: <strong style="color: #f8fafc; font-family: monospace;">#${booking.admissionPassNumber}</strong></p>
+              <p style="margin: 6px 0; color: #94a3b8;">New Ward Bed Tag: <strong style="color: #c084fc; font-size: 1.15em;">#${wardBedNo}</strong></p>
+              <p style="margin: 6px 0; color: #94a3b8;">Bed Category: <strong style="color: #a855f7;">General Ward</strong></p>
+            </div>
+
+            ${hospitalNotes ? `
+              <div style="background-color: #334155; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #cbd5e1; margin-bottom: 20px;">
+                <strong>Ward Transfer Notes:</strong> ${hospitalNotes}
+              </div>
+            ` : ''}
+
+            <p style="font-size: 13px; color: #cbd5e1;">Your medical records and care journey have been updated with your new bed assignment (<strong>#${wardBedNo}</strong>).</p>
+            
+            <hr style="border: 0; border-top: 1px solid #334155; margin-top: 25px;" />
+            <p style="font-size: 11px; color: #64748b; text-align: center;">MediTrack Healthcare Ecosystem • Automated Ward Transfer Notification</p>
+          </div>
+        `;
+
+        await sendEmail({
+          to: patientEmail,
+          subject: `🛏️ Shifted to General Ward: Bed #${wardBedNo} at ${booking.facilityName}`,
+          html: emailHTML
+        });
+      }
+    } catch (eErr) {
+      console.warn('Ward shift email warning:', eErr.message);
+    }
+
+    return res.json({ success: true, message: `Patient shifted to General Ward Bed #${wardBedNo}.`, allottedBedNumber: wardBedNo });
+  } catch (err) {
+    console.error('Error shifting patient to general ward:', err);
+    return res.status(500).json({ success: false, message: 'Failed to shift patient to general ward' });
+  }
+});
+
+
+
 router.get('/queue/:facilityId', async (req, res) => {
   try {
     const { facilityId } = req.params;
-    const { tokenNumber } = req.query;
+    const { department = 'General OPD', tokenNumber } = req.query;
     const mongoose = require('mongoose');
+    const todayStr = new Date().toISOString().split('T')[0];
 
-    // Attempt to fetch real live queue token from care_backend
+    // Count appointments for this facility & department today from Appointment collection
+    const departmentAppointmentsCount = await Appointment.countDocuments({
+      facilityId,
+      department,
+      date: todayStr
+    });
+
+    const hasBookedToken = tokenNumber !== undefined && tokenNumber !== null && tokenNumber !== '' && !isNaN(parseInt(tokenNumber)) && parseInt(tokenNumber) > 0;
+    const userToken = hasBookedToken ? parseInt(tokenNumber) : 0;
+
+    // Fetch all active department queues for this facility today to build overview summary map
+    let allFacilityQueues = [];
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const realQueue = await mongoose.connection.collection('carequeues').findOne({ date: todayStr });
+      allFacilityQueues = await mongoose.connection.collection('carequeues').find({
+        date: todayStr,
+        $or: [
+          { facilityIdStr: facilityId },
+          { facilityId: facilityId }
+        ]
+      }).toArray();
+    } catch (err) {
+      console.warn('Facility queues summary fetch warning:', err.message);
+    }
+
+    const departmentQueues = {};
+    allFacilityQueues.forEach(q => {
+      const dept = q.department || 'General OPD';
+      departmentQueues[dept] = {
+        department: dept,
+        currentToken: q.servingToken || 1,
+        totalTokensBooked: q.currentToken || 0,
+        waitingCount: Math.max(0, (q.currentToken || 0) - (q.servingToken || 1))
+      };
+    });
+
+    // Attempt to fetch real live queue token from carequeues for this specific department
+    try {
+      let realQueue = await mongoose.connection.collection('carequeues').findOne({
+        department: department,
+        date: todayStr,
+        $or: [
+          { facilityIdStr: facilityId },
+          { facilityId: facilityId }
+        ]
+      });
+
+      if (!realQueue) {
+        realQueue = await mongoose.connection.collection('carequeues').findOne({
+          date: todayStr,
+          $or: [
+            { facilityIdStr: facilityId },
+            { facilityId: facilityId }
+          ]
+        });
+      }
+
       if (realQueue) {
-        const userToken = parseInt(tokenNumber) || realQueue.currentToken || 102;
-        const currentToken = realQueue.servingToken || 101;
-        const position = Math.max(0, userToken - currentToken);
-        const estimatedWaitMinutes = position * 10;
+        const totalBooked = Math.max(realQueue.currentToken || 0, departmentAppointmentsCount);
+        const currentToken = realQueue.servingToken || (totalBooked > 0 ? 1 : 0);
+        const position = userToken > 0 ? Math.max(0, userToken - currentToken) : 0;
+        const estimatedWaitMinutes = position * 5;
+
         return res.json({
           success: true,
           facilityId,
+          department,
           userToken,
           currentToken,
+          totalTokensBooked: totalBooked,
           positionInLine: position,
           estimatedWaitMinutes,
-          status: position === 0 ? 'NOW_SERVING' : 'WAITING',
+          hasAppointment: hasBookedToken,
+          status: userToken === 0 ? 'NO_APPOINTMENT' : position === 0 ? 'NOW_SERVING' : 'WAITING',
+          entries: realQueue.entries || [],
+          departmentQueues,
           lastUpdated: new Date()
         });
       }
     } catch (qErr) {
-      // Fallback
+      console.warn('Department Queue fetch warning:', qErr.message);
     }
 
-    const currentToken = Math.max(1, (parseInt(tokenNumber) || 37) - 5);
-    const userToken = parseInt(tokenNumber) || 37;
-    const position = Math.max(0, userToken - currentToken);
+    const totalBooked = departmentAppointmentsCount;
+    const currentToken = totalBooked > 0 ? 1 : 0;
+    const position = userToken > 0 ? Math.max(0, userToken - currentToken) : 0;
     const estimatedWaitMinutes = position * 5;
 
     return res.json({
       success: true,
       facilityId,
+      department,
       userToken,
       currentToken,
+      totalTokensBooked: totalBooked,
       positionInLine: position,
       estimatedWaitMinutes,
-      status: position === 0 ? 'NOW_SERVING' : 'WAITING',
+      hasAppointment: hasBookedToken,
+      status: userToken === 0 ? 'NO_APPOINTMENT' : position === 0 ? 'NOW_SERVING' : 'WAITING',
+      entries: [],
+      departmentQueues,
       lastUpdated: new Date()
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Error calculating queue status' });
+  }
+});
+
+// Doctor / Hospital Staff Queue Advance Action
+router.post('/queue/action', async (req, res) => {
+  try {
+    const { facilityId, department = 'General OPD', action = 'COMPLETE', tokenNumber } = req.body;
+    const mongoose = require('mongoose');
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    let queue = await mongoose.connection.collection('carequeues').findOne({
+      department: department,
+      date: todayStr,
+      $or: [
+        { facilityIdStr: facilityId },
+        { facilityId: facilityId }
+      ]
+    });
+
+    if (!queue) {
+      queue = await mongoose.connection.collection('carequeues').findOne({
+        date: todayStr,
+        $or: [
+          { facilityIdStr: facilityId },
+          { facilityId: facilityId }
+        ]
+      });
+    }
+
+    if (!queue) {
+      // Create default department queue if none exists
+      const newQueue = {
+        facilityIdStr: facilityId || 'DEFAULT',
+        department: department,
+        date: todayStr,
+        currentToken: 1,
+        servingToken: 2,
+        entries: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      await mongoose.connection.collection('carequeues').insertOne(newQueue);
+      return res.json({ success: true, message: `Queue advanced for ${department}`, servingToken: 2, currentToken: 2, department });
+    }
+
+    let newServingToken = (queue.servingToken || 1) + 1;
+    if (tokenNumber && parseInt(tokenNumber)) {
+      newServingToken = parseInt(tokenNumber) + 1;
+    }
+
+    // Mark completed entry in entries array
+    const updatedEntries = (queue.entries || []).map(entry => {
+      if (entry.tokenNumber === (queue.servingToken || 1)) {
+        return { ...entry, status: 'COMPLETED', endTime: new Date() };
+      }
+      if (entry.tokenNumber === newServingToken) {
+        return { ...entry, status: 'IN_CONSULTATION', startTime: new Date() };
+      }
+      return entry;
+    });
+
+    await mongoose.connection.collection('carequeues').updateOne(
+      { _id: queue._id },
+      {
+        $set: {
+          servingToken: newServingToken,
+          entries: updatedEntries,
+          updatedAt: new Date()
+        }
+      }
+    );
+
+    // Update appointment status in main DB if applicable for this department
+    await Appointment.updateMany(
+      { facilityId, department, tokenNumber: queue.servingToken || 1, date: todayStr },
+      { $set: { status: 'COMPLETED' } }
+    );
+
+    return res.json({
+      success: true,
+      message: `Queue advanced for ${department}! Now serving Token #${newServingToken}`,
+      servingToken: newServingToken,
+      currentToken: queue.currentToken || newServingToken,
+      department
+    });
+  } catch (err) {
+    console.error('Error advancing queue:', err);
+    return res.status(500).json({ success: false, message: 'Failed to advance queue' });
   }
 });
 

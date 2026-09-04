@@ -1,29 +1,184 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle2, Building2, User, Ticket, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Calendar, Clock, CheckCircle2, Building2, User, Ticket, ChevronRight, AlertCircle, RefreshCw, MapPin, Bed, PhoneCall, ShieldAlert, AlertTriangle, Trash2 } from 'lucide-react';
+import { locationService } from '../../services/locationService';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+const CITIES_LIST = [
+  { city: 'Jalpaiguri', region: 'West Bengal', lat: 26.5400, lng: 88.7100 },
+  { city: 'Delhi', region: 'NCR', lat: 28.6139, lng: 77.2090 },
+  { city: 'Pune', region: 'Maharashtra', lat: 18.5204, lng: 73.8567 },
+  { city: 'Kolkata', region: 'West Bengal', lat: 22.5726, lng: 88.3639 },
+  { city: 'Mumbai', region: 'Maharashtra', lat: 19.0760, lng: 72.8777 },
+  { city: 'Chennai', region: 'Tamil Nadu', lat: 13.0827, lng: 80.2707 },
+  { city: 'Amritsar', region: 'Punjab', lat: 31.6340, lng: 74.8723 },
+  { city: 'Bengaluru', region: 'Karnataka', lat: 12.9716, lng: 77.5946 }
+];
+
+const OPD_DEPARTMENTS = [
+  'General OPD',
+  'Cardiology OPD',
+  'Pediatrics OPD',
+  'Orthopedics OPD',
+  'Neurology OPD',
+  'Dermatology OPD',
+  'ENT OPD'
+];
+
+const BED_DEPARTMENTS = [
+  'Emergency Trauma',
+  'ICU / CCU Unit',
+  'General Medicine Ward',
+  'Maternity & Obstetrics',
+  'Pediatrics',
+  'Orthopedic Surgery Ward'
+];
+
+const BED_TYPES = [
+  { id: 'GENERAL_WARD', name: 'General Medicine Ward Bed', desc: 'Standard inpatient care & recovery bed' },
+  { id: 'ICU_CCU', name: 'ICU / CCU Ventilator Bed', desc: 'Critical care, cardiac & intensive monitoring' },
+  { id: 'OXYGEN_BED', name: 'High-Flow Oxygen Bed', desc: 'Respiratory support & oxygen therapy' },
+  { id: 'EMERGENCY_OBSERVATION', name: 'Emergency Trauma Observation', desc: 'Short-stay acute emergency evaluation' },
+  { id: 'PEDIATRIC_WARD', name: 'Pediatric Ward Bed', desc: 'Children & neonatal inpatient care' }
+];
+
 const AppointmentsPage = () => {
+  const location = useLocation();
+  const [activeFormMode, setActiveFormMode] = useState('OPD'); // 'OPD' or 'BED_ADMISSION'
+
+  // OPD State
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [facilities, setFacilities] = useState([]);
   const [selectedFacilityId, setSelectedFacilityId] = useState('');
+  const [selectedCity, setSelectedCity] = useState('Jalpaiguri');
+  const [userLocation, setUserLocation] = useState({ latitude: 26.5400, longitude: 88.7100, city: 'Jalpaiguri' });
   const [department, setDepartment] = useState('General OPD');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState('09:30 AM');
   const [bookingSuccess, setBookingSuccess] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Bed Booking & Admission State
+  const [bedDepartment, setBedDepartment] = useState('Emergency Trauma');
+  const [requestedBedType, setRequestedBedType] = useState('GENERAL_WARD');
+  const [admissionReason, setAdmissionReason] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [patientGender, setPatientGender] = useState('Male');
+  const [bedBookings, setBedBookings] = useState([]);
+  const [isSubmittingBed, setIsSubmittingBed] = useState(false);
+  const [bedSuccessMsg, setBedSuccessMsg] = useState('');
+
   const [activeQueue, setActiveQueue] = useState({
-    userToken: 37,
-    currentToken: 32,
-    positionInLine: 5,
-    estimatedWaitMinutes: 25
+    userToken: 0,
+    currentToken: 0,
+    positionInLine: 0,
+    estimatedWaitMinutes: 0,
+    facilityName: ''
   });
 
   useEffect(() => {
     fetchAppointments();
-    fetchFacilities();
+    fetchBedBookings();
+    detectLocationAndFetchFacilities();
   }, []);
+
+  useEffect(() => {
+    fetchFacilitiesForCity(selectedCity, userLocation.latitude, userLocation.longitude);
+  }, [selectedCity]);
+
+  const detectLocationAndFetchFacilities = async () => {
+    let loc = locationService.getDefaultLocation();
+    try {
+      const userPos = await locationService.getCurrentLocation();
+      if (userPos && userPos.city) {
+        loc = userPos;
+      }
+    } catch (err) {
+      console.warn('Geolocation detection warning, using default:', err);
+    }
+    setUserLocation(loc);
+    const initialCity = location.state?.city || loc.city || 'Jalpaiguri';
+    const matchedCityObj = CITIES_LIST.find(c => c.city.toLowerCase() === initialCity.toLowerCase());
+    const validCity = matchedCityObj ? matchedCityObj.city : 'Jalpaiguri';
+    setSelectedCity(validCity);
+    fetchFacilitiesForCity(validCity, loc.latitude, loc.longitude);
+  };
+
+  const fetchFacilitiesForCity = async (cityName, lat, lng) => {
+    try {
+      const cityObj = CITIES_LIST.find(c => c.city.toLowerCase() === cityName.toLowerCase());
+      const queryLat = lat || cityObj?.lat || 26.5400;
+      const queryLng = lng || cityObj?.lng || 88.7100;
+
+      const res = await axios.get(
+        `${API_BASE}/care-network/facilities?city=${encodeURIComponent(cityName)}&lat=${queryLat}&lng=${queryLng}`
+      );
+
+      if (res.data && res.data.facilities && res.data.facilities.length > 0) {
+        let fetchedFacs = res.data.facilities;
+        const targetFacId = location.state?.facilityId;
+        
+        let preSelectedId = '';
+        if (targetFacId) {
+          const match = fetchedFacs.find(
+            f => f.facilityId === targetFacId || f._id === targetFacId || String(f._id) === String(targetFacId)
+          );
+          if (match) {
+            preSelectedId = match.facilityId || match._id;
+          } else {
+            try {
+              const singleRes = await axios.get(`${API_BASE}/care-network/facilities/${targetFacId}`);
+              if (singleRes.data && singleRes.data.facility) {
+                const singleFac = singleRes.data.facility;
+                fetchedFacs = [singleFac, ...fetchedFacs];
+                preSelectedId = singleFac.facilityId || singleFac._id;
+              }
+            } catch (err) {
+              console.warn('Could not fetch target facility details:', err);
+            }
+          }
+        }
+
+        if (!preSelectedId && fetchedFacs.length > 0) {
+          preSelectedId = fetchedFacs[0].facilityId || fetchedFacs[0]._id;
+        }
+
+        setFacilities(fetchedFacs);
+        setSelectedFacilityId(preSelectedId);
+      } else {
+        setFacilities([]);
+        setSelectedFacilityId('');
+      }
+    } catch (err) {
+      console.error('Error fetching facilities for city:', err);
+    }
+  };
+
+  const handleCityChange = (newCity) => {
+    setSelectedCity(newCity);
+    const cityObj = CITIES_LIST.find(c => c.city === newCity);
+    if (cityObj) {
+      setUserLocation({ latitude: cityObj.lat, longitude: cityObj.lng, city: newCity });
+    }
+  };
+
+  useEffect(() => {
+    if (selectedFacilityId) {
+      fetchQueueStatus(selectedFacilityId, department);
+    }
+  }, [selectedFacilityId, department, appointments]);
+
+  useEffect(() => {
+    if (!selectedFacilityId) return;
+    const interval = setInterval(() => {
+      fetchQueueStatus(selectedFacilityId, department);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [selectedFacilityId, department, appointments]);
 
   const fetchAppointments = async () => {
     try {
@@ -35,95 +190,159 @@ const AppointmentsPage = () => {
         setAppointments(res.data.appointments);
       }
     } catch (err) {
-      // Mock fallback appointments
-      setAppointments([
-        {
-          appointmentId: 'APT-DEMO-37',
-          facilityName: 'Primary Health Centre (PHC) Khed',
-          department: 'General OPD',
-          date: new Date().toISOString().split('T')[0],
-          time: '10:00 AM',
-          tokenNumber: 37,
-          status: 'BOOKED'
-        }
-      ]);
+      setAppointments([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchFacilities = async () => {
+  const fetchBedBookings = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/care-network/facilities`);
-      if (res.data && res.data.facilities) {
-        setFacilities(res.data.facilities);
-        if (res.data.facilities.length > 0) {
-          setSelectedFacilityId(res.data.facilities[0].facilityId);
-        }
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/care-network/bed-bookings/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data && res.data.bookings) {
+        setBedBookings(res.data.bookings);
       }
     } catch (err) {
-      console.error('Error fetching facilities:', err);
+      console.warn('Error fetching bed bookings:', err.message);
+    }
+  };
+
+  const fetchQueueStatus = async (facId, dept = department) => {
+    if (!facId) return;
+    const facObj = facilities.find(f => (f.facilityId === facId || f._id === facId));
+    const userAptForFac = appointments.find(
+      a => (a.facilityId === facId || a.facilityName === facObj?.name) &&
+           a.department === dept &&
+           a.status !== 'COMPLETED' &&
+           a.status !== 'CANCELLED'
+    );
+    const userTokenNum = userAptForFac ? userAptForFac.tokenNumber : null;
+
+    try {
+      const res = await axios.get(
+        `${API_BASE}/care-network/queue/${facId}?department=${encodeURIComponent(dept)}&tokenNumber=${userTokenNum !== null && userTokenNum !== undefined ? userTokenNum : ''}`
+      );
+      if (res.data && res.data.success) {
+        setActiveQueue({
+          userToken: userAptForFac ? (res.data.userToken || userAptForFac.tokenNumber || 0) : 0,
+          currentToken: res.data.currentToken || 0,
+          positionInLine: userAptForFac ? (res.data.positionInLine || 0) : 0,
+          estimatedWaitMinutes: userAptForFac ? (res.data.estimatedWaitMinutes || 0) : 0,
+          facilityName: facObj?.name || 'Selected Healthcare Facility',
+          hasAppointment: !!userAptForFac,
+          department: res.data.department || dept,
+          departmentQueues: res.data.departmentQueues || {}
+        });
+      }
+    } catch (err) {
+      console.warn('Queue status error:', err.message);
     }
   };
 
   const handleBook = async (e) => {
     e.preventDefault();
-    const facilityObj = facilities.find(f => f.facilityId === selectedFacilityId);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    const facilityObj = facilities.find(f => (f.facilityId === selectedFacilityId || f._id === selectedFacilityId));
     const token = localStorage.getItem('token');
 
     try {
-      const res = await axios.post(
-        `${API_BASE}/care-network/appointments`,
-        {
-          facilityId: selectedFacilityId,
-          facilityName: facilityObj?.name || 'Primary Health Centre Khed',
-          department,
-          date,
-          time
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (res.data && res.data.appointment) {
-        setBookingSuccess(res.data.message);
-        setAppointments([res.data.appointment, ...appointments]);
-      }
-    } catch (err) {
-      // Demo booking fallback
-      const mockApt = {
-        appointmentId: `APT-${Date.now()}`,
-        facilityName: facilityObj?.name || 'Primary Health Centre Khed',
+      const res = await axios.post(`${API_BASE}/care-network/appointments`, {
+        facilityId: selectedFacilityId || 'FAC-DEFAULT',
+        facilityName: facilityObj ? facilityObj.name : 'Healthcare Center',
         department,
-        date,
-        time,
-        tokenNumber: 38,
-        status: 'BOOKED'
-      };
-      setBookingSuccess('Appointment Booked! Token Number #38 Assigned.');
-      setAppointments([mockApt, ...appointments]);
+        appointmentDate: date,
+        timeSlot: time,
+        type: 'IN_PERSON'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setBookingSuccess(`Token #${res.data.tokenNumber} reserved at ${facilityObj ? facilityObj.name : 'Hospital'} for ${date} at ${time}`);
+      fetchAppointments();
+      if (selectedFacilityId) fetchQueueStatus(selectedFacilityId, department);
+      setTimeout(() => setBookingSuccess(null), 6000);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to book appointment');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleSimulateQueueStep = () => {
-    setActiveQueue(prev => ({
-      ...prev,
-      currentToken: Math.min(prev.userToken, prev.currentToken + 1),
-      positionInLine: Math.max(0, prev.positionInLine - 1),
-      estimatedWaitMinutes: Math.max(0, (prev.positionInLine - 1) * 5)
-    }));
+  const handleBookBed = async (e) => {
+    e.preventDefault();
+    if (isSubmittingBed) return;
+    setIsSubmittingBed(true);
+    const facilityObj = facilities.find(f => (f.facilityId === selectedFacilityId || f._id === selectedFacilityId)) || facilities[0];
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await axios.post(`${API_BASE}/care-network/bed-bookings`, {
+        facilityId: selectedFacilityId || facilityObj?.facilityId || 'FAC-DEFAULT',
+        facilityName: facilityObj?.name || 'Public Healthcare Center',
+        department: bedDepartment,
+        requestedBedType: requestedBedType,
+        patientAge: patientAge,
+        patientGender: patientGender,
+        contactPhone: contactPhone,
+        reasonForAdmission: admissionReason
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data && res.data.success) {
+        setBedSuccessMsg(res.data.message);
+        fetchBedBookings();
+        setAdmissionReason('');
+        setContactPhone('');
+        setTimeout(() => setBedSuccessMsg(''), 6000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit bed booking request');
+    } finally {
+      setIsSubmittingBed(false);
+    }
   };
 
+  const handleCancelBedBooking = async (id) => {
+    if (!window.confirm('Are you sure you want to cancel this bed admission request?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/care-network/bed-bookings/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchBedBookings();
+    } catch (err) {
+      alert('Failed to cancel bed booking request.');
+    }
+  };
+
+  const handleSimulateQueueStep = async () => {
+    if (!selectedFacilityId) return;
+    try {
+      await axios.post(`${API_BASE}/care-network/queue/${selectedFacilityId}/next?department=${encodeURIComponent(department)}`);
+      fetchQueueStatus(selectedFacilityId, department);
+    } catch (err) {
+      console.error('Failed to advance queue:', err);
+    }
+  };
+
+  const selectedFacilityObj = facilities.find(f => (f.facilityId === selectedFacilityId || f._id === selectedFacilityId));
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* LIVE QUEUE STATUS BANNER */}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* REAL-TIME QUEUE STATUS BANNER */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-blue-800/60 pb-4">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold uppercase">
               <Clock className="w-3.5 h-3.5" />
-              <span>Real-Time Public Facility Queue Status</span>
+              <span>Real-Time Public Facility Queue Status • {selectedFacilityObj?.name || activeQueue.facilityName || 'Select Facility'}</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black mt-1">LIVE OPD TOKEN QUEUE POSITION</h1>
+            <h1 className="text-xl sm:text-2xl font-black mt-1">LIVE OPD TOKEN QUEUE ({department.toUpperCase()})</h1>
           </div>
 
           <button
@@ -135,24 +354,43 @@ const AppointmentsPage = () => {
           </button>
         </div>
 
-        {/* QUEUE COUNTERS GRID */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center">
+        {/* OPD SECTION SELECTOR PILLS */}
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase text-blue-300 tracking-wider">Switch OPD Department Queue:</span>
+          <div className="flex flex-wrap gap-2">
+            {OPD_DEPARTMENTS.map(dept => {
+              const isActive = department === dept;
+              return (
+                <button
+                  key={dept}
+                  onClick={() => setDepartment(dept)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white shadow-md scale-105'
+                      : 'bg-blue-950/60 hover:bg-blue-900/60 text-blue-200 border border-blue-800/40'
+                  }`}
+                >
+                  {dept}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
             <span className="text-[10px] font-bold uppercase text-blue-200">YOUR TOKEN</span>
-            <p className="text-3xl font-black text-amber-400">#{activeQueue.userToken}</p>
+            <p className="text-3xl font-black text-white">{activeQueue.userToken ? `#${activeQueue.userToken}` : '--'}</p>
           </div>
-
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center">
-            <span className="text-[10px] font-bold uppercase text-blue-200">CURRENT TOKEN</span>
-            <p className="text-3xl font-black text-emerald-400">#{activeQueue.currentToken}</p>
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+            <span className="text-[10px] font-bold uppercase text-blue-200">NOW SERVING</span>
+            <p className="text-3xl font-black text-emerald-400">#{activeQueue.currentToken || 1}</p>
           </div>
-
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center">
-            <span className="text-[10px] font-bold uppercase text-blue-200">POSITION IN LINE</span>
-            <p className="text-3xl font-black text-white">{activeQueue.positionInLine}</p>
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+            <span className="text-[10px] font-bold uppercase text-blue-200">PEOPLE AHEAD</span>
+            <p className="text-3xl font-black text-amber-300">{activeQueue.positionInLine}</p>
           </div>
-
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center">
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
             <span className="text-[10px] font-bold uppercase text-blue-200">ESTIMATED WAIT</span>
             <p className="text-3xl font-black text-cyan-300">{activeQueue.estimatedWaitMinutes} Mins</p>
           </div>
@@ -160,113 +398,507 @@ const AppointmentsPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* BOOK APPOINTMENT FORM */}
+        {/* LEFT COLUMN: TABBED BOOKING FORM (OPD APPOINTMENT vs BED ADMISSION) */}
         <div className="lg:col-span-5 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-4">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <span>Book OPD Appointment Slot</span>
-          </h2>
+          
+          {/* TAB SWITCHER */}
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setActiveFormMode('OPD')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                activeFormMode === 'OPD'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Book OPD Slot</span>
+            </button>
 
-          {bookingSuccess && (
-            <div className="p-3 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-300">
-              ✓ {bookingSuccess}
+            <button
+              type="button"
+              onClick={() => setActiveFormMode('BED_ADMISSION')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                activeFormMode === 'BED_ADMISSION'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Bed className="w-4 h-4" />
+              <span>Bed & Admission</span>
+            </button>
+          </div>
+
+          {/* FORM 1: BOOK OPD APPOINTMENT SLOT */}
+          {activeFormMode === 'OPD' && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                <span>Book OPD Appointment Slot</span>
+              </h2>
+
+              {bookingSuccess && (
+                <div className="p-3 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-300">
+                  ✓ {bookingSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleBook} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Your Active Location / City:</span>
+                    </span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">📍 {selectedCity} (GPS active)</span>
+                  </label>
+                  <select
+                    value={selectedCity}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    className="w-full p-3 bg-blue-50/60 dark:bg-slate-900 border border-blue-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {CITIES_LIST.map(c => (
+                      <option key={c.city} value={c.city}>
+                        {c.city}, {c.region}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Select Public Healthcare Facility in {selectedCity}:
+                  </label>
+                  <select
+                    value={selectedFacilityId}
+                    onChange={(e) => setSelectedFacilityId(e.target.value)}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none"
+                  >
+                    {facilities.length === 0 ? (
+                      <option value="">No healthcare facilities found in {selectedCity}</option>
+                    ) : (
+                      facilities.map(f => {
+                        const fId = f.facilityId || f._id;
+                        return (
+                          <option key={fId} value={fId}>
+                            {f.name} ({f.facilityType ? f.facilityType.replace('_', ' ') : 'Hospital'})
+                          </option>
+                        );
+                      })
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">OPD Department Section:</label>
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none"
+                  >
+                    {OPD_DEPARTMENTS.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Date:</label>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Preferred Time:</label>
+                    <select
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white"
+                    >
+                      <option value="09:00 AM">09:00 AM</option>
+                      <option value="10:00 AM">10:00 AM</option>
+                      <option value="11:30 AM">11:30 AM</option>
+                      <option value="02:00 PM">02:00 PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-all"
+                >
+                  {isSubmitting ? 'Booking Appointment...' : 'Confirm Appointment & Issue Token'}
+                </button>
+              </form>
             </div>
           )}
 
-          <form onSubmit={handleBook} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Select Public Healthcare Facility:</label>
-              <select
-                value={selectedFacilityId}
-                onChange={(e) => setSelectedFacilityId(e.target.value)}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none"
-              >
-                {facilities.map(f => (
-                  <option key={f.facilityId} value={f.facilityId}>
-                    {f.name} ({f.facilityType})
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* FORM 2: REQUEST EMERGENCY BED BOOKING & ADMISSION */}
+          {activeFormMode === 'BED_ADMISSION' && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Bed className="w-5 h-5 text-emerald-600" />
+                <span>Request Hospital Bed & Admission</span>
+              </h2>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Department:</label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none"
-              >
-                <option value="General OPD">General OPD</option>
-                <option value="Cardiology OPD">Cardiology OPD</option>
-                <option value="Pediatrics OPD">Pediatrics OPD</option>
-                <option value="Maternal Care">Maternal & Gynec OPD</option>
-                <option value="Ayush / Natural Healing">AYUSH / Natural Healing</option>
-              </select>
-            </div>
+              {bedSuccessMsg && (
+                <div className="p-3 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-300 space-y-1">
+                  <div>✓ {bedSuccessMsg}</div>
+                  <p className="text-[11px] font-normal">
+                    If beds are available, hospital desk will allocate a specific bed number. If full, request remains in pending waitlist.
+                  </p>
+                </div>
+              )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Date:</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white"
-                />
-              </div>
+              <form onSubmit={handleBookBed} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Active City Location:</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">📍 {selectedCity}</span>
+                  </label>
+                  <select
+                    value={selectedCity}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    className="w-full p-3 bg-emerald-50/60 dark:bg-slate-900 border border-emerald-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white focus:outline-none"
+                  >
+                    {CITIES_LIST.map(c => (
+                      <option key={c.city} value={c.city}>
+                        {c.city}, {c.region}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Preferred Time:</label>
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white"
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Select Target Public Hospital in {selectedCity}:
+                  </label>
+                  <select
+                    value={selectedFacilityId}
+                    onChange={(e) => setSelectedFacilityId(e.target.value)}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none"
+                  >
+                    {facilities.length === 0 ? (
+                      <option value="">No healthcare facilities found in {selectedCity}</option>
+                    ) : (
+                      facilities.map(f => {
+                        const fId = f.facilityId || f._id;
+                        const openBeds = f.bedCount ? f.bedCount.available : 8;
+                        return (
+                          <option key={fId} value={fId}>
+                            {f.name} — ({openBeds > 0 ? `${openBeds} Beds Open` : 'FULL / WAITLIST ONLY'})
+                          </option>
+                        );
+                      })
+                    )}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Admission Department:</label>
+                    <select
+                      value={bedDepartment}
+                      onChange={(e) => setBedDepartment(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white"
+                    >
+                      {BED_DEPARTMENTS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Requested Bed Category:</label>
+                    <select
+                      value={requestedBedType}
+                      onChange={(e) => setRequestedBedType(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-emerald-600 dark:text-emerald-400"
+                    >
+                      {BED_TYPES.map(bt => (
+                        <option key={bt.id} value={bt.id}>{bt.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Patient Contact Phone:</label>
+                    <input
+                      type="text"
+                      placeholder="Emergency Mobile Phone"
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Patient Age / Gender:</label>
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        placeholder="Age (e.g. 34)"
+                        value={patientAge}
+                        onChange={(e) => setPatientAge(e.target.value)}
+                        className="w-1/2 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                      />
+                      <select
+                        value={patientGender}
+                        onChange={(e) => setPatientGender(e.target.value)}
+                        className="w-1/2 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Reason for Admission / Symptoms:</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Describe emergency symptoms, acute trauma or clinical reason for inpatient bed request..."
+                    value={admissionReason}
+                    onChange={(e) => setAdmissionReason(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingBed}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
                 >
-                  <option value="09:00 AM">09:00 AM</option>
-                  <option value="10:00 AM">10:00 AM</option>
-                  <option value="11:30 AM">11:30 AM</option>
-                  <option value="02:00 PM">02:00 PM</option>
-                </select>
-              </div>
+                  <Bed className="w-4 h-4" />
+                  <span>{isSubmittingBed ? 'Submitting Request...' : 'Submit Emergency Bed & Admission Request'}</span>
+                </button>
+              </form>
             </div>
-
-            <button
-              type="submit"
-              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-all"
-            >
-              Confirm Appointment & Issue Token
-            </button>
-          </form>
+          )}
         </div>
 
-        {/* MY APPOINTMENTS LIST */}
-        <div className="lg:col-span-7 space-y-4">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Ticket className="w-5 h-5 text-indigo-600" />
-            <span>My Healthcare Appointments ({appointments.length})</span>
-          </h2>
+        {/* RIGHT COLUMN: MY APPOINTMENTS & MY BED BOOKINGS */}
+        <div className="lg:col-span-7 space-y-6">
+          
+          {/* SECTION 1: MY BED ADMISSION REQUESTS */}
+          {bedBookings.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Bed className="w-5 h-5 text-emerald-600" />
+                  <span>My Hospital Bed & Admission Passes ({bedBookings.length})</span>
+                </span>
+                <button
+                  onClick={fetchBedBookings}
+                  className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </h2>
 
-          <div className="space-y-3">
-            {appointments.map(apt => (
-              <div
-                key={apt.appointmentId}
-                className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase">
-                    Token #{apt.tokenNumber}
-                  </span>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">{apt.facilityName}</h3>
-                  <p className="text-xs text-slate-500">{apt.department} • {apt.date} at {apt.time}</p>
-                </div>
+              <div className="space-y-3">
+                {bedBookings.map((b, bIdx) => {
+                  const isApproved = b.status === 'APPROVED_BED_ALLOTTED' || b.status === 'ADMITTED';
+                  const isShifted = b.status === 'SHIFTED_TO_GENERAL_WARD';
+                  const isDischarged = b.status === 'DISCHARGED';
+                  const isWaitlisted = b.status === 'WAITLISTED';
 
-                <div className="text-right">
-                  <span className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">
-                    {apt.status}
-                  </span>
-                </div>
+                  return (
+                    <div
+                      key={b._id || bIdx}
+                      className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md space-y-3 transition hover:border-emerald-500/50"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase">
+                              PASS #{b.admissionPassNumber}
+                            </span>
+                            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                              isDischarged
+                                ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
+                                : isShifted
+                                ? 'bg-purple-600 text-white'
+                                : isApproved
+                                ? 'bg-emerald-500 text-white animate-pulse'
+                                : isWaitlisted
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                            }`}>
+                              {isDischarged
+                                ? '🏁 DISCHARGED FROM HOSPITAL (BED FREED)'
+                                : isShifted
+                                ? `🛏️ SHIFTED TO GENERAL WARD: #${b.allottedBedNumber}`
+                                : isApproved
+                                ? `🟢 BED ALLOTTED: #${b.allottedBedNumber}`
+                                : isWaitlisted
+                                ? '🟡 WAITLISTED (BEDS FULL)'
+                                : '⏳ PENDING HOSPITAL ALLOCATION'}
+                            </span>
+                          </div>
+                          <h3 className="font-bold text-base text-slate-900 dark:text-white">{b.facilityName}</h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            Department: <strong className="text-emerald-600 dark:text-emerald-400">{b.department}</strong> • Requested Category: <strong className="text-slate-800 dark:text-white">{(b.requestedBedType || 'GENERAL_WARD').replace('_', ' ')}</strong>
+                          </p>
+                        </div>
+
+                        {!isDischarged && (
+                          <button
+                            onClick={() => handleCancelBedBooking(b._id)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 transition"
+                            title="Cancel Request"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Allotted / Shifted / Discharged Bed Details Box */}
+                      {isDischarged ? (
+                        <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs space-y-1">
+                          <div className="flex items-center justify-between font-black text-slate-800 dark:text-slate-200">
+                            <span>Status: Hospital Inpatient Discharge Completed</span>
+                            <span className="text-xs bg-slate-600 text-white px-2.5 py-0.5 rounded-lg">Discharged</span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                            {b.dischargeNotes || 'Patient officially discharged in stable condition. Bed tag released.'}
+                          </p>
+                        </div>
+                      ) : isShifted ? (
+                        <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 text-xs space-y-1">
+                          <div className="flex items-center justify-between font-black text-purple-900 dark:text-purple-300">
+                            <span>Bed Location: General Medicine Ward</span>
+                            <span className="text-sm bg-purple-600 text-white px-2.5 py-0.5 rounded-lg">Bed #{b.allottedBedNumber}</span>
+                          </div>
+                          <p className="text-[11px] text-purple-800 dark:text-purple-300 font-medium">
+                            {b.hospitalNotes || 'Patient transferred to General Medicine Ward for continued recovery.'}
+                          </p>
+                        </div>
+                      ) : isApproved ? (
+                        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-xs space-y-1">
+                          <div className="flex items-center justify-between font-black text-emerald-800 dark:text-emerald-300">
+                            <span>Bed Allotted: {b.allottedBedType ? b.allottedBedType.replace('_', ' ') : 'General Bed'}</span>
+                            <span className="text-sm bg-emerald-600 text-white px-2.5 py-0.5 rounded-lg">Bed #{b.allottedBedNumber}</span>
+                          </div>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                            {b.hospitalNotes || 'Hospital admission Desk confirmed bed allocation. Please present Admission Pass at emergency reception.'}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-0.5">
+                          <span className="font-bold block text-slate-800 dark:text-slate-200">Hospital Desk Note:</span>
+                          <p className="text-[11px] italic">{b.hospitalNotes || 'Request submitted to facility desk. Bed number will be allotted upon availability verification.'}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* SECTION 2: MY OPD APPOINTMENTS LIST */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Ticket className="w-5 h-5 text-indigo-600" />
+              <span>My OPD Healthcare Appointments ({appointments.length})</span>
+            </h2>
+
+            {appointments.length === 0 ? (
+              <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 text-center text-slate-500 text-xs">
+                No appointments booked yet. Select a facility on the left to book your OPD slot.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {appointments.map(apt => {
+                  const isDelayed = apt.isDelayed || apt.status === 'RESCHEDULED';
+                  return (
+                    <div
+                      key={apt.appointmentId || apt._id}
+                      className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3 transition hover:border-blue-400 dark:hover:border-blue-500"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase">
+                              Token #{apt.tokenNumber}
+                            </span>
+                            {isDelayed && (
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" /> Rescheduled by Hospital
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-bold text-base text-slate-900 dark:text-white">{apt.facilityName}</h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            Department: <span className="text-blue-600 dark:text-blue-400 font-bold">{apt.department}</span>
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+                            apt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                            apt.status === 'RESCHEDULED' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' :
+                            'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                          }`}>
+                            {apt.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Assigned Doctor Banner */}
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-semibold block uppercase">Allocated Doctor</span>
+                            <span className="font-bold text-slate-800 dark:text-white">
+                              {apt.doctorName && apt.doctorName !== 'Duty Medical Officer' ? apt.doctorName : (apt.doctorName || 'Duty Medical Officer')}
+                            </span>
+                            {apt.doctorSpecialization && (
+                              <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold ml-2">
+                                • {apt.doctorSpecialization}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right text-slate-600 dark:text-slate-300 font-semibold">
+                          <span className="text-[10px] text-slate-400 block font-normal">Appointment Slot</span>
+                          <span>{apt.date} at {apt.time}</span>
+                        </div>
+                      </div>
+
+                      {/* Delay / Reschedule Note Banner */}
+                      {isDelayed && (
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                          <div className="font-bold flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
+                            <AlertCircle className="w-4 h-4" /> Hospital Schedule Update / Delay Notice
+                          </div>
+                          <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                            {apt.delayReason || apt.notes ? `Note from Hospital: "${apt.delayReason || apt.notes}"` : 'Your appointment slot has been updated by the hospital.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

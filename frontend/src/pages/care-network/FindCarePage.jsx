@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Filter, Navigation, Building2, Stethoscope, CheckCircle2, ChevronRight, Activity, Clock, ShieldAlert, Sparkles } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -12,6 +12,29 @@ import { careRecommendationService } from '../../services/careRecommendationServ
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Map auto-bounds controller to keep view focused strictly on user locality
+const MapController = ({ center, facilities }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center && facilities && facilities.length > 0) {
+      const validPoints = facilities
+        .filter(f => f.latitude && f.longitude && (f.distanceKm === undefined || f.distanceKm <= 100))
+        .map(f => [f.latitude, f.longitude]);
+      
+      if (validPoints.length > 0) {
+        validPoints.push([center.latitude, center.longitude]);
+        const bounds = L.latLngBounds(validPoints);
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+      } else {
+        map.setView([center.latitude, center.longitude], 12);
+      }
+    } else if (center) {
+      map.setView([center.latitude, center.longitude], 12);
+    }
+  }, [center, facilities]);
+  return null;
+};
 
 const FindCarePage = () => {
   const navigate = useNavigate();
@@ -43,8 +66,25 @@ const FindCarePage = () => {
       const endpoint = `${API_BASE}/care-network/facilities?query=${encodeURIComponent(query)}&facilityType=${facilityType}&emergency=${emergencyOnly}&lat=${loc.latitude}&lng=${loc.longitude}&city=${encodeURIComponent(loc.city || 'Jalpaiguri')}`;
       const res = await axios.get(endpoint);
       if (res.data && res.data.facilities) {
+        const hospitalOnlyFacilities = res.data.facilities.filter(f => {
+          const fType = (f.facilityType || '').toUpperCase();
+          const n = (f.name || '').toLowerCase();
+          const dist = f.distanceKm !== undefined ? f.distanceKm : 0;
+          return (
+            fType !== 'DIAGNOSTIC_CENTER' &&
+            fType !== 'DIAGNOSTIC_CENTRE' &&
+            fType !== 'PATHOLOGY_LAB' &&
+            fType !== 'IMAGING_CENTER' &&
+            !n.includes('diagnostic') &&
+            !n.includes('pathology lab') &&
+            !n.includes('scan center') &&
+            !n.includes('imaging hub') &&
+            dist <= 100
+          );
+        });
+
         const ranked = careRecommendationService.rankFacilities({
-          facilities: res.data.facilities,
+          facilities: hospitalOnlyFacilities,
           userLocation: loc,
           requiredService: query,
           isEmergency: emergencyOnly
@@ -152,6 +192,8 @@ const FindCarePage = () => {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
 
+              <MapController center={userLocation} facilities={facilities} />
+
               {/* User Location Marker */}
               <Marker
                 position={[userLocation.latitude, userLocation.longitude]}
@@ -161,29 +203,55 @@ const FindCarePage = () => {
               </Marker>
 
               {/* Facility Markers */}
-              {facilities.map(f => (
-                <Marker
-                  key={f.facilityId}
-                  position={[f.latitude, f.longitude]}
-                  icon={mapService.getFacilityIcon(f.facilityType, f.emergencyAvailable)}
-                  eventHandlers={{
-                    click: () => handleSelectFacility(f)
-                  }}
-                >
-                  <Popup>
-                    <div className="p-1 space-y-1 text-xs">
-                      <p className="font-bold text-slate-900">{f.name}</p>
-                      <p className="text-slate-500">{f.facilityType} • {f.distanceKm} km</p>
-                      <button
-                        onClick={() => navigate(`/care-network/facility/${f.facilityId}`)}
-                        className="mt-1 px-2.5 py-1 bg-blue-600 text-white font-bold rounded text-[10px]"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+              {facilities.map(f => {
+                const isVerified = f.isMediTrackVerified !== false && f.canSelect !== false;
+                return (
+                  <Marker
+                    key={f.facilityId}
+                    position={[f.latitude, f.longitude]}
+                    icon={mapService.getFacilityIcon(f.facilityType, f.emergencyAvailable)}
+                    eventHandlers={{
+                      click: () => handleSelectFacility(f)
+                    }}
+                  >
+                    <Popup>
+                      <div className="p-1 space-y-1 text-xs">
+                        <div className="flex items-center gap-1 mb-1">
+                          {isVerified ? (
+                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
+                              ✓ MediTrack Verified
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-black uppercase">
+                              ⚠️ Unverified / Not on MediTrack
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-bold text-slate-900">{f.name}</p>
+                        <p className="text-slate-500">{f.facilityType} • {f.distanceKm} km</p>
+                        {isVerified ? (
+                          <button
+                            onClick={() => navigate('/care-network/appointments', {
+                              state: {
+                                facilityId: f.facilityId || f._id,
+                                facilityName: f.name,
+                                city: f.city || userLocation?.city || 'Jalpaiguri'
+                              }
+                            })}
+                            className="mt-1 px-2.5 py-1 bg-blue-600 text-white font-bold rounded text-[10px] w-full"
+                          >
+                            View & Book
+                          </button>
+                        ) : (
+                          <div className="mt-1 text-[9px] text-slate-500 bg-slate-100 p-1 rounded">
+                            Visit offline. Online booking disabled.
+                          </div>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
 
               {/* OSRM Route Line */}
               {routeCoordinates.length > 0 && (
@@ -199,8 +267,8 @@ const FindCarePage = () => {
 
           <div className="absolute bottom-4 left-4 z-[400] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-blue-600 rounded-full inline-block"></span> User</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-600 rounded-full inline-block"></span> PHC/CHC</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-rose-600 rounded-full inline-block"></span> Emergency</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-600 rounded-full inline-block"></span> MediTrack Verified</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-amber-500 rounded-full inline-block"></span> Unverified Locality</span>
           </div>
         </div>
 
@@ -209,15 +277,16 @@ const FindCarePage = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>Recommended Facilities ({facilities.length})</span>
+              <span>Locality Facilities ({facilities.length})</span>
             </h2>
-            <span className="text-xs text-slate-500">Sorted by Suitability & Distance</span>
+            <span className="text-xs text-slate-500">Verified & Locality Hospitals</span>
           </div>
 
           <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
             {facilities.map((f, index) => {
               const isSelected = selectedFacility?.facilityId === f.facilityId;
               const isClosest = f.isNearest || index === 0;
+              const isVerified = f.isMediTrackVerified !== false && f.canSelect !== false;
 
               return (
                 <div
@@ -229,17 +298,31 @@ const FindCarePage = () => {
                       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-300'
                   }`}
                 >
-                  {isClosest && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase shadow-sm">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>📍 NEAREST FACILITY ({f.distanceKm} KM)</span>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {isClosest && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase shadow-sm">
+                        <MapPin className="w-3 h-3" />
+                        <span>📍 NEAREST ({f.distanceKm} KM)</span>
+                      </span>
+                    )}
+
+                    {isVerified ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 text-[10px] font-black uppercase border border-teal-300 dark:border-teal-700">
+                        <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                        <span>MediTrack Verified</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[10px] font-black uppercase border border-amber-300 dark:border-amber-700">
+                        <ShieldAlert className="w-3 h-3 text-amber-500" />
+                        <span>Unverified / Not on MediTrack</span>
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex items-start justify-between">
                     <div>
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 uppercase">
-                        {f.facilityType.replace('_', ' ')}
+                        {f.facilityType ? f.facilityType.replace('_', ' ') : 'HOSPITAL'}
                       </span>
                       <h3 className="font-bold text-sm text-slate-900 dark:text-white mt-1">
                         {f.name}
@@ -258,8 +341,10 @@ const FindCarePage = () => {
                     📍 {f.address}
                   </p>
 
-                  <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-xl">
-                    💡 {f.recommendationReason}
+                  <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {isVerified 
+                      ? `💡 ${f.recommendationReason || 'Verified MediTrack Partner Facility with online queue & booking'}` 
+                      : 'ℹ️ Physical locality hospital. Visible for offline visits. Online MediTrack booking is disabled until hospital registers.'}
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/50">
@@ -274,16 +359,33 @@ const FindCarePage = () => {
                       <span>Directions</span>
                     </button>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/care-network/facility/${f.facilityId}`);
-                      }}
-                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm"
-                    >
-                      <span>Book / Details</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+                    {isVerified ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/care-network/appointments', {
+                            state: {
+                              facilityId: f.facilityId || f._id,
+                              facilityName: f.name,
+                              city: f.city || userLocation?.city || 'Jalpaiguri'
+                            }
+                          });
+                        }}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm"
+                      >
+                        <span>Book / Details</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        onClick={(e) => e.stopPropagation()}
+                        className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 font-bold rounded-lg text-xs flex items-center gap-1 cursor-not-allowed"
+                        title="Unverified facility: Booking disabled"
+                      >
+                        <span>Offline Visit Only</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );

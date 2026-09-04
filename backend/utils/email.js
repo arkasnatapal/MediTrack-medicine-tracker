@@ -182,7 +182,9 @@ module.exports = {
   sendPasswordResetEmail,
   sendFamilyAccessOtpEmail,
   sendDoctorAccessOtpEmail,
-  sendRiskAlertEmail
+  sendRiskAlertEmail,
+  sendDoctorAssignedEmail,
+  sendAppointmentDelayedEmail
 };
 
 async function sendFamilyAccessOtpEmail({ to, otp, patientName, requesterName }) {
@@ -556,3 +558,263 @@ async function sendDoctorAccessOtpEmail({ to, otp, patientName }) {
     console.error("❌ Failed to send doctor access OTP email:", err.message);
   }
 }
+
+async function sendDoctorAssignedEmail({ to, patientName, doctorName, specialization, facilityName, department, date, time, tokenNumber }) {
+  const transporter = getTransporter();
+  if (!transporter || !to) return;
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || `"MediTrack Healthcare" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `Doctor Allocated: ${doctorName} for your appointment at ${facilityName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Doctor Allocated</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0d9488 0%, #059669 100%); padding: 36px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800;">MediTrack Care Network</h1>
+              <p style="color: #ccfbf1; margin: 8px 0 0; font-size: 15px; font-weight: 600;">Doctor Assignment Confirmation</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 36px 30px;">
+              <h2 style="color: #0f766e; margin-top: 0; font-size: 20px;">Doctor Assigned to Your Appointment</h2>
+              <p style="color: #334155; line-height: 1.6; font-size: 15px;">
+                Dear <strong>${patientName || 'Patient'}</strong>,<br><br>
+                The hospital administration at <strong>${facilityName}</strong> has assigned a doctor for your upcoming OPD appointment.
+              </p>
+              
+              <div style="background-color: #f0fdf4; border: 1px solid #a7f3d0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Assigned Doctor:</strong></td>
+                    <td style="padding: 6px 0; color: #0f766e; font-size: 16px; font-weight: 700;">${doctorName}</td>
+                  </tr>
+                  ${specialization ? `
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Specialization:</strong></td>
+                    <td style="padding: 6px 0; color: #334155; font-size: 14px;">${specialization}</td>
+                  </tr>` : ''}
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Facility:</strong></td>
+                    <td style="padding: 6px 0; color: #334155; font-size: 14px;">${facilityName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Department:</strong></td>
+                    <td style="padding: 6px 0; color: #334155; font-size: 14px;">${department}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Token Number:</strong></td>
+                    <td style="padding: 6px 0; color: #d97706; font-size: 16px; font-weight: 800;">Token #${tokenNumber || 1}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Date & Time:</strong></td>
+                    <td style="padding: 6px 0; color: #334155; font-size: 14px;">${date} at ${time}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <p style="color: #64748b; font-size: 13px; line-height: 1.5; text-align: center;">
+                Please report to the reception at ${facilityName} 15 minutes before your scheduled slot.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} MediTrack Care Network. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ Doctor assignment email sent:", info.messageId);
+  } catch (err) {
+    console.error("❌ Failed to send doctor assignment email:", err.message);
+  }
+}
+
+async function sendAppointmentDelayedEmail({ to, patientName, doctorName, facilityName, department, newDate, newTime, reason, tokenNumber }) {
+  const transporter = getTransporter();
+  if (!transporter || !to) return;
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || `"MediTrack Healthcare" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `⚠️ Schedule Update: Your appointment at ${facilityName} has been rescheduled`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Appointment Schedule Update</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #fffbebfb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 36px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800;">MediTrack Care Network</h1>
+              <p style="color: #fef3c7; margin: 8px 0 0; font-size: 15px; font-weight: 600;">Schedule Delay & Reschedule Notice</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 36px 30px;">
+              <h2 style="color: #b45309; margin-top: 0; font-size: 20px;">Important Update Regarding Your Appointment</h2>
+              <p style="color: #334155; line-height: 1.6; font-size: 15px;">
+                Dear <strong>${patientName || 'Patient'}</strong>,<br><br>
+                Please note that your appointment at <strong>${facilityName}</strong> has been delayed / rescheduled by the hospital administration.
+              </p>
+              
+              <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Hospital:</strong></td>
+                    <td style="padding: 6px 0; color: #334155; font-size: 14px; font-weight: 700;">${facilityName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Department:</strong></td>
+                    <td style="padding: 6px 0; color: #334155; font-size: 14px;">${department}</td>
+                  </tr>
+                  ${doctorName ? `
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Doctor:</strong></td>
+                    <td style="padding: 6px 0; color: #334155; font-size: 14px; font-weight: 600;">${doctorName}</td>
+                  </tr>` : ''}
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Token Number:</strong></td>
+                    <td style="padding: 6px 0; color: #d97706; font-size: 16px; font-weight: 800;">Token #${tokenNumber || 1}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>New Scheduled Date & Time:</strong></td>
+                    <td style="padding: 6px 0; color: #b45309; font-size: 16px; font-weight: 800;">${newDate} at ${newTime}</td>
+                  </tr>
+                  ${reason ? `
+                  <tr>
+                    <td style="padding: 6px 0; color: #475569; font-size: 14px;"><strong>Hospital Note / Reason:</strong></td>
+                    <td style="padding: 6px 0; color: #92400e; font-size: 14px; font-style: italic;">"${reason}"</td>
+                  </tr>` : ''}
+                </table>
+              </div>
+
+              <p style="color: #64748b; font-size: 13px; line-height: 1.5; text-align: center;">
+                We apologize for any inconvenience caused. You can track your position in line in real-time from your MediTrack account.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} MediTrack Care Network. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ Appointment delayed email sent:", info.messageId);
+  } catch (err) {
+    console.error("❌ Failed to send appointment delayed email:", err.message);
+  }
+}
+
+async function sendPrescriptionEmail({ to, patientName, doctorName, facilityName, department, date, pdfBuffer, isOfflinePrescription }) {
+  const transporter = getTransporter();
+  if (!transporter || !to) return;
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || `"MediTrack Healthcare" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `Medical OPD Prescription Record - ${facilityName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Prescription Issued</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0f766e 0%, #047857 100%); padding: 36px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800;">MediTrack Care Network</h1>
+              <p style="color: #a7f3d0; margin: 8px 0 0; font-size: 15px; font-weight: 600;">OPD Clinical Prescription Issued</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 36px 30px;">
+              <h2 style="color: #0f766e; margin-top: 0; font-size: 20px;">Your Prescription Record is Ready</h2>
+              <p style="color: #334155; line-height: 1.6; font-size: 15px;">
+                Dear <strong>${patientName || 'Patient'}</strong>,<br><br>
+                Your OPD consultation at <strong>${facilityName}</strong> (${department || 'General OPD'}) with <strong>${doctorName || 'Doctor'}</strong> has been completed.
+              </p>
+              
+              <div style="background-color: #f0fdf4; border: 1px solid #a7f3d0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                <p style="color: #065f46; margin: 0; font-weight: 700; font-size: 15px;">
+                  ${isOfflinePrescription ? '📋 Offline Handwritten Prescription Handed to You' : '📄 Digital PDF Prescription Attached'}
+                </p>
+                <p style="color: #475569; margin: 8px 0 0; font-size: 13px;">
+                  Date: ${date} • Hospital: ${facilityName}
+                </p>
+              </div>
+
+              <p style="color: #475569; font-size: 14px; line-height: 1.5;">
+                You can also view and download your full prescription PDF anytime from your <strong>MediTrack Care Journey</strong> tab in the patient app.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} MediTrack Care Network. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `,
+    attachments: pdfBuffer ? [
+      {
+        filename: `Prescription_${(patientName || 'Patient').replace(/[^a-z0-9]/gi, '_')}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ] : []
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ Prescription email with PDF sent:", info.messageId);
+  } catch (err) {
+    console.error("❌ Failed to send prescription email:", err.message);
+  }
+}
+
+module.exports = {
+  sendFamilyInviteEmail,
+  sendOtpEmail,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  sendFamilyAccessOtpEmail,
+  sendDoctorAccessOtpEmail,
+  sendRiskAlertEmail,
+  sendDoctorAssignedEmail,
+  sendAppointmentDelayedEmail,
+  sendPrescriptionEmail
+};
+
+

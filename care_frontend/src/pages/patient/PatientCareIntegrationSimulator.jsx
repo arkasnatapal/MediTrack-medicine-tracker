@@ -89,29 +89,51 @@ export default function PatientCareIntegrationSimulator() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col relative overflow-hidden selection:bg-teal-500 selection:text-slate-950 font-sans">
+      {/* Grainy Texture Overlay */}
+      <div className="grainy-overlay" />
+
+      {/* Floating Ambient Mesh Orbs */}
+      <div className="ambient-orb-teal -top-20 -left-20 animate-float-slow" />
+      <div className="ambient-orb-cyan top-1/3 -right-20 animate-float-reverse" />
+
       {/* Top Header */}
-      <header className="border-b border-slate-800 bg-slate-900/80 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Link to="/" className="text-slate-400 hover:text-white p-2 rounded-lg bg-slate-950 border border-slate-800">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
-            <HeartPulse className="w-5 h-5" />
+      <header className="sticky top-4 z-50 max-w-6xl mx-auto px-4 w-full my-4">
+        <div className="liquid-glass-pill rounded-full px-6 py-3 flex items-center justify-between shadow-2xl border border-white/15 backdrop-blur-2xl">
+          <div className="flex items-center space-x-3">
+            <Link to="/" className="liquid-glass-btn-dark p-2 rounded-full text-slate-300 hover:text-white transition">
+              <ArrowLeft className="w-4 h-4 text-teal-400" />
+            </Link>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-teal-400 via-cyan-400 to-emerald-400 p-[1px] shadow-lg shadow-teal-500/30">
+              <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center">
+                <HeartPulse className="w-5 h-5 text-teal-400" />
+              </div>
+            </div>
+            <div>
+              <span className="font-display text-base font-extrabold text-white flex items-center gap-1.5">
+                Patient Care <span className="text-liquid-gradient">Simulator</span>
+              </span>
+              <span className="block text-[10px] font-tech text-teal-400 tracking-wider uppercase font-semibold">
+                Live Public Health Queue & Teleconsult Simulator
+              </span>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">Patient MediTrack Integration Portal</h1>
-            <p className="text-xs text-slate-400">Simulating Patient Connection to Provider Care Backend</p>
+          <div className="flex items-center space-x-3 font-tech text-xs">
+            <span className="px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300">
+              Live Network Integration
+            </span>
           </div>
         </div>
+      </header>
 
-        <div className="flex items-center space-x-2">
+      <div className="max-w-6xl mx-auto w-full px-6 pt-2 flex items-center justify-between z-10">
+        <div className="flex items-center space-x-2 font-tech">
           <span className="text-xs text-slate-400">Active Patient:</span>
-          <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-lg border border-teal-500/20">
+          <span className="text-xs font-bold text-teal-300 bg-teal-500/20 px-3 py-1 rounded-full border border-teal-500/30">
             {patientData?.name || 'Rahul Mukherjee'} ({patientPhone})
           </span>
         </div>
-      </header>
+      </div>
 
       {/* Tabs */}
       <div className="max-w-6xl mx-auto w-full px-6 pt-6">
