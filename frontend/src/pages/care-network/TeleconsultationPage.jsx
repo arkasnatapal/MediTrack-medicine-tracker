@@ -296,15 +296,15 @@ export default function TeleconsultationPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 min-h-screen text-slate-900 dark:text-slate-100">
       
       {/* HEADER */}
-      <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-3">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-black uppercase">
-          <Video className="w-4 h-4" />
+      <div className="bg-gradient-to-r from-indigo-50/90 via-purple-50/90 to-blue-50/90 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-900 p-6 sm:p-8 rounded-3xl border border-indigo-200/80 dark:border-slate-800 shadow-xl space-y-3">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-100 dark:bg-indigo-500/10 text-indigo-800 dark:text-indigo-400 border border-indigo-300/60 dark:border-indigo-500/20 text-xs font-black uppercase">
+          <Video className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <span>Remote Specialist Teleconsultation Ecosystem</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
           SPECIALIST CONSULTATION HUB
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">
           Request consultations with district hospital medical officers, receive confirmed email meeting links, and interact via WebRTC Video, Voice-Only mode, or live chat with 10 post-session follow-up messages.
         </p>
       </div>

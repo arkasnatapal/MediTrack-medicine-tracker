@@ -37,11 +37,14 @@ const DiagnosticsSearchPage = () => {
 
   const [selectedDiagnostic, setSelectedDiagnostic] = useState(initialTest);
   const [searchQuery, setSearchQuery] = useState('');
-  const [locationQuery, setLocationQuery] = useState('');
-  const [userLocation, setUserLocation] = useState(null);
+  const [locationQuery, setLocationQuery] = useState(() => {
+    const cached = locationService.getCachedLocation();
+    return cached ? (cached.city || `${cached.latitude.toFixed(2)}, ${cached.longitude.toFixed(2)}`) : '';
+  });
+  const [userLocation, setUserLocation] = useState(() => locationService.getCachedLocation() || locationService.getDefaultLocation());
   const [isGeocoding, setIsGeocoding] = useState(false);
-  const [diagnosticsList, setDiagnosticsList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [diagnosticsList, setDiagnosticsList] = useState(() => locationService.getCachedFacilities('diagnostics') || []);
+  const [loading, setLoading] = useState(() => !(locationService.getCachedFacilities('diagnostics')?.length > 0));
   const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
@@ -55,19 +58,52 @@ const DiagnosticsSearchPage = () => {
   }, [selectedDiagnostic, userLocation]);
 
   const initUserLocation = async () => {
-    setLoading(true);
-    let loc = locationService.getDefaultLocation();
+    const cachedLoc = locationService.getCachedLocation();
+    const cachedDiags = locationService.getCachedFacilities('diagnostics');
+
+    if (cachedDiags && cachedDiags.length > 0) {
+      setDiagnosticsList(cachedDiags);
+      setSelectedItem(cachedDiags[0]);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    let loc = userLocation || cachedLoc || locationService.getDefaultLocation();
     try {
       const currentLoc = await locationService.getCurrentLocation();
-      loc = currentLoc;
+      if (currentLoc && typeof currentLoc.latitude === 'number') {
+        loc = currentLoc;
+      }
     } catch (err) {
       console.warn('Geolocation denied/unavailable, using default location:', err);
     }
+
     setUserLocation(loc);
     setLocationQuery(loc.city || `${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)}`);
+
+    const locChanged = locationService.hasLocationChanged(loc, cachedLoc, 0.5);
+    if (!locChanged && cachedDiags && cachedDiags.length > 0) {
+      console.log('⚡ DiagnosticsSearchPage serving cached diagnostics (location delta < 0.5km).');
+      setLoading(false);
+      return;
+    }
+
+    locationService.saveCachedLocation(loc);
   };
 
   const fetchDiagnostics = async (name, loc = userLocation) => {
+    const cachedLoc = locationService.getCachedLocation();
+    const cachedDiags = locationService.getCachedFacilities('diagnostics');
+
+    const locChanged = locationService.hasLocationChanged(loc, cachedLoc, 0.5);
+    if (!locChanged && cachedDiags && cachedDiags.length > 0 && name === 'ALL') {
+      console.log('⚡ DiagnosticsSearchPage serving cached diagnostics list.');
+      setDiagnosticsList(cachedDiags);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const queryParam = name === 'ALL' ? '' : name;
@@ -80,6 +116,9 @@ const DiagnosticsSearchPage = () => {
       
       if (res.data && res.data.diagnostics) {
         setDiagnosticsList(res.data.diagnostics);
+        if (name === 'ALL') {
+          locationService.saveCachedFacilities(res.data.diagnostics, loc, 'diagnostics');
+        }
         if (res.data.diagnostics.length > 0) {
           setSelectedItem(res.data.diagnostics[0]);
         }
@@ -147,12 +186,12 @@ const DiagnosticsSearchPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 min-h-screen">
       
       {/* GLASSMOPHIC HERO HEADER */}
-      <div className="relative overflow-hidden rounded-3xl backdrop-blur-xl bg-white/40 dark:bg-slate-900/60 border border-white/60 dark:border-slate-800/80 shadow-2xl p-6 sm:p-8 space-y-5 transition-all">
+      <div className="relative overflow-hidden rounded-3xl backdrop-blur-xl bg-gradient-to-r from-rose-50/90 via-pink-50/90 to-amber-50/90 dark:from-slate-900/90 dark:via-slate-900/90 dark:to-slate-900/90 border border-rose-200/80 dark:border-slate-800/80 shadow-2xl p-6 sm:p-8 space-y-5 transition-all text-slate-900 dark:text-white">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-black uppercase tracking-wider backdrop-blur-md">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-500/15 border border-rose-300/60 dark:border-rose-500/30 text-rose-800 dark:text-rose-300 text-xs font-black uppercase tracking-wider backdrop-blur-md">
                 <Activity className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                 <span>Verified Diagnostic & Pathology Centers</span>
               </span>

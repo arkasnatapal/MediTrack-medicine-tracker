@@ -129,15 +129,15 @@ const CareJourneyPage = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* HEADER */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl space-y-4">
+      <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-slate-50/90 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-950 p-6 sm:p-8 rounded-3xl text-slate-900 dark:text-white shadow-xl border border-blue-200/80 dark:border-slate-800 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-black uppercase">
-              <Milestone className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border border-blue-300/60 dark:border-transparent text-xs font-black uppercase">
+              <Milestone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>Longitudinal Continuity of Care</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black">MY CARE JOURNEY</h1>
-            <p className="text-xs sm:text-sm text-slate-300">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">MY CARE JOURNEY</h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
               Track your connected healthcare journey from symptom triage to specialist consultation and follow-up.
             </p>
           </div>

@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Building2, Users, Clock, GitMerge, ShieldAlert, Activity, Pill, CheckCircle2, RefreshCw, UserCheck } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const HospitalPortalPage = () => {
+  const navigate = useNavigate();
   const [facilities, setFacilities] = useState([]);
   const [selectedFacilityId, setSelectedFacilityId] = useState('FAC-MH-PUNE-PHC-01');
   const [selectedDepartment, setSelectedDepartment] = useState('General OPD');
+  const [activeReferralsCount, setActiveReferralsCount] = useState(0);
   const [queueData, setQueueData] = useState({
     currentToken: 1,
     totalTokensBooked: 1,
@@ -31,6 +34,7 @@ const HospitalPortalPage = () => {
 
   useEffect(() => {
     fetchFacilities();
+    fetchReferralsCount();
   }, []);
 
   useEffect(() => {
@@ -39,12 +43,27 @@ const HospitalPortalPage = () => {
     }
   }, [selectedFacilityId, selectedDepartment]);
 
+  const fetchReferralsCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/care-network/referrals/my`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.data && Array.isArray(res.data.referrals)) {
+        setActiveReferralsCount(res.data.referrals.length);
+      }
+    } catch (err) {
+      console.warn('Error fetching referral count for hospital portal:', err);
+    }
+  };
+
   // Live polling every 3 seconds for hospital administration portal
   useEffect(() => {
     if (!selectedFacilityId) return;
     const interval = setInterval(() => {
       fetchQueueStatus(selectedFacilityId, selectedDepartment);
-    }, 3000);
+      fetchReferralsCount();
+    }, 5000);
     return () => clearInterval(interval);
   }, [selectedFacilityId, selectedDepartment]);
 
@@ -151,19 +170,19 @@ const HospitalPortalPage = () => {
       </div>
 
       {/* DOCTOR CABIN LIVE OPD QUEUE CONTROL */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-6 border border-slate-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="bg-gradient-to-r from-indigo-50/90 via-purple-50/90 to-slate-50/90 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-slate-900 dark:text-white shadow-xl space-y-6 border border-indigo-200/80 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-indigo-200 dark:border-slate-800 pb-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase">
-              <UserCheck className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-transparent text-xs font-bold uppercase">
+              <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Doctor Cabin OPD Consultation Control • {selectedDepartment.toUpperCase()}</span>
             </div>
-            <h2 className="text-xl font-black mt-1">CURRENTLY CONSULTING IN {selectedDepartment.toUpperCase()} CABIN</h2>
+            <h2 className="text-xl font-black mt-1 text-slate-900 dark:text-white">CURRENTLY CONSULTING IN {selectedDepartment.toUpperCase()} CABIN</h2>
           </div>
 
           <button
             onClick={handleAdvanceQueue}
-            className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2"
+            className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg transition-all active:scale-95 flex items-center gap-2"
           >
             <CheckCircle2 className="w-5 h-5" />
             <span>Complete Consultation & Call Next Patient (+1)</span>
@@ -171,30 +190,30 @@ const HospitalPortalPage = () => {
         </div>
 
         {actionSuccess && (
-          <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold rounded-xl">
+          <div className="p-3 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-300 text-xs font-bold rounded-xl">
             ✓ {actionSuccess}
           </div>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-slate-400">NOW SERVING TOKEN</span>
-            <p className="text-3xl font-black text-emerald-400">#{queueData.currentToken}</p>
+          <div className="bg-white/80 dark:bg-white/5 p-4 rounded-2xl border border-indigo-200/80 dark:border-white/10 shadow-sm">
+            <span className="text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-400">NOW SERVING TOKEN</span>
+            <p className="text-3xl font-black text-emerald-700 dark:text-emerald-400">#{queueData.currentToken}</p>
           </div>
 
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-slate-400">TOTAL BOOKED TODAY</span>
-            <p className="text-3xl font-black text-amber-400">#{queueData.totalTokensBooked}</p>
+          <div className="bg-white/80 dark:bg-white/5 p-4 rounded-2xl border border-indigo-200/80 dark:border-white/10 shadow-sm">
+            <span className="text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-400">TOTAL BOOKED TODAY</span>
+            <p className="text-3xl font-black text-amber-700 dark:text-amber-400">#{queueData.totalTokensBooked}</p>
           </div>
 
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-slate-400">WAITING PATIENTS</span>
-            <p className="text-3xl font-black text-cyan-300">{Math.max(0, queueData.totalTokensBooked - queueData.currentToken)}</p>
+          <div className="bg-white/80 dark:bg-white/5 p-4 rounded-2xl border border-indigo-200/80 dark:border-white/10 shadow-sm">
+            <span className="text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-400">WAITING PATIENTS</span>
+            <p className="text-3xl font-black text-cyan-800 dark:text-cyan-300">{Math.max(0, queueData.totalTokensBooked - queueData.currentToken)}</p>
           </div>
 
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-slate-400">EST. AVG CONSULT TIME</span>
-            <p className="text-3xl font-black text-purple-300">15 - 20 Mins</p>
+          <div className="bg-white/80 dark:bg-white/5 p-4 rounded-2xl border border-indigo-200/80 dark:border-white/10 shadow-sm">
+            <span className="text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-400">EST. AVG CONSULT TIME</span>
+            <p className="text-3xl font-black text-purple-800 dark:text-purple-300">15 - 20 Mins</p>
           </div>
         </div>
       </div>
@@ -259,10 +278,13 @@ const HospitalPortalPage = () => {
           <p className="text-2xl font-black text-amber-500">{Math.max(0, queueData.totalTokensBooked - queueData.currentToken)}</p>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+        <div 
+          onClick={() => navigate('/care-network/referrals')}
+          className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center cursor-pointer hover:border-purple-400 transition-all"
+        >
           <GitMerge className="w-5 h-5 text-purple-600 mx-auto mb-1" />
           <span className="text-[10px] font-bold text-slate-400 uppercase">Active Referrals</span>
-          <p className="text-2xl font-black text-purple-600">8</p>
+          <p className="text-2xl font-black text-purple-600">{activeReferralsCount || 0}</p>
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">

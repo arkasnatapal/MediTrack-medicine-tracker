@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Building2, MapPin, Phone, Clock, ShieldAlert, CheckCircle2, Navigation, 
-  Calendar, Activity, Pill, ChevronLeft, Mail, Globe, ShieldCheck, AlertCircle, PhoneCall
+  Calendar, Activity, Pill, ChevronLeft, Mail, Globe, ShieldCheck, AlertCircle, PhoneCall, GitMerge
 } from 'lucide-react';
 import { mapService } from '../../services/mapService';
 import axios from 'axios';
@@ -57,7 +57,7 @@ const FacilityDetailPage = () => {
       </button>
 
       {/* HEADER CARD */}
-      <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-4">
+      <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-slate-50/90 dark:from-slate-800 dark:via-slate-800 dark:to-slate-900 border border-blue-200/80 dark:border-slate-700 shadow-md p-6 sm:p-8 rounded-3xl space-y-4 text-slate-900 dark:text-white">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 uppercase">
@@ -94,14 +94,22 @@ const FacilityDetailPage = () => {
               <Calendar className="w-4 h-4" />
               <span>Book Appointment</span>
             </button>
+
+            <button
+              onClick={() => navigate('/care-network/referrals')}
+              className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+            >
+              <GitMerge className="w-4 h-4" />
+              <span>View Referrals</span>
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
           <div>
             <span className="text-[10px] text-slate-400 font-bold uppercase">Emergency 24/7</span>
             <p className={`text-sm font-bold ${facility.emergencyAvailable ? 'text-emerald-600' : 'text-slate-400'}`}>
-              {facility.emergencyAvailable ? '✓ Active Emergency Care' : 'Unavailable'}
+              {facility.emergencyAvailable ? '✓ Active Emergency' : 'Unavailable'}
             </p>
           </div>
           <div>
@@ -115,6 +123,10 @@ const FacilityDetailPage = () => {
           <div>
             <span className="text-[10px] text-slate-400 font-bold uppercase">Teleconsultation</span>
             <p className="text-sm font-bold text-blue-600">{facility.teleconsultationAvailable ? '✓ Supported' : 'No'}</p>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 font-bold uppercase">Public Referral Tier</span>
+            <p className="text-sm font-bold text-cyan-600 dark:text-cyan-400">✓ Inter-Hospital Active</p>
           </div>
         </div>
       </div>

@@ -12,6 +12,8 @@ const notificationSchema = new mongoose.Schema(
         'QUEUE_UPDATE',
         'REFERRAL_RECEIVED',
         'REFERRAL_ACCEPTED',
+        'REFERRAL_ADVICE',
+        'REFERRAL_COMPLETED',
         'TRANSFER_REQUESTED',
         'TRANSFER_ACCEPTED',
         'TELECONSULTATION_REMINDER',

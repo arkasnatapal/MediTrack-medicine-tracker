@@ -4,7 +4,7 @@ import api from '../../services/api';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 import {
   Building2, Calendar, Users, ArrowUpRight, ArrowDownLeft, Stethoscope,
-  Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus, History
+  Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus, History, Printer
 } from 'lucide-react';
 
 
@@ -43,10 +43,58 @@ export default function FacilityDashboard() {
   const [shiftNotes, setShiftNotes] = useState('');
 
 
+  // Emergency Transfer Response Modal States
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [selectedTransfer, setSelectedTransfer] = useState(null);
+  const [transferActionStatus, setTransferActionStatus] = useState('ACCEPTED');
+  const [transferEta, setTransferEta] = useState(25);
+  const [transferRejectionReason, setTransferRejectionReason] = useState('');
+
+  const handleUpdateTransferStatus = async (e) => {
+    e.preventDefault();
+    if (!selectedTransfer) return;
+    try {
+      await api.put(`/transfers/${selectedTransfer._id}/status`, {
+        status: transferActionStatus,
+        etaMinutes: transferEta,
+        rejectionReason: transferRejectionReason,
+      });
+      alert(`✓ Emergency Patient Transfer status updated to ${transferActionStatus}!`);
+      setShowTransferModal(false);
+      setSelectedTransfer(null);
+      loadFacilityData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update transfer status.');
+    }
+  };
+
+  const handleUpdateReferralStatus = async (referralId, newStatus) => {
+    try {
+      await api.put(`/referrals/${referralId}/status`, { status: newStatus });
+      alert(`✓ Referral status updated to ${newStatus}!`);
+      loadFacilityData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update referral status.');
+    }
+  };
+
+  const handleDeleteReferral = async (referralId) => {
+    if (!window.confirm('Are you sure you want to delete this hospital referral record? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await api.delete(`/referrals/${referralId}`);
+      setReferrals(prev => prev.filter(r => r._id !== referralId));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete referral record.');
+    }
+  };
+
   // LiveKit Call Modal States
   const [showLiveKitModal, setShowLiveKitModal] = useState(false);
   const [liveKitRoomName, setLiveKitRoomName] = useState('');
   const [liveKitCallType, setLiveKitCallType] = useState('VIDEO');
+
 
 
   const todayDateStr = new Date().toISOString().split('T')[0];
@@ -1277,13 +1325,263 @@ export default function FacilityDashboard() {
           </div>
         )}
 
+        {/* ----------------- TAB: EMERGENCY TRANSFERS ----------------- */}
+        {activeTab === 'transfers' && (
+          <div className="space-y-6 text-xs">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <ArrowUpRight className="w-5 h-5 text-rose-400" /> Emergency Inter-Hospital Transfers Console
+                </h3>
+                <p className="text-slate-400 text-xs">Monitor and respond to incoming and outgoing emergency patient transfer requests.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {transfers.length === 0 ? (
+                <div className="p-12 text-center bg-slate-900 rounded-2xl border border-slate-800">
+                  <ArrowUpRight className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                  <p className="text-slate-400">No emergency patient transfer records found.</p>
+                </div>
+              ) : (
+                transfers.map(t => {
+                  const isIncoming = t.destinationFacilityId?._id === user?.facility?._id || t.destinationFacilityId === user?.facility?._id;
+
+                  return (
+                    <div key={t._id} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 shadow-xl">
+                      <div className="flex flex-wrap justify-between items-start gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-base font-bold text-white">{t.patientId?.name || 'Patient'}</span>
+                            <span className={`px-2.5 py-0.5 rounded-md font-extrabold text-[10px] ${isIncoming ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'}`}>
+                              {isIncoming ? 'INCOMING TRANSFER' : 'OUTGOING TRANSFER'}
+                            </span>
+                            {t.isInterState && (
+                              <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 font-extrabold text-[10px] border border-rose-500/30">
+                                ⚠️ INTER-STATE VERIFIED
+                              </span>
+                            )}
+                            {t.patientFamilyConsent?.consentGiven && (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30">
+                                ✓ FAMILY CONSENTED
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-slate-400 text-xs flex items-center gap-2">
+                            <span>Origin: <strong className="text-slate-200">{t.originatingFacilityId?.name || 'Care Facility'}</strong></span>
+                            <span>➔</span>
+                            <span>Destination: <strong className="text-cyan-400">{t.destinationFacilityId?.name || 'Hospital'}</strong></span>
+                            <span>•</span>
+                            <span>Bed Type: <strong className="text-emerald-400">{t.requiredBedType}</strong></span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-lg font-black text-[10px] ${t.urgency === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                            {t.urgency} URGENCY
+                          </span>
+                          <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold text-[10px] uppercase">
+                            {t.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-xs text-slate-300 space-y-1">
+                        <div>Department Required: <strong>{t.requiredDepartment}</strong></div>
+                        <div>Reason: <i>"{t.reason}"</i></div>
+                        {t.patientFamilyConsent?.consentGiven && (
+                          <div className="text-emerald-400 text-[11px]">
+                            Family Consent: Authorised by <strong>{t.patientFamilyConsent.familyMemberName}</strong> ({t.patientFamilyConsent.familyRelation}) - {t.patientFamilyConsent.familyContact}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action buttons for receiving hospital */}
+                      {isIncoming && t.status === 'REQUESTED' && (
+                        <div className="pt-2 flex justify-end gap-3">
+                          <button
+                            onClick={() => {
+                              setSelectedTransfer(t);
+                              setTransferActionStatus('REJECTED');
+                              setShowTransferModal(true);
+                            }}
+                            className="px-4 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs border border-rose-500/30"
+                          >
+                            Reject Transfer
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedTransfer(t);
+                              setTransferActionStatus('ACCEPTED');
+                              setShowTransferModal(true);
+                            }}
+                            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20"
+                          >
+                            Accept Transfer & Reserve Bed
+                          </button>
+                        </div>
+                      )}
+
+                      {isIncoming && t.status === 'ACCEPTED' && (
+                        <div className="pt-2 flex justify-end">
+                          <button
+                            onClick={() => handleUpdateTransferStatus({ preventDefault: () => {} }, 'ADMITTED')}
+                            className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/20"
+                          >
+                            Mark Patient Arrived & Admitted
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ----------------- TAB: REFERRALS ----------------- */}
+        {activeTab === 'referrals' && (
+          <div className="space-y-6 text-xs">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-cyan-400" /> Hospital Clinical Referrals Console
+                </h3>
+                <p className="text-slate-400 text-xs">Manage all incoming and outgoing clinical referrals across the MediTrack network.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {referrals.length === 0 ? (
+                <div className="p-12 text-center bg-slate-900 rounded-2xl border border-slate-800">
+                  <Layers className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                  <p className="text-slate-400">No hospital referral records found.</p>
+                </div>
+              ) : (
+                referrals.map(r => (
+                  <div key={r._id} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 shadow-xl">
+                    <div className="flex flex-wrap justify-between items-start gap-2">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-xs font-black px-2.5 py-1 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/60 shrink-0">
+                            🆔 Referral ID: {r.referralId || `REF-${r._id?.toString()?.slice(-6)?.toUpperCase() || r._id}`}
+                          </span>
+                          <span className="text-base font-bold text-white">{r.patientId?.name || 'Patient'}</span>
+                        </div>
+                        <span className="text-cyan-400 font-semibold text-xs block">Target: {r.receivingFacilityId?.name || 'Specialist Hospital'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold text-[10px] uppercase">
+                          {r.status}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteReferral(r._id)}
+                          title="Delete Referral Record"
+                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition flex items-center justify-center"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-xs text-slate-300 space-y-1">
+                      <div>Department: <strong>{r.department}</strong></div>
+                      <div>Reason: <i>"{r.reason}"</i></div>
+                    </div>
+
+                    {r.status === 'SENT' && (
+                      <div className="pt-2 flex justify-end gap-2">
+                        <button
+                          onClick={() => handleUpdateReferralStatus(r._id, 'ACCEPTED')}
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md"
+                        >
+                          Accept Referral
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Fallback for remaining tabs */}
-        {['transfers', 'inventory', 'referrals'].includes(activeTab) && (
+        {activeTab === 'inventory' && (
           <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800">
             <h3 className="text-base font-bold text-white mb-4 capitalize">{activeTab} Console</h3>
             <p className="text-xs text-slate-400">Manage all facility records for {activeTab}.</p>
           </div>
         )}
+
+        {/* Emergency Transfer Status Action Modal */}
+        {showTransferModal && selectedTransfer && (
+          <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 text-xs shadow-2xl">
+              <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <ArrowUpRight className="w-5 h-5 text-emerald-400" /> Process Patient Emergency Transfer
+                </h3>
+                <button onClick={() => setShowTransferModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                <div className="text-white font-bold">Patient: {selectedTransfer.patientId?.name || 'Patient'}</div>
+                <div className="text-slate-400">Required Bed: <strong className="text-emerald-400">{selectedTransfer.requiredBedType}</strong></div>
+              </div>
+
+              <form onSubmit={handleUpdateTransferStatus} className="space-y-3.5">
+                {transferActionStatus === 'ACCEPTED' ? (
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Estimated Arrival Time (ETA in Minutes) *</label>
+                    <input
+                      type="number"
+                      value={transferEta}
+                      onChange={e => setTransferEta(Number(e.target.value))}
+                      required
+                      min={5}
+                      max={180}
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-bold text-sm"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Rejection Reason *</label>
+                    <textarea
+                      rows={2}
+                      value={transferRejectionReason}
+                      onChange={e => setTransferRejectionReason(e.target.value)}
+                      required
+                      placeholder="e.g. ICU beds currently at 100% capacity..."
+                      className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTransferModal(false)}
+                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={`flex-1 py-2.5 rounded-xl font-bold text-slate-950 ${transferActionStatus === 'ACCEPTED' ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-rose-500 hover:bg-rose-400'}`}
+                  >
+                    Confirm {transferActionStatus}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
 
         {/* LiveKit Call Modal */}
         {showLiveKitModal && liveKitRoomName && (
@@ -1659,6 +1957,14 @@ export default function FacilityDashboard() {
                     <span>Discharged Bed Admissions ({bedBookings.filter(b => b.status === 'DISCHARGED').length})</span>
                   </button>
                 </div>
+
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition flex items-center gap-2 shadow-sm"
+                >
+                  <Printer className="w-4 h-4 text-cyan-400" />
+                  <span>Print Clinical Register</span>
+                </button>
               </div>
 
               {/* Modal Content Body */}

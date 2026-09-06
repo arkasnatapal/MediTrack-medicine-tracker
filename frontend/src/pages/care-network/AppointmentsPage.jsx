@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Calendar, Clock, CheckCircle2, Building2, User, Ticket, ChevronRight, AlertCircle, RefreshCw, MapPin, Bed, PhoneCall, ShieldAlert, AlertTriangle, Trash2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Building2, User, Ticket, ChevronRight, AlertCircle, RefreshCw, MapPin, Bed, PhoneCall, ShieldAlert, AlertTriangle, Trash2, History, Printer, X } from 'lucide-react';
 import { locationService } from '../../services/locationService';
 import axios from 'axios';
 
@@ -71,6 +71,8 @@ const AppointmentsPage = () => {
   const [bedBookings, setBedBookings] = useState([]);
   const [isSubmittingBed, setIsSubmittingBed] = useState(false);
   const [bedSuccessMsg, setBedSuccessMsg] = useState('');
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyTab, setHistoryTab] = useState('ALL'); // 'ALL', 'OPD', 'BED'
 
   const [activeQueue, setActiveQueue] = useState({
     userToken: 0,
@@ -91,37 +93,78 @@ const AppointmentsPage = () => {
   }, [selectedCity]);
 
   const detectLocationAndFetchFacilities = async () => {
-    let loc = locationService.getDefaultLocation();
-    try {
-      const userPos = await locationService.getCurrentLocation();
-      if (userPos && userPos.city) {
-        loc = userPos;
-      }
-    } catch (err) {
-      console.warn('Geolocation detection warning, using default:', err);
-    }
+    const cachedLoc = locationService.getCachedLocation();
+    let loc = cachedLoc || locationService.getDefaultLocation();
     setUserLocation(loc);
+
     const initialCity = location.state?.city || loc.city || 'Jalpaiguri';
     const matchedCityObj = CITIES_LIST.find(c => c.city.toLowerCase() === initialCity.toLowerCase());
     const validCity = matchedCityObj ? matchedCityObj.city : 'Jalpaiguri';
     setSelectedCity(validCity);
+
+    // Serve cached facilities instantly if available
+    const cachedFacs = locationService.getCachedFacilities('appointments');
+    if (cachedFacs && cachedFacs.length > 0) {
+      setFacilitiesList(cachedFacs);
+      setLoadingFacilities(false);
+    }
+
+    try {
+      const userPos = await locationService.getCurrentLocation();
+      if (userPos && userPos.city) {
+        loc = userPos;
+        locationService.saveCachedLocation(userPos);
+        setUserLocation(userPos);
+      }
+    } catch (err) {
+      console.warn('Geolocation detection warning, using default:', err);
+    }
+
     fetchFacilitiesForCity(validCity, loc.latitude, loc.longitude);
   };
 
   const fetchFacilitiesForCity = async (cityName, lat, lng) => {
-    try {
-      const cityObj = CITIES_LIST.find(c => c.city.toLowerCase() === cityName.toLowerCase());
-      const queryLat = lat || cityObj?.lat || 26.5400;
-      const queryLng = lng || cityObj?.lng || 88.7100;
+    const cachedFacs = locationService.getCachedFacilities('appointments');
+    const cachedLoc = locationService.getCachedLocation();
 
+    const cityObj = CITIES_LIST.find(c => c.city.toLowerCase() === cityName.toLowerCase());
+    const queryLat = lat || cityObj?.lat || 26.5400;
+    const queryLng = lng || cityObj?.lng || 88.7100;
+
+    const locChanged = locationService.hasLocationChanged({ latitude: queryLat, longitude: queryLng, city: cityName }, cachedLoc, 0.5);
+
+    if (!locChanged && cachedFacs && cachedFacs.length > 0) {
+      console.log('⚡ AppointmentsPage serving cached facilities (location delta < 0.5km).');
+      setFacilitiesList(cachedFacs);
+      setLoadingFacilities(false);
+      return;
+    }
+
+    try {
+      setLoadingFacilities(true);
       const res = await axios.get(
         `${API_BASE}/care-network/facilities?city=${encodeURIComponent(cityName)}&lat=${queryLat}&lng=${queryLng}`
       );
 
-      if (res.data && res.data.facilities && res.data.facilities.length > 0) {
-        let fetchedFacs = res.data.facilities;
+      let fetchedFacs = (res.data && res.data.facilities) ? res.data.facilities : [];
+
+      if (!fetchedFacs || fetchedFacs.length === 0) {
+        try {
+          const fallbackRes = await axios.get(`${API_BASE}/care-network/facilities`);
+          if (fallbackRes.data && Array.isArray(fallbackRes.data.facilities)) {
+            fetchedFacs = fallbackRes.data.facilities;
+          }
+        } catch (eFallback) {
+          console.warn('Fallback facility fetch failed:', eFallback.message);
+        }
+      }
+
+      if (fetchedFacs.length > 0) {
+        locationService.saveCachedFacilities(fetchedFacs, { latitude: queryLat, longitude: queryLng, city: cityName }, 'appointments');
+      }
+
+      if (fetchedFacs.length > 0) {
         const targetFacId = location.state?.facilityId;
-        
         let preSelectedId = '';
         if (targetFacId) {
           const match = fetchedFacs.find(
@@ -129,21 +172,10 @@ const AppointmentsPage = () => {
           );
           if (match) {
             preSelectedId = match.facilityId || match._id;
-          } else {
-            try {
-              const singleRes = await axios.get(`${API_BASE}/care-network/facilities/${targetFacId}`);
-              if (singleRes.data && singleRes.data.facility) {
-                const singleFac = singleRes.data.facility;
-                fetchedFacs = [singleFac, ...fetchedFacs];
-                preSelectedId = singleFac.facilityId || singleFac._id;
-              }
-            } catch (err) {
-              console.warn('Could not fetch target facility details:', err);
-            }
           }
         }
 
-        if (!preSelectedId && fetchedFacs.length > 0) {
+        if (!preSelectedId) {
           preSelectedId = fetchedFacs[0].facilityId || fetchedFacs[0]._id;
         }
 
@@ -308,7 +340,7 @@ const AppointmentsPage = () => {
   };
 
   const handleCancelBedBooking = async (id) => {
-    if (!window.confirm('Are you sure you want to cancel this bed admission request?')) return;
+    if (!window.confirm('Are you sure you want to cancel / delete this bed admission request?')) return;
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`${API_BASE}/care-network/bed-bookings/${id}`, {
@@ -317,6 +349,21 @@ const AppointmentsPage = () => {
       fetchBedBookings();
     } catch (err) {
       alert('Failed to cancel bed booking request.');
+    }
+  };
+
+  const handleDeleteAppointment = async (id) => {
+    if (!id) return;
+    if (!window.confirm('Are you sure you want to delete this appointment record?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const cleanId = String(id).startsWith('CARE-') ? String(id).replace('CARE-', '') : id;
+      await axios.delete(`${API_BASE}/care-network/appointments/${cleanId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchAppointments();
+    } catch (err) {
+      alert('Failed to delete appointment record.');
     }
   };
 
@@ -335,14 +382,14 @@ const AppointmentsPage = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* REAL-TIME QUEUE STATUS BANNER */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-blue-800/60 pb-4">
+      <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-teal-50/90 dark:from-blue-900 dark:via-indigo-900 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-slate-900 dark:text-white shadow-xl border border-blue-200/80 dark:border-blue-800/60 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-blue-200 dark:border-blue-800/60 pb-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold uppercase">
-              <Clock className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/90 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border border-blue-300/60 dark:border-transparent text-xs font-bold uppercase">
+              <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>Real-Time Public Facility Queue Status • {selectedFacilityObj?.name || activeQueue.facilityName || 'Select Facility'}</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black mt-1">LIVE OPD TOKEN QUEUE ({department.toUpperCase()})</h1>
+            <h1 className="text-xl sm:text-2xl font-black mt-1 text-slate-900 dark:text-white">LIVE OPD TOKEN QUEUE ({department.toUpperCase()})</h1>
           </div>
 
           <button
@@ -356,7 +403,7 @@ const AppointmentsPage = () => {
 
         {/* OPD SECTION SELECTOR PILLS */}
         <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase text-blue-300 tracking-wider">Switch OPD Department Queue:</span>
+          <span className="text-[10px] font-extrabold uppercase text-blue-800 dark:text-blue-300 tracking-wider">Switch OPD Department Queue:</span>
           <div className="flex flex-wrap gap-2">
             {OPD_DEPARTMENTS.map(dept => {
               const isActive = department === dept;
@@ -366,8 +413,8 @@ const AppointmentsPage = () => {
                   onClick={() => setDepartment(dept)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                     isActive
-                      ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white shadow-md scale-105'
-                      : 'bg-blue-950/60 hover:bg-blue-900/60 text-blue-200 border border-blue-800/40'
+                      ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-md scale-105'
+                      : 'bg-white/80 hover:bg-blue-100 text-blue-950 border border-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-200 dark:border-blue-800/40'
                   }`}
                 >
                   {dept}
@@ -378,21 +425,21 @@ const AppointmentsPage = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-blue-200">YOUR TOKEN</span>
-            <p className="text-3xl font-black text-white">{activeQueue.userToken ? `#${activeQueue.userToken}` : '--'}</p>
+          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-blue-200/80 dark:border-white/10 shadow-sm">
+            <span className="text-[10px] font-extrabold uppercase text-blue-900 dark:text-blue-200">YOUR TOKEN</span>
+            <p className="text-3xl font-black text-slate-900 dark:text-white">{activeQueue.userToken ? `#${activeQueue.userToken}` : '--'}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-blue-200">NOW SERVING</span>
-            <p className="text-3xl font-black text-emerald-400">#{activeQueue.currentToken || 1}</p>
+          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-blue-200/80 dark:border-white/10 shadow-sm">
+            <span className="text-[10px] font-extrabold uppercase text-blue-900 dark:text-blue-200">NOW SERVING</span>
+            <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">#{activeQueue.currentToken || 1}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-blue-200">PEOPLE AHEAD</span>
-            <p className="text-3xl font-black text-amber-300">{activeQueue.positionInLine}</p>
+          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-blue-200/80 dark:border-white/10 shadow-sm">
+            <span className="text-[10px] font-extrabold uppercase text-blue-900 dark:text-blue-200">PEOPLE AHEAD</span>
+            <p className="text-3xl font-black text-amber-600 dark:text-amber-300">{activeQueue.positionInLine}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-blue-200">ESTIMATED WAIT</span>
-            <p className="text-3xl font-black text-cyan-300">{activeQueue.estimatedWaitMinutes} Mins</p>
+          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-blue-200/80 dark:border-white/10 shadow-sm">
+            <span className="text-[10px] font-extrabold uppercase text-blue-900 dark:text-blue-200">ESTIMATED WAIT</span>
+            <p className="text-3xl font-black text-cyan-700 dark:text-cyan-300">{activeQueue.estimatedWaitMinutes} Mins</p>
           </div>
         </div>
       </div>
@@ -702,12 +749,22 @@ const AppointmentsPage = () => {
                   <Bed className="w-5 h-5 text-emerald-600" />
                   <span>My Hospital Bed & Admission Passes ({bedBookings.length})</span>
                 </span>
-                <button
-                  onClick={fetchBedBookings}
-                  className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3 h-3" /> Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setHistoryTab('BED'); setShowHistoryModal(true); }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800/50 transition shadow-sm"
+                    title="View Discharged Bed Passes History"
+                  >
+                    <History className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>History ({bedBookings.filter(b => b.status === 'DISCHARGED').length})</span>
+                  </button>
+                  <button
+                    onClick={fetchBedBookings}
+                    className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
               </h2>
 
               <div className="space-y-3">
@@ -756,15 +813,13 @@ const AppointmentsPage = () => {
                           </p>
                         </div>
 
-                        {!isDischarged && (
-                          <button
-                            onClick={() => handleCancelBedBooking(b._id)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 transition"
-                            title="Cancel Request"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleCancelBedBooking(b._id)}
+                          className="p-1.5 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
+                          title={isDischarged ? "Delete Discharged Pass Record" : "Cancel / Delete Bed Request"}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
 
                       {/* Allotted / Shifted / Discharged Bed Details Box */}
@@ -813,9 +868,19 @@ const AppointmentsPage = () => {
 
           {/* SECTION 2: MY OPD APPOINTMENTS LIST */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Ticket className="w-5 h-5 text-indigo-600" />
-              <span>My OPD Healthcare Appointments ({appointments.length})</span>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-indigo-600" />
+                <span>My OPD Healthcare Appointments ({appointments.length})</span>
+              </span>
+              <button
+                onClick={() => { setHistoryTab('OPD'); setShowHistoryModal(true); }}
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800/50 transition shadow-sm"
+                title="View Completed OPD Appointments History"
+              >
+                <History className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>History ({appointments.filter(a => a.status === 'COMPLETED' || a.status === 'CANCELLED').length})</span>
+              </button>
             </h2>
 
             {appointments.length === 0 ? (
@@ -849,7 +914,7 @@ const AppointmentsPage = () => {
                           </p>
                         </div>
 
-                        <div className="text-right">
+                        <div className="flex items-center gap-2">
                           <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
                             apt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' :
                             apt.status === 'RESCHEDULED' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' :
@@ -857,6 +922,13 @@ const AppointmentsPage = () => {
                           }`}>
                             {apt.status}
                           </span>
+                          <button
+                            onClick={() => handleDeleteAppointment(apt.appointmentId || apt._id)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
+                            title="Delete Appointment Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
 
@@ -902,6 +974,159 @@ const AppointmentsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* ----------------- PATIENT CLINICAL & PASS HISTORY MODAL ----------------- */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    Patient Clinical Care & Pass History Archive
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Archived OPD Consultations & Discharged Inpatient Passes
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition"
+                  title="Print Clinical History"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Print History
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(false)}
+                  className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-600 dark:text-slate-300 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/50">
+              <button
+                type="button"
+                onClick={() => setHistoryTab('ALL')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                  historyTab === 'ALL' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                All Archive ({appointments.filter(a => a.status === 'COMPLETED' || a.status === 'CANCELLED').length + bedBookings.filter(b => b.status === 'DISCHARGED').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryTab('OPD')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                  historyTab === 'OPD' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Completed OPD ({appointments.filter(a => a.status === 'COMPLETED' || a.status === 'CANCELLED').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryTab('BED')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                  historyTab === 'BED' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Discharged Bed Passes ({bedBookings.filter(b => b.status === 'DISCHARGED').length})
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* OPD History Items */}
+              {(historyTab === 'ALL' || historyTab === 'OPD') && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Completed / Archived OPD Consultations</h4>
+                  {appointments.filter(a => a.status === 'COMPLETED' || a.status === 'CANCELLED').length === 0 ? (
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500">
+                      No completed OPD consultations logged in history yet.
+                    </div>
+                  ) : (
+                    appointments.filter(a => a.status === 'COMPLETED' || a.status === 'CANCELLED').map(apt => (
+                      <div key={apt.appointmentId || apt._id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-slate-900 dark:text-white text-sm">{apt.facilityName}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block">Department: {apt.department} • Token #{apt.tokenNumber}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full ${apt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-rose-100 text-rose-700'}`}>
+                              {apt.status}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteAppointment(apt.appointmentId || apt._id)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
+                              title="Delete History Record"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-800">
+                          <span>Doctor: <strong>{apt.doctorName || 'Duty Specialist'}</strong> ({apt.doctorSpecialization || 'Specialist'})</span>
+                          <span>Date: {apt.date} at {apt.time}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Bed Passes History Items */}
+              {(historyTab === 'ALL' || historyTab === 'BED') && (
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Discharged Inpatient Bed Passes</h4>
+                  {bedBookings.filter(b => b.status === 'DISCHARGED').length === 0 ? (
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500">
+                      No discharged bed passes logged in history yet.
+                    </div>
+                  ) : (
+                    bedBookings.filter(b => b.status === 'DISCHARGED').map(b => (
+                      <div key={b._id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-slate-900 dark:text-white text-sm">{b.facilityName}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block">Pass #{b.admissionPassNumber} • Dept: {b.department}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                              DISCHARGED
+                            </span>
+                            <button
+                              onClick={() => handleCancelBedBooking(b._id)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
+                              title="Delete Discharged Pass Record"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                          "{b.dischargeNotes || 'Patient officially discharged in stable condition. Bed tag released.'}"
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

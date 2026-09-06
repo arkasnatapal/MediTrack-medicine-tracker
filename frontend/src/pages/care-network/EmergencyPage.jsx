@@ -12,33 +12,56 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const EmergencyPage = () => {
   const navigate = useNavigate();
   const { t } = useAppMode();
-  const [location, setLocation] = useState(null);
-  const [loadingLocation, setLoadingLocation] = useState(true);
-  const [emergencyFacilities, setEmergencyFacilities] = useState([]);
+  // Initialize from device storage instantly if available
+  const [location, setLocation] = useState(() => locationService.getCachedLocation() || locationService.getDefaultLocation());
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [emergencyFacilities, setEmergencyFacilities] = useState(() => locationService.getCachedFacilities('emergency') || []);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
   const [loadingRoute, setLoadingRoute] = useState(false);
 
   useEffect(() => {
+    const cachedFacs = locationService.getCachedFacilities('emergency');
+    const cachedLoc = locationService.getCachedLocation();
+
+    if (cachedFacs && cachedFacs.length > 0 && !selectedFacility) {
+      handleSelectFacility(cachedFacs[0], cachedLoc || location);
+    }
+
     const fetchLocationAndEmergencyFacilities = async () => {
-      let loc = locationService.getDefaultLocation();
+      let freshLoc = location;
       try {
         const userPos = await locationService.getCurrentLocation();
-        loc = userPos;
+        if (userPos && typeof userPos.latitude === 'number') {
+          freshLoc = userPos;
+        }
       } catch (err) {
-        // Fallback used
+        console.warn('Geolocation warning in EmergencyPage:', err);
       }
-      setLocation(loc);
+
+      setLocation(freshLoc);
       setLoadingLocation(false);
 
+      // Check if location changed beyond threshold (0.5 km) or if no cached data
+      const locChanged = locationService.hasLocationChanged(freshLoc, cachedLoc, 0.5);
+
+      if (!locChanged && cachedFacs && cachedFacs.length > 0) {
+        console.log('⚡ Location unchanged within 0.5km. Serving cached emergency hospitals instantly.');
+        return;
+      }
+
+      // Save new location cache
+      locationService.saveCachedLocation(freshLoc);
+
       try {
-        const res = await axios.get(`${API_BASE}/care-network/facilities?emergency=true&lat=${loc.latitude}&lng=${loc.longitude}`);
+        const res = await axios.get(`${API_BASE}/care-network/facilities?emergency=true&lat=${freshLoc.latitude}&lng=${freshLoc.longitude}`);
         if (res.data && res.data.facilities) {
           const facilities = res.data.facilities;
           setEmergencyFacilities(facilities);
+          locationService.saveCachedFacilities(facilities, freshLoc, 'emergency');
 
           if (facilities.length > 0) {
-            handleSelectFacility(facilities[0], loc);
+            handleSelectFacility(facilities[0], freshLoc);
           }
         }
       } catch (err) {
@@ -66,17 +89,17 @@ const EmergencyPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* 112 & 108 EMERGENCY BANNER */}
-      <div className="bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 rounded-3xl p-6 sm:p-8 text-white shadow-2xl space-y-4">
+      <div className="bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 dark:from-rose-600 dark:via-red-600 dark:to-rose-700 rounded-3xl p-6 sm:p-8 text-slate-900 dark:text-white shadow-xl border border-rose-200/80 dark:border-rose-700/60 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-black uppercase">
-              <ShieldAlert className="w-4 h-4 text-amber-300" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 dark:bg-white/20 text-rose-800 dark:text-white text-xs font-black uppercase border border-rose-300/60 dark:border-transparent">
+              <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-amber-300" />
               <span>National Emergency Response & Medical Ambulance (India)</span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-rose-950 dark:text-white">
               NATIONAL EMERGENCY ASSISTANCE
             </h1>
-            <p className="text-sm text-rose-100 font-medium max-w-2xl">
+            <p className="text-sm text-rose-800 dark:text-rose-100 font-medium max-w-2xl">
               {t('emergencyNotice')} Dial 112 for Unified National Emergency Dispatch or 108 for Emergency Ambulance Services.
             </p>
           </div>
@@ -84,17 +107,17 @@ const EmergencyPage = () => {
           <div className="flex flex-wrap items-center gap-3">
             <a
               href="tel:112"
-              className="px-6 py-3.5 rounded-2xl bg-white text-rose-700 font-black text-base text-center shadow-2xl hover:bg-rose-50 transition-all flex items-center justify-center gap-2 active:scale-95 flex-1 sm:flex-initial"
+              className="px-6 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white dark:bg-white dark:text-rose-700 font-black text-base text-center shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 flex-1 sm:flex-initial"
             >
-              <PhoneCall className="w-5 h-5 text-rose-600" />
+              <PhoneCall className="w-5 h-5 text-white dark:text-rose-600" />
               <span>CALL 112</span>
             </a>
 
             <a
               href="tel:108"
-              className="px-6 py-3.5 rounded-2xl bg-black/30 hover:bg-black/40 text-white border border-white/30 font-black text-base text-center shadow-2xl transition-all flex items-center justify-center gap-2 active:scale-95 flex-1 sm:flex-initial"
+              className="px-6 py-3.5 rounded-2xl bg-white/90 hover:bg-white text-rose-900 border border-rose-300 dark:bg-white/20 dark:hover:bg-white/30 dark:text-white dark:border-white/40 font-black text-base text-center shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 flex-1 sm:flex-initial backdrop-blur-md"
             >
-              <PhoneCall className="w-5 h-5 text-amber-300" />
+              <PhoneCall className="w-5 h-5 text-rose-600 dark:text-amber-300" />
               <span>CALL 108 (AMBULANCE)</span>
             </a>
           </div>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import PrescriptionsPage from "./care-network/PrescriptionsPage";
 import {
   Upload,
   Folder,
@@ -50,6 +51,10 @@ import api from "../api/api";
 const MedicalReports = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || location.state?.tab || 'reports');
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -60,6 +65,11 @@ const MedicalReports = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showGlobalAnalysisDialog, setShowGlobalAnalysisDialog] = useState(false);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
 
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -261,198 +271,233 @@ const MedicalReports = () => {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md group">
-            <div className="absolute inset-0 bg-teal-500/5 rounded-2xl blur-md group-focus-within:bg-teal-500/10 transition-colors" />
-            <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex items-center px-4 py-3 transition-all group-focus-within:border-teal-500/50 group-focus-within:ring-4 group-focus-within:ring-teal-500/10">
-              <Search className="w-5 h-5 text-gray-400 group-focus-within:text-teal-500 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search your medical history..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full ml-3 bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-400"
-              />
-            </div>
-          </div>
-          <div className="hidden md:flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <span className="px-3 py-1 rounded-lg bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm">
-              {filteredReports.length} Reports
-            </span>
-          </div>
+        {/* Section Navigation Tabs: Medical Reports vs Prescriptions */}
+        <div className="flex items-center gap-2 bg-slate-200/70 dark:bg-slate-800/70 p-1.5 rounded-2xl border border-slate-300/60 dark:border-slate-700/60 w-full sm:w-auto self-start shadow-sm">
+          <button
+            onClick={() => handleTabChange('reports')}
+            className={`px-6 py-3 rounded-xl font-extrabold text-sm flex items-center gap-2.5 transition-all ${
+              activeTab === 'reports'
+                ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-md ring-1 ring-black/5 dark:ring-white/10'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Folder className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span>Medical Reports & Lab Files</span>
+          </button>
+
+          <button
+            onClick={() => handleTabChange('prescriptions')}
+            className={`px-6 py-3 rounded-xl font-extrabold text-sm flex items-center gap-2.5 transition-all ${
+              activeTab === 'prescriptions'
+                ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-md ring-1 ring-black/5 dark:ring-white/10'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Pill className="w-4 h-4 text-emerald-500" />
+            <span>Prescriptions & OPD Records</span>
+          </button>
         </div>
 
-        {/* Reports Grid - Creative Layout */}
-        {filteredReports.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-[2rem] border border-dashed border-gray-200 dark:border-slate-700 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-24 h-24 bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/30 dark:to-emerald-900/30 rounded-3xl flex items-center justify-center mb-6 shadow-inner rotate-3">
-                <Folder className="w-10 h-10 text-teal-600 dark:text-teal-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                No reports found
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">
-                {searchTerm
-                  ? "Try adjusting your search terms"
-                  : "Upload your first medical report to unlock AI-powered insights."}
-              </p>
-            </div>
+        {activeTab === 'prescriptions' ? (
+          <div className="bg-white dark:bg-slate-800/60 p-4 sm:p-6 rounded-3xl border border-gray-100 dark:border-slate-700/80 shadow-sm">
+            <PrescriptionsPage />
           </div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left Pane: Report List */}
-            <div className="w-full lg:w-1/3 flex flex-col gap-4">
-              <div className="flex-1 overflow-y-auto max-h-[800px] custom-scrollbar space-y-4 pr-2">
-                {filteredReports.map((report) => (
-                  <motion.div 
-                     key={report._id}
-                     onClick={() => setSelectedReport(report)}
-                     className={`group relative bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 border cursor-pointer overflow-hidden ${selectedReport?._id === report._id ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-gray-100 dark:border-slate-700'}`}
-                  >
-                     <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-4">
-                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${report.aiAnalysis ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" : "bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"}`}>
-                              {report.aiAnalysis ? <Bot className="w-6 h-6"/> : <FileHeart className="w-6 h-6"/>}
-                           </div>
-                           <div>
-                              <h3 className="font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-teal-600 transition-colors">{report.folderName}</h3>
-                              <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                 <Calendar className="w-3 h-3"/> {new Date(report.reportDate).toLocaleDateString()}
-                              </p>
-                           </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(report);
-                          }}
-                          className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                     </div>
-                  </motion.div>
-                ))}
+          <>
+            {/* Search Bar */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="relative flex-1 max-w-md group">
+                <div className="absolute inset-0 bg-teal-500/5 rounded-2xl blur-md group-focus-within:bg-teal-500/10 transition-colors" />
+                <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex items-center px-4 py-3 transition-all group-focus-within:border-teal-500/50 group-focus-within:ring-4 group-focus-within:ring-teal-500/10">
+                  <Search className="w-5 h-5 text-gray-400 group-focus-within:text-teal-500 transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Search your medical history..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full ml-3 bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-400"
+                  />
+                </div>
+              </div>
+              <div className="hidden md:flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <span className="px-3 py-1 rounded-lg bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm">
+                  {filteredReports.length} Reports
+                </span>
               </div>
             </div>
 
-            {/* Right Pane: Report Details */}
-            <div className="w-full lg:w-2/3">
-               {selectedReport ? (
-                  <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-slate-700 p-8 min-h-[600px] flex flex-col">
-                     {/* Header of Details */}
-                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-8 border-b border-gray-100 dark:border-slate-700">
-                        <div>
-                           <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight">{selectedReport.folderName}</h2>
-                           <div className="flex items-center gap-3">
-                              {selectedReport.domain && (
-                                <span className="px-3 py-1 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-sm font-bold text-teal-700 dark:text-teal-400 border border-teal-100 dark:border-teal-800">
-                                  {selectedReport.domain}
-                                </span>
-                              )}
-                              <button 
-                                 onClick={() => {
-                                    const newDomain = prompt("Edit Domain:", selectedReport.domain || "");
-                                    if (newDomain !== null) {
-                                       api.put(`/reports/${selectedReport._id}`, { domain: newDomain }).then(res => {
-                                          if (res.data.success) {
-                                             setSelectedReport(prev => ({ ...prev, domain: res.data.report.domain }));
-                                             fetchReports(); 
-                                          }
-                                       });
-                                    }
-                                 }}
-                                 className="p-1.5 rounded-full bg-gray-50 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-500 dark:text-gray-400 transition-colors"
-                              >
-                                 <Edit2 className="w-4 h-4" />
-                              </button>
-                              <div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-slate-600 mx-1" />
-                              <div className="flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400">
-                                 <FileText className="w-4 h-4" />
-                                 {selectedReport.files.length} Documents
-                              </div>
-                           </div>
-                        </div>
-                        
-                        {/* AI Button here */}
-                        <motion.button
-                           whileHover={{ scale: 1.05 }}
-                           whileTap={{ scale: 0.95 }}
-                           onClick={() => {
-                              if (!selectedReport.aiAnalysis) {
-                                 handleAnalyze(selectedReport);
-                              } else {
-                                 setShowAnalysisModal(true);
-                              }
-                           }}
-                           disabled={analyzing}
-                           className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all disabled:opacity-70 ${selectedReport.aiAnalysis ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'}`}
-                        >
-                           {analyzing ? (
-                              <><Loader2 className="w-5 h-5 animate-spin" /> Analyzing...</>
-                           ) : selectedReport.aiAnalysis ? (
-                              <><Sparkles className="w-5 h-5" /> View AI Analysis</>
-                           ) : (
-                              <><Bot className="w-5 h-5" /> AI Analyze Report</>
-                           )}
-                        </motion.button>
-                     </div>
+            {/* Reports Grid - Creative Layout */}
+            {filteredReports.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-[2rem] border border-dashed border-gray-200 dark:border-slate-700 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="w-24 h-24 bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/30 dark:to-emerald-900/30 rounded-3xl flex items-center justify-center mb-6 shadow-inner rotate-3">
+                    <Folder className="w-10 h-10 text-teal-600 dark:text-teal-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    No reports found
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                    {searchTerm
+                      ? "Try adjusting your search terms"
+                      : "Upload your first medical report to unlock AI-powered insights."}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col lg:flex-row gap-8">
+                {/* Left Pane: Report List */}
+                <div className="w-full lg:w-1/3 flex flex-col gap-4">
+                  <div className="flex-1 overflow-y-auto max-h-[800px] custom-scrollbar space-y-4 pr-2">
+                    {filteredReports.map((report) => (
+                      <motion.div 
+                         key={report._id}
+                         onClick={() => setSelectedReport(report)}
+                         className={`group relative bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 border cursor-pointer overflow-hidden ${selectedReport?._id === report._id ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-gray-100 dark:border-slate-700'}`}
+                      >
+                         <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-4">
+                               <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${report.aiAnalysis ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" : "bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"}`}>
+                                  {report.aiAnalysis ? <Bot className="w-6 h-6"/> : <FileHeart className="w-6 h-6"/>}
+                               </div>
+                               <div>
+                                  <h3 className="font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-teal-600 transition-colors">{report.folderName}</h3>
+                                  <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                                     <Calendar className="w-3 h-3"/> {new Date(report.reportDate).toLocaleDateString()}
+                                  </p>
+                               </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(report);
+                              }}
+                              className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                         </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
 
-                     {/* Documents Grid */}
-                     <div className="flex-1">
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                           <FileText className="w-4 h-4 text-teal-500" />
-                           Stored Documents
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {selectedReport.files.map((file, idx) => (
-                             <div
-                               key={idx}
+                {/* Right Pane: Report Details */}
+                <div className="w-full lg:w-2/3">
+                   {selectedReport ? (
+                      <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-slate-700 p-8 min-h-[600px] flex flex-col">
+                         {/* Header of Details */}
+                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-8 border-b border-gray-100 dark:border-slate-700">
+                            <div>
+                               <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight">{selectedReport.folderName}</h2>
+                               <div className="flex items-center gap-3">
+                                  {selectedReport.domain && (
+                                    <span className="px-3 py-1 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-sm font-bold text-teal-700 dark:text-teal-400 border border-teal-100 dark:border-teal-800">
+                                      {selectedReport.domain}
+                                    </span>
+                                  )}
+                                  <button 
+                                     onClick={() => {
+                                        const newDomain = prompt("Edit Domain:", selectedReport.domain || "");
+                                        if (newDomain !== null) {
+                                           api.put(`/reports/${selectedReport._id}`, { domain: newDomain }).then(res => {
+                                              if (res.data.success) {
+                                                 setSelectedReport(prev => ({ ...prev, domain: res.data.report.domain }));
+                                                 fetchReports(); 
+                                              }
+                                           });
+                                        }
+                                     }}
+                                     className="p-1.5 rounded-full bg-gray-50 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-500 dark:text-gray-400 transition-colors"
+                                  >
+                                     <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-slate-600 mx-1" />
+                                  <div className="flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400">
+                                     <FileText className="w-4 h-4" />
+                                     {selectedReport.files.length} Documents
+                                  </div>
+                               </div>
+                            </div>
+                            
+                            {/* AI Button here */}
+                            <motion.button
+                               whileHover={{ scale: 1.05 }}
+                               whileTap={{ scale: 0.95 }}
                                onClick={() => {
-                                 if (file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf')) {
-                                   setSelectedPdf(file.url);
-                                 } else {
-                                   setSelectedImage(file.url);
-                                   setZoom(1);
-                                   setImageLoading(true);
-                                 }
+                                  if (!selectedReport.aiAnalysis) {
+                                     handleAnalyze(selectedReport);
+                                  } else {
+                                     setShowAnalysisModal(true);
+                                  }
                                }}
-                               className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-all group border border-transparent hover:border-teal-200 dark:hover:border-teal-800 cursor-pointer"
-                             >
-                               <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                 {file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf') ? (
-                                   <FileText className="w-6 h-6 text-purple-500" />
-                                 ) : (
-                                   <ImageIcon className="w-6 h-6 text-blue-500" />
-                                 )}
-                               </div>
-                               <div className="flex-1 min-w-0">
-                                 <p className="text-sm font-bold text-gray-900 dark:text-white truncate" title={file.originalName}>
-                                   {file.originalName}
-                                 </p>
-                                 <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-bold">
-                                    {file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf') ? 'PDF Document' : 'Image File'}
-                                 </p>
-                               </div>
-                             </div>
-                           ))}
-                        </div>
-                     </div>
-                  </div>
-               ) : (
-                  <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-dashed border-gray-200 dark:border-slate-700 flex flex-col items-center justify-center p-12 h-full min-h-[600px]">
-                     <div className="w-24 h-24 bg-gray-50 dark:bg-slate-700/50 rounded-[2rem] flex items-center justify-center mb-6 rotate-3">
-                        <Folder className="w-10 h-10 text-gray-400" />
-                     </div>
-                     <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3">Select a Report</h3>
-                     <p className="text-gray-500 text-center max-w-sm text-lg">Choose a report from the list to view its documents and access AI analysis options.</p>
-                  </div>
-               )}
-            </div>
-          </div>
+                               disabled={analyzing}
+                               className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all disabled:opacity-70 ${selectedReport.aiAnalysis ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'}`}
+                            >
+                               {analyzing ? (
+                                  <><Loader2 className="w-5 h-5 animate-spin" /> Analyzing...</>
+                               ) : selectedReport.aiAnalysis ? (
+                                  <><Sparkles className="w-5 h-5" /> View AI Analysis</>
+                               ) : (
+                                  <><Bot className="w-5 h-5" /> AI Analyze Report</>
+                               )}
+                            </motion.button>
+                         </div>
+
+                         {/* Documents Grid */}
+                         <div className="flex-1">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+                               <FileText className="w-4 h-4 text-teal-500" />
+                               Stored Documents
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                               {selectedReport.files.map((file, idx) => (
+                                 <div
+                                   key={idx}
+                                   onClick={() => {
+                                     if (file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf')) {
+                                       setSelectedPdf(file.url);
+                                     } else {
+                                       setSelectedImage(file.url);
+                                       setZoom(1);
+                                       setImageLoading(true);
+                                     }
+                                   }}
+                                   className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/50 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-all group border border-transparent hover:border-teal-200 dark:hover:border-teal-800 cursor-pointer"
+                                 >
+                                   <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                     {file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf') ? (
+                                       <FileText className="w-6 h-6 text-purple-500" />
+                                     ) : (
+                                       <ImageIcon className="w-6 h-6 text-blue-500" />
+                                     )}
+                                   </div>
+                                   <div className="flex-1 min-w-0">
+                                     <p className="text-sm font-bold text-gray-900 dark:text-white truncate" title={file.originalName}>
+                                       {file.originalName}
+                                     </p>
+                                     <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-bold">
+                                        {file.fileType === 'pdf' || file.originalName?.toLowerCase().endsWith('.pdf') ? 'PDF Document' : 'Image File'}
+                                     </p>
+                                   </div>
+                                 </div>
+                               ))}
+                            </div>
+                         </div>
+                      </div>
+                   ) : (
+                      <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-dashed border-gray-200 dark:border-slate-700 flex flex-col items-center justify-center p-12 h-full min-h-[600px]">
+                         <div className="w-24 h-24 bg-gray-50 dark:bg-slate-700/50 rounded-[2rem] flex items-center justify-center mb-6 rotate-3">
+                            <Folder className="w-10 h-10 text-gray-400" />
+                         </div>
+                         <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3">Select a Report</h3>
+                         <p className="text-gray-500 text-center max-w-sm text-lg">Choose a report from the list to view its documents and access AI analysis options.</p>
+                      </div>
+                   )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -880,5 +880,223 @@ router.delete('/:id', protect, async (req, res) => {
   }
 });
 
+// GET Patient Personal Health Record Summary from MediTrack DB
+router.get('/patient-health-summary/:patientId', async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const mongoose = require('mongoose');
+
+    let patient = null;
+    if (mongoose.Types.ObjectId.isValid(patientId)) {
+      patient = await PatientRecord.findById(patientId).lean();
+    }
+    if (!patient) {
+      patient = await PatientRecord.findOne({
+        $or: [{ _id: patientId }, { mediTrackUserId: patientId }]
+      }).lean();
+    }
+
+    if (!patient) {
+      // Check if patientId is an Appointment ID
+      if (mongoose.Types.ObjectId.isValid(patientId)) {
+        const apt = await Appointment.findById(patientId).populate('patientId').lean();
+        if (apt && apt.patientId) {
+          patient = apt.patientId;
+        }
+      }
+    }
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient record not found' });
+    }
+
+    // Find matching MediTrack User
+    const db = mongoose.connection.db;
+    let mediTrackUser = null;
+
+    if (patient.mediTrackUserId && mongoose.Types.ObjectId.isValid(patient.mediTrackUserId)) {
+      mediTrackUser = await db.collection('users').findOne({ _id: new mongoose.Types.ObjectId(patient.mediTrackUserId) });
+    }
+
+    if (!mediTrackUser && patient.email) {
+      mediTrackUser = await db.collection('users').findOne({ email: patient.email.toLowerCase().trim() });
+    }
+
+    if (!mediTrackUser && patient.phone) {
+      const cleanPhone = patient.phone.replace(/[^0-9]/g, '');
+      mediTrackUser = await db.collection('users').findOne({
+        $or: [
+          { phoneNumber: patient.phone },
+          { phoneNumber: cleanPhone },
+          { phoneNumber: new RegExp(cleanPhone.slice(-10) + '$') }
+        ]
+      });
+    }
+
+    if (!mediTrackUser && patient.name) {
+      mediTrackUser = await db.collection('users').findOne({ name: new RegExp('^' + patient.name + '$', 'i') });
+    }
+
+    // Auto-link mediTrackUserId on PatientRecord if found
+    if (mediTrackUser && (!patient.mediTrackUserId || patient.mediTrackUserId !== mediTrackUser._id.toString())) {
+      await PatientRecord.updateOne(
+        { _id: patient._id },
+        { $set: { mediTrackUserId: mediTrackUser._id.toString() } }
+      );
+    }
+
+    const userIdToQuery = mediTrackUser ? mediTrackUser._id : null;
+
+    // 1. Fetch Active Medications
+    let activeMedications = [];
+    if (userIdToQuery) {
+      activeMedications = await db.collection('medicines')
+        .find({ userId: userIdToQuery })
+        .sort({ createdAt: -1 })
+        .toArray();
+    }
+
+    // 2. Fetch Previous Lab & Diagnostic Reports
+    let previousReports = [];
+    if (userIdToQuery) {
+      previousReports = await db.collection('reports')
+        .find({ userId: userIdToQuery })
+        .sort({ reportDate: -1 })
+        .toArray();
+    }
+
+    // 3. Fetch Genetic Insights & Ayurvedic / Chronic Health Profile
+    let ayurvedicProfile = null;
+    if (userIdToQuery) {
+      ayurvedicProfile = await db.collection('ayurvedicprofiles').findOne({ userId: userIdToQuery });
+    }
+
+    // 4. Fetch Recent Daily Vitals & Status
+    let recentVitals = [];
+    if (userIdToQuery) {
+      recentVitals = await db.collection('dailystatuses')
+        .find({ userId: userIdToQuery })
+        .sort({ date: -1 })
+        .limit(7)
+        .toArray();
+    }
+
+    // 5. Fetch Past Care Journey & Appointments
+    let careHistory = await Appointment.find({ patientId: patient._id })
+      .sort({ appointmentDate: -1 })
+      .limit(5)
+      .lean();
+
+    // Calculate BMI if height and weight exist
+    let bmi = null;
+    if (mediTrackUser?.height && mediTrackUser?.weight) {
+      const heightInMeters = mediTrackUser.height / 100;
+      bmi = parseFloat((mediTrackUser.weight / (heightInMeters * heightInMeters)).toFixed(1));
+    }
+
+    // Calculate Dynamic Clinical Health Score
+    let computedHealthScore = 92;
+    if (previousReports.length > 0) {
+      const reportScores = previousReports.map(r => r.aiAnalysis?.healthScore).filter(s => typeof s === 'number');
+      if (reportScores.length > 0) {
+        const avgReportScore = Math.round(reportScores.reduce((a, b) => a + b, 0) / reportScores.length);
+        computedHealthScore = avgReportScore;
+      }
+    }
+    const conditionCount = (patient.chronicConditions?.length || 0) + (patient.allergies?.length || 0);
+    if (conditionCount > 0) {
+      computedHealthScore = Math.max(65, computedHealthScore - (conditionCount * 3));
+    }
+    if (recentVitals.length > 0 && recentVitals[0].energyLevel) {
+      const energyBonus = (recentVitals[0].energyLevel - 5) * 2;
+      computedHealthScore = Math.min(98, Math.max(60, computedHealthScore + energyBonus));
+    }
+    const finalHealthScore = (mediTrackUser?.healthScore && mediTrackUser.healthScore !== 100) ? mediTrackUser.healthScore : computedHealthScore;
+    const computedHealthState = finalHealthScore >= 85 ? 'GREEN' : finalHealthScore >= 70 ? 'YELLOW' : 'RED';
+
+    const healthSummary = {
+      success: true,
+      patient: {
+        _id: patient._id,
+        name: patient.name,
+        email: patient.email,
+        phone: patient.phone,
+        profilePictureUrl: mediTrackUser?.profilePictureUrl || patient.profilePictureUrl || null,
+        age: patient.age || mediTrackUser?.age || null,
+        gender: patient.gender || mediTrackUser?.gender || null,
+        bloodGroup: patient.bloodGroup || mediTrackUser?.bloodGroup || null,
+        allergies: patient.allergies || [],
+        chronicConditions: patient.chronicConditions || [],
+        mediTrackUserId: mediTrackUser ? mediTrackUser._id.toString() : null
+      },
+      mediTrackUser: mediTrackUser ? {
+        isLinked: true,
+        userId: mediTrackUser._id,
+        name: mediTrackUser.name,
+        email: mediTrackUser.email,
+        profilePictureUrl: mediTrackUser.profilePictureUrl || null,
+        healthScore: finalHealthScore,
+        healthState: computedHealthState,
+        bloodGroup: mediTrackUser.bloodGroup || null,
+        age: mediTrackUser.age || null,
+        gender: mediTrackUser.gender || null,
+        height: mediTrackUser.height || null,
+        weight: mediTrackUser.weight || null,
+        bmi: bmi,
+        abhaNumber: mediTrackUser.abhaNumber || null,
+        abhaAddress: mediTrackUser.abhaAddress || null,
+        familyMedicalHistory: mediTrackUser.familyMedicalHistory || []
+      } : {
+        isLinked: false,
+        profilePictureUrl: null,
+        healthScore: finalHealthScore,
+        healthState: computedHealthState,
+        bloodGroup: patient.bloodGroup || null,
+        age: patient.age || null,
+        gender: patient.gender || null,
+        height: null,
+        weight: null,
+        bmi: null,
+        abhaNumber: null,
+        abhaAddress: null,
+        familyMedicalHistory: []
+      },
+      activeMedications: activeMedications.map(m => ({
+        _id: m._id,
+        name: m.name,
+        dosage: m.dosage || '',
+        quantity: m.quantity || 0,
+        genericName: m.genericName || m.name,
+        category: m.category || 'General',
+        form: m.form || 'Tablet',
+        expiryDate: m.expiryDate,
+        aiInsights: m.aiInsights || null
+      })),
+      previousReports: previousReports.map(r => ({
+        _id: r._id,
+        folderName: r.folderName,
+        reportDate: r.reportDate,
+        domain: r.domain || 'General Medicine',
+        files: r.files || [],
+        aiAnalysis: r.aiAnalysis || null
+      })),
+      geneticAndInbornIssues: ayurvedicProfile?.geneticInsights || [],
+      ayurvedicAndLifestyle: ayurvedicProfile ? {
+        dosha: ayurvedicProfile.constituency || null,
+        lifestyle: ayurvedicProfile.lifestyle || null,
+        healingPath: ayurvedicProfile.healingPath || null
+      } : null,
+      recentVitals: recentVitals || [],
+      careHistory
+    };
+
+    res.json(healthSummary);
+  } catch (error) {
+    console.error('Error fetching patient health summary:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;
+
 

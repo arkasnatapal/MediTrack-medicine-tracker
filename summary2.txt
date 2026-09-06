@@ -1,0 +1,338 @@
+================================================================================
+            MEDITRACK: TWO-PILLAR HEALTHCARE ARCHITECTURE MONOGRAPH
+        Complete Feature Specification of Personal Health OS & Care Journey Network
+================================================================================
+
+EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+Healthcare delivery worldwide suffers from a catastrophic divide: the gap between 
+an individual's daily personal health management and institutional hospital care. 
+Patients manage chronic illnesses in isolation with passive tools, while hospitals 
+and doctors operate within disconnected organizational silos.
+
+MediTrack eliminates this divide through a unified, **Two-Pillar Architecture**:
+
+  1. PILLAR I: THE PERSONAL HEALTH RECORD (PHR) & AUTONOMOUS PATIENT OS
+     A 24/7 background guardian engine that automates medication adherence, parses 
+     complex lab reports with AI, tracks women's reproductive health, evaluates 
+     Ayurvedic nutrition, manages family emergency escalations, and secures national 
+     digital health identities (ABDM).
+
+  2. PILLAR II: THE CARE JOURNEY & CONNECTED HOSPITAL/DOCTOR NETWORK
+     An enterprise clinical network unifying Primary Healthcare Centers (PHCs), 
+     Community Health Centers (CHCs), District Hospitals, multi-hospital doctor mobility, 
+     bed-locked emergency transfers, digital referrals, live OPD queues, diagnostic 
+     labs, and LiveKit HD teleconsultations with post-session follow-up quotas.
+
+This monograph presents an exhaustive, feature-by-feature specification of all 
+modules, engines, workflows, and global standards implemented in MediTrack.
+
+
+================================================================================
+SECTION 1: THE PERSONAL HEALTH RECORD (PHR) & PATIENT OS SYSTEM
+================================================================================
+
+The Personal Health Pillar transforms the patient experience from passive manual 
+logging into a continuous, AI-powered health operating system.
+
+--------------------------------------------------------------------------------
+1.1 Autonomous Living Health Guardian Engine
+--------------------------------------------------------------------------------
+- Background Asynchronous Intelligence: Powered by Redis and BullMQ worker queues, 
+  MediTrack continuously monitors health trajectories offline without requiring the app to be open.
+- Weighted Living Health Score Algorithm (0–100):
+    Health Score = (0.60 * Adherence Rate) + (0.30 * Sleep Score) + (0.10 * Vitals Indicator)
+- Health State Tiers:
+    * 🟢 Stable (Green Tier - Score > 80): Optimal medication routine, healthy sleep gap indicators.
+    * 🟡 Attention Needed (Yellow Tier - Score 50–80): Minor adherence slips, erratic sleep trends.
+    * 🔴 Risk Detected (Red Tier - Score < 50): Severe non-adherence, abnormal blood pressure/glucose.
+- Automated 3-Hour Emergency Family Escalation: When a patient enters a critical 
+  Red Alert state and remains in Red for 3 consecutive hours, MediTrack dispatches 
+  automated SMS and Email alerts to designated family guardians with actionable clinical summaries.
+- Passive Sleep Intelligence Engine: Infers sleep duration and sleep quality from passive 
+  user activity gap logs (time between last night activity and morning login).
+- Weekly Trajectory & Improvement Detector: Compares 7-day trailing metrics to identify 
+  positive routine improvements and issue positive reinforcement alerts.
+
+--------------------------------------------------------------------------------
+1.2 AI Medicine Management, Folder Organization & Drug Catalog
+--------------------------------------------------------------------------------
+- Medicine Scheduling & Dosage Tracker: Configures drug names, dosages, frequencies, 
+  specific times, duration, stock quantities, minimum thresholds, and food timing 
+  (before/after meals).
+- Smart Grace-Period Reminders: Dispatches push and email alerts when doses are due, 
+  tracking grace-period overdue windows before marking doses as missed.
+- AI Therapeutic Folder Auto-Categorization: Automatically sorts user medicines into 
+  18 therapeutic folders:
+    1. Pain Relief            7. Digestive Health       13. Mental Health
+    2. Fever                  8. Nausea & Vomiting      14. Vitamins & Supplements
+    3. Anti-inflammatory      9. Allergy                15. Skin Care
+    4. Antibiotic            10. Respiratory            16. Eye Care
+    5. Antiviral             11. Cardiovascular         17. Hormonal
+    6. Antifungal            12. Diabetes               18. Antacid
+- Multi-Tier Drug Intelligence Pipeline: Queries OpenFDA API -> RxNorm API -> Gemini 
+  Web Scraping Fallback to extract indications, precautions, and food interactions.
+- 90-Day Lookup Cache (`MedicineLookupCache`): Caches drug API responses for 90 days, 
+  reducing external LLM API calls by >80%.
+- Confidence Scoring & Manual Overrides: Displays confidence ratings for auto-categorizations 
+  and allows drag-and-drop manual folder re-assignment.
+- Drug Interaction & Food Reaction Warnings: Flags dangerous drug-drug combinations and 
+  food-drug conflicts (e.g., avoiding dairy with certain antibiotics).
+- Inventory Expiry & Stock Replenishment Alerts: Scans batch numbers and stock thresholds, 
+  alerting users when medicines are near expiry or low in stock.
+
+--------------------------------------------------------------------------------
+1.3 Smart Lab Report OCR & Gemini Clinical Thesis Synthesizer
+--------------------------------------------------------------------------------
+- Encrypted Cloud Storage: Uploads PDF and image lab reports to Cloudinary with AES-256 
+  encryption.
+- Optical Character Recognition (OCR): Parses unstructured lab reports using Tesseract.js 
+  and Google Gemini 2.5 Flash to extract numerical biomarkers and reference ranges.
+- Domain Risk Categorization: Automatically sorts lab metrics into Cardiology, 
+  Endocrinology, Nephrology, and General Health panels.
+- Longitudinal Clinical Health Thesis Synthesizer: Aggregates historical lab reports 
+  over months/years into a single, 1-page clinical summary for attending physicians.
+
+--------------------------------------------------------------------------------
+1.4 Women's Health & PCOS/PCOD Trend Engine
+--------------------------------------------------------------------------------
+- Comprehensive Cycle Tracker: Logs cycle start/end dates, flow intensity, physical 
+  symptoms, mood variations, and pain levels.
+- Cycle Irregularity Algorithm: Analyzes inter-cycle date gaps:
+    * Stable: 21–35 days
+    * Monitor: 36–45 days
+    * High Irregularity: >45 days
+    * Critical Alert: >=90 days (Triggers PCOS/PCOD medical assessment alerts)
+- Cycle Phase Forecasting: Predicts Follicular, Luteal, Ovulation, and Menstrual phases.
+- Interactive Recharts Visualizers: Area charts displaying cycle length trends and 
+  symptom severity over time.
+- Reproductive Wellness Guidance: Delivers customized lifestyle recommendations based 
+  on cycle phase and irregularity score.
+
+--------------------------------------------------------------------------------
+1.5 Food, Nutrition & Ayurvedic Prakriti Engine
+--------------------------------------------------------------------------------
+- AI Photo Meal Scanner: Analyzes meal photographs using Gemini Vision to estimate calorie 
+  counts, macronutrients, glycemic load, and chronic disease risk factors.
+- Ayurvedic Prakriti Assessment: Evaluates Vata, Pitta, and Kapha dosha balances via 
+  a clinical quiz to identify the user's dominant Prakriti type.
+- Integrated Wellness Plan: Combines traditional Ayurvedic dietary guidelines with modern 
+  clinical nutrition advice.
+
+--------------------------------------------------------------------------------
+1.6 Family Guardian Network & Caregiver Portal
+--------------------------------------------------------------------------------
+- Family Member Linking: Connects family members, elderly parents, and children under 
+  a single guardian umbrella.
+- Remote Health Score Visibility: Allows family guardians to monitor real-time health 
+  scores and adherence percentages of aging relatives remotely.
+- Emergency Alert Dispatch: Sends instant SMS and Email notifications during 3-hour 
+  persistent Red Alert states.
+
+--------------------------------------------------------------------------------
+1.7 Government Digital Health & ABDM Integration
+--------------------------------------------------------------------------------
+- 14-Digit ABHA ID Management: Generates, links, and verifies standard Ayushman Bharat 
+  Health Account numbers (`XX-XXXX-XXXX-XXXX`).
+- Custom `@abdm` PHR Address: Assigns unique personal health handles (e.g., `rahul@abdm`).
+- Embedded ABDM QR Code Card: Generates client-side QR codes embedded with structured 
+  JSON payloads for rapid, contact-free hospital check-in scans.
+- Granular Consent Artifacts (`AbdmConsentRequest`): Empowers patients to review, grant, 
+  scope (sharing only Prescriptions, Lab Reports, Diagnostic Reports, or Health Summaries), 
+  or revoke hospital data access requests with automated `validTill` expiration enforcement.
+
+--------------------------------------------------------------------------------
+1.8 Daily Health Review, Checkups & AI Health Assistant
+--------------------------------------------------------------------------------
+- Daily Review Logger: Captures daily mood, energy levels, symptom logs, and overall wellness.
+- Preventive Checkup Reminders: Schedules routine blood pressure, blood glucose, and 
+  annual health screening checkups.
+- Gemini AI Health Assistant Chat: Conversational AI assistant for instant medical Q&A, 
+  symptom guidance, and app navigation assistance.
+- User Profile & Security Settings: Manages personal demographics, biometric security, 
+  and notification channel preferences (Email, SMS, Push).
+
+
+================================================================================
+SECTION 2: THE CARE JOURNEY & CONNECTED HOSPITAL/DOCTOR NETWORK
+================================================================================
+
+The Care Journey Pillar transforms isolated medical facilities into an integrated, 
+multi-tier clinical care network.
+
+--------------------------------------------------------------------------------
+2.1 Multi-Tier Healthcare Facility Hierarchy & Onboarding
+--------------------------------------------------------------------------------
+- Facility Classification: Onboards Primary Healthcare Centers (PHCs), Community 
+  Health Centers (CHCs), District Hospitals, Tertiary Teaching Hospitals, and Private 
+  Specialty Clinics.
+- Facility Profile & Verification: Captures facility license IDs, government registration, 
+  address, GIS map coordinates, emergency services availability, and operational departments.
+- System Admin Verification Workflow: System administrators review and verify facility 
+  and doctor credentials before granting network access.
+- Security Audit Logging (`CareAuditLog`): Immutable audit trail recording administrative 
+  actions, doctor verifications, and patient record accesses.
+
+--------------------------------------------------------------------------------
+2.2 Dynamic Multi-Hospital Doctor Mobility (`DoctorFacilityAssociation`)
+--------------------------------------------------------------------------------
+- Decoupled Doctor Identity: Medical doctors maintain independent professional profiles 
+  with medical registration numbers, licensing authorities, specializations, qualifications, 
+  and experience years.
+- Multi-Hospital Association Lifecycle: Doctors request and maintain dynamic links 
+  across multiple facilities (`PENDING` -> `ACTIVE` -> `SUSPENDED` / `ENDED`).
+- One-Click Facility Switching: Doctors switch facility dashboards with one click—managing 
+  OPD queues, accepting referrals, and reviewing inpatient charts across different 
+  hospitals without losing schedule or patient history context.
+
+--------------------------------------------------------------------------------
+2.3 Real-Time Bed-Locked Emergency Transfer Engine
+--------------------------------------------------------------------------------
+- Real-Time Bed Capacity Engine (`FacilityCapacity`): Tracks live availability for:
+    * Emergency Room Beds           * Oxygen-Supported Beds
+    * General Ward Beds             * Available Ventilator Units
+    * Intensive Care Unit (ICU) Beds
+- Bed-Locked Transfer Workflow (`PatientTransfer`): Originating facility requests an 
+  emergency transfer specifying required bed type (e.g., ICU with Ventilator) and 
+  clinical summary. The receiving hospital reviews and accepts the request, locking 
+  the required bed in real time before the ambulance departs.
+
+--------------------------------------------------------------------------------
+2.4 Digital Inter-Hospital Referral Pipeline (`CareReferral`)
+--------------------------------------------------------------------------------
+- Digital Referral Creation: Rural PHC medical officers digitally refer patients up 
+  the care chain (PHC -> CHC -> District Hospital).
+- Attached Care Journey Timeline (`CareJourneyTimelineEvent`): Automatically attaches the 
+  patient's longitudinal timeline to the referral.
+- Context-Preserved Clinical Triage: Receiving specialists access all historical lab 
+  reports, prescriptions, and vital trends instantly, eliminating paper loss and 
+  redundant diagnostic testing.
+
+--------------------------------------------------------------------------------
+2.5 Live OPD Queue Token System (`CareQueue`)
+--------------------------------------------------------------------------------
+- OPD Queue Creation: Facilities and doctors establish sequential daily OPD token queues.
+- Sequential Check-In: Patients check in digitally or at facility desks to receive a 
+  sequential token number.
+- Live Queue State Progression: Doctors advance queue states (`NEXT`, `COMPLETE`, `SKIP`) 
+  from their clinical dashboards.
+- Mobile Live Position Updates: Live queue tokens broadcast instantly to patient 
+  smartphones, allowing patients to wait comfortably outside until their turn arrives.
+
+--------------------------------------------------------------------------------
+2.6 LiveKit HD Teleconsultation & 10 Post-Session Follow-Up Message Quota
+--------------------------------------------------------------------------------
+- Low-Latency HD Telemedicine: Adaptive WebRTC video consultations powered by LiveKit 
+  Cloud SDK, operating smoothly even on low-bandwidth rural 2G/3G networks.
+- Teleconsultation Lifecycle Management: Appointment booking, token generation, socket 
+  room joining, and call termination (`TERMINATED`).
+- 10 Post-Session Follow-Up Message Quota: When a doctor terminates a teleconsultation, 
+  MediTrack automatically grants the patient 10 follow-up text or audio clip messages 
+  (`postSessionMessagesLeft: 10`). Patients can clarify dosage queries or report side 
+  effects within a protected post-session channel (`CareMessage`) without paying for 
+  new appointments.
+
+--------------------------------------------------------------------------------
+2.7 Outpatient Appointments & Digital Prescriptions
+--------------------------------------------------------------------------------
+- Appointment Scheduling: Manages in-person and teleconsultation bookings, time slots, 
+  token generation, and status workflows (`SCHEDULED`, `COMPLETED`, `CANCELLED`).
+- Digital Prescription Generator: Doctors issue digital prescriptions with drug dosages, 
+  frequencies, duration, administration instructions, and attached diagnostic orders.
+
+--------------------------------------------------------------------------------
+2.8 Diagnostic Lab Orders & Public Pharmacy Inventory Search
+--------------------------------------------------------------------------------
+- Care Diagnostic Orders (`CareDiagnosticOrder`): Doctors issue lab orders directly from 
+  the consultation desk; lab technicians execute tests and upload verified PDF reports 
+  directly to the patient's record.
+- Public Medicine Inventory Search (`CareMedicineInventory`): Patients search nearby 
+  hospital and clinic inventory stock levels in real time to locate rare medications 
+  during supply shortages.
+
+--------------------------------------------------------------------------------
+2.9 Longitudinal Care Journey Timeline (`CareJourneyTimelineEvent`)
+--------------------------------------------------------------------------------
+- Unified Clinical Timeline: Automatically records every clinical event—appointments, 
+  prescriptions, lab results, referrals, emergency transfers, teleconsultations, and 
+  ABDM consent approvals—into a single, synchronized timeline for lifetime care continuity.
+
+
+================================================================================
+SECTION 3: GLOBAL STANDARDS & HL7 FHIR R4 COMPLIANCE ROADMAP
+================================================================================
+
+MediTrack bridges both pillars using international HL7 FHIR R4 (Fast Healthcare 
+Interoperability Resources) specifications for global EHR interoperability:
+
+--------------------------------------------------------------------------------
+Pillar I (Personal Health) FHIR Mapping
+--------------------------------------------------------------------------------
+  - Patient Profile & ABHA ID     ==> FHIR `Patient` Resource
+  - Daily Vitals & Biomarkers     ==> FHIR `Observation` Resource
+  - Prescriptions & Doses         ==> FHIR `MedicationRequest` Resource
+  - ABDM Consent Artifacts        ==> FHIR `Consent` Resource
+
+--------------------------------------------------------------------------------
+Pillar II (Care Journey) FHIR Mapping
+--------------------------------------------------------------------------------
+  - Doctor Profiles               ==> FHIR `Practitioner` Resource
+  - Facilities & Bed Capacity     ==> FHIR `Location` & `Organization` Resources
+  - OPD Appointments & Tokens     ==> FHIR `Encounter` & `Appointment` Resources
+  - Inter-Hospital Referrals      ==> FHIR `ServiceRequest` Resource
+  - Emergency Transfer Locks      ==> FHIR `Task` & `Transfer` Resources
+  - Diagnostic Lab Orders         ==> FHIR `DiagnosticReport` Resource
+
+
+================================================================================
+SECTION 4: TECHNICAL ARCHITECTURE & SYSTEM SPECIFICATIONS
+================================================================================
+(Technical Reference for System Engineers & Evaluators)
+
+4.1 Dual-Portal Topology Diagram
+
+```
++---------------------------------------+   +---------------------------------------+
+|   PILLAR I: PATIENT FRONTEND (PHR)    |   |   PILLAR II: PROVIDER CARE PORTAL     |
+|      (React 18 / Vite / Port 5173)    |   |     (React 18 / Vite / Port 5174)    |
++---------------------------------------+   +---------------------------------------+
+                    |                                           |
+                    | REST APIs / JWT Auth                      | REST / WebSockets / LiveKit
+                    v                                           v
++---------------------------------------+   +---------------------------------------+
+|         PATIENT EXPRESS BACKEND       |   |       PROVIDER EXPRESS BACKEND        |
+|        (Node.js / Express / 5000)     |   |      (Node.js / Express / 5001)       |
++---------------------------------------+   +---------------------------------------+
+        |                  |                            |                  |
+        v                  v                            v                  v
++---------------+  +---------------+            +---------------+  +---------------+
+| Redis / Bull  |  | Google Gemini |            | LiveKit Cloud |  | Leaflet GIS   |
+| MQ OS Brain   |  | 2.5 Flash AI  |            | WebRTC Video  |  | Mapping Engine|
++---------------+  +---------------+            +---------------+  +---------------+
+        \                  |                            |                  /
+         \                 v                            v                 /
+          +--------------------------------------------------------------+
+          |             SHARED MONGODB ATLAS CLUSTER                     |
+          |       (40+ Synchronized Patient & Provider Entities)        |
+          +--------------------------------------------------------------+
+```
+
+4.2 Technology Stack Matrix
+  - Patient Frontend: React 18, Vite, Tailwind CSS, Framer Motion (glassmorphic Aura UI), 
+    Lucide Icons, Recharts (`/frontend`, Port 5173).
+  - Provider Frontend: React 18, Vite, Tailwind CSS (`/care_frontend`, Port 5174).
+  - Backend Microservices: Node.js, Express.js microservices (`/backend`, Port 5000 & 
+    `/care_backend`, Port 5001) with JWT authentication and bcrypt password security.
+  - Asynchronous Queues: Redis Cloud / Upstash with BullMQ (`backend/src/living-os/`) 
+    executing 5 background worker queues.
+  - AI & Vision: Google Gemini 2.5 Flash / Lite, Tesseract.js OCR, OpenFDA & RxNorm drug 
+    APIs with a 90-day lookup cache (`MedicineLookupCache`).
+  - Real-Time Video Telemedicine: LiveKit Cloud SDK (WebRTC adaptive bitrate) with 10 
+    post-session follow-up messages (`postSessionMessagesLeft: 10`).
+  - Database Tier: MongoDB Atlas modeling 40+ synchronized entities.
+  - Cost Overhead: Estimated at ~$130–$290 (approx. ₹10,600–₹24,200) monthly for 10,000 
+    active users and 50 clinics (~₹2 to ₹3 per active patient per month).
+
+================================================================================
+                        END OF SUMMARY2 DOCUMENTATION
+================================================================================

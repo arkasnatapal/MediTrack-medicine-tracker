@@ -11,8 +11,8 @@ import { useNavigate } from 'react-router-dom';
 const EmergencyPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const [userLocation, setUserLocation] = useState(null);
-    const [hospitals, setHospitals] = useState([]);
+    const [userLocation, setUserLocation] = useState(() => locationService.getCachedLocation());
+    const [hospitals, setHospitals] = useState(() => locationService.getCachedFacilities('standalone_emergency') || []);
     const [problemDescription, setProblemDescription] = useState('');
     const [selectedHospital, setSelectedHospital] = useState(null);
 
@@ -54,6 +54,13 @@ const EmergencyPage = () => {
     };
 
     const getLocation = (retryLowAccuracy = false) => {
+        const cachedLoc = locationService.getCachedLocation();
+        const cachedFacs = locationService.getCachedFacilities('standalone_emergency');
+
+        if (cachedFacs && cachedFacs.length > 0) {
+            setHospitals(cachedFacs);
+        }
+
         if (!navigator.geolocation) {
             setErrorMsg("Geolocation is not supported by your browser");
             return;
@@ -65,8 +72,16 @@ const EmergencyPage = () => {
             (position) => {
                 const loc = { latitude: position.coords.latitude, longitude: position.coords.longitude };
                 setUserLocation(loc);
-                loadHospitals(loc.latitude, loc.longitude);
                 setErrorMsg(null);
+
+                const locChanged = locationService.hasLocationChanged(loc, cachedLoc, 0.5);
+                if (!locChanged && cachedFacs && cachedFacs.length > 0) {
+                    console.log('⚡ Standalone EmergencyPage serving cached hospitals (location delta < 0.5km).');
+                    return;
+                }
+
+                locationService.saveCachedLocation(loc);
+                loadHospitals(loc.latitude, loc.longitude);
             },
             (error) => {
                 console.error("Error getting location", error);
@@ -96,7 +111,7 @@ const EmergencyPage = () => {
             { 
                 enableHighAccuracy: !retryLowAccuracy, 
                 timeout: retryLowAccuracy ? 15000 : 10000, 
-                maximumAge: 0 
+                maximumAge: 60000 
             }
         );
     };
@@ -109,6 +124,9 @@ const EmergencyPage = () => {
     const loadHospitals = async (lat, lon) => {
         const nearHospitals = await fetchNearbyHospitals(lat, lon);
         setHospitals(nearHospitals);
+        if (nearHospitals && nearHospitals.length > 0) {
+            locationService.saveCachedFacilities(nearHospitals, { latitude: lat, longitude: lon }, 'standalone_emergency');
+        }
     };
 
     const handleHospitalClick = (hospital) => {

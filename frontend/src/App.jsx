@@ -48,7 +48,7 @@ import HospitalDetailsPage from './emergency/HospitalDetailsPage'
 import EmergencyHistoryPage from './emergency/EmergencyHistoryPage'
 import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
-import { AppModeProvider } from './context/AppModeContext'
+import { AppModeProvider, useAppMode } from './context/AppModeContext'
 import PublicProfile from './pages/PublicProfile'
 import AyurvedicCentre from './components/AyurvedicCentre'
 
@@ -93,11 +93,23 @@ const AdminRoute = ({ children }) => {
 function AppContent() {
   const location = useLocation();
   const { user } = useAuth();
+  const { setActiveMode } = useAppMode();
   const isLandingPage = location.pathname === '/';
   const showSidebar = user && !isLandingPage;
   
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isChecking, setIsChecking] = useState(false);
+
+  // Ensure 'MY HEALTH' mode is enabled by default when user logs in / starts session
+  useEffect(() => {
+    if (user) {
+      const modeKey = `meditrack_session_mode_${user._id || user.id || 'user'}`;
+      if (!sessionStorage.getItem(modeKey)) {
+        setActiveMode('MY_HEALTH');
+        sessionStorage.setItem(modeKey, 'MY_HEALTH');
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -382,7 +394,7 @@ function AppContent() {
               } />
               <Route path="/care-network/prescriptions" element={
                 <PrivateRoute>
-                  <PrescriptionsPage />
+                  <Navigate to="/reports?tab=prescriptions" replace />
                 </PrivateRoute>
               } />
 

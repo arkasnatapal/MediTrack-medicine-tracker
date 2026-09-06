@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, FileText, Download, User, Calendar, Building2, Stethoscope, RefreshCw, CheckCircle2, AlertCircle, Search, ExternalLink, ChevronDown, ChevronUp, Trash2, AlertTriangle, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Pill, FileText, Download, User, Calendar, Building2, Stethoscope, RefreshCw, CheckCircle2, AlertCircle, Search, ExternalLink, ChevronDown, ChevronUp, Trash2, AlertTriangle, X, ShoppingCart, ShoppingBag } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const PrescriptionsPage = () => {
+  const navigate = useNavigate();
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -13,6 +15,18 @@ const PrescriptionsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  const handleBuyMedicines = (medList) => {
+    if (!medList || medList.length === 0) return;
+    const primaryName = medList[0].name || '';
+    navigate('/care-network/medicines', {
+      state: {
+        searchQuery: primaryName,
+        medicines: medList,
+        isBatchBuy: medList.length > 1
+      }
+    });
+  };
 
   useEffect(() => {
     fetchPrescriptions();
@@ -104,22 +118,22 @@ const PrescriptionsPage = () => {
       )}
 
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-emerald-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl space-y-4">
+      <div className="bg-gradient-to-r from-emerald-50/90 via-teal-50/90 to-slate-50/90 dark:from-teal-900 dark:via-slate-900 dark:to-emerald-950 p-6 sm:p-8 rounded-3xl text-slate-900 dark:text-white shadow-xl border border-emerald-200/80 dark:border-slate-800 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-black uppercase tracking-wider border border-teal-500/30">
-              <FileText className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-teal-500/20 text-emerald-800 dark:text-teal-300 text-xs font-black uppercase tracking-wider border border-emerald-300/60 dark:border-teal-500/30">
+              <FileText className="w-4 h-4 text-emerald-600 dark:text-teal-400" />
               <span>Medical OPD Records Hub</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black">MY PRESCRIPTIONS & CLINICAL DOCUMENTS</h1>
-            <p className="text-xs sm:text-sm text-slate-300">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">MY PRESCRIPTIONS & CLINICAL DOCUMENTS</h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
               Access, view, download, and manage your digital PDF prescriptions and offline handwritten records.
             </p>
           </div>
 
           <button
             onClick={fetchPrescriptions}
-            className="px-4 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 border border-slate-700 shadow-md transition"
+            className="px-4 py-2.5 rounded-xl bg-white/80 hover:bg-slate-100 text-slate-800 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-2 border border-emerald-200 dark:border-slate-700 shadow-md transition"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh Records</span>
@@ -128,17 +142,17 @@ const PrescriptionsPage = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-3 pt-2">
-          <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            <span className="text-[10px] text-slate-400 font-extrabold uppercase">Total Prescriptions</span>
-            <div className="text-xl sm:text-2xl font-black text-white">{prescriptions.length}</div>
+          <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-emerald-200/80 dark:border-white/10 backdrop-blur-md shadow-sm">
+            <span className="text-[10px] text-slate-600 dark:text-slate-400 font-extrabold uppercase">Total Prescriptions</span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{prescriptions.length}</div>
           </div>
-          <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            <span className="text-[10px] text-teal-300 font-extrabold uppercase">Digital PDF Copies</span>
-            <div className="text-xl sm:text-2xl font-black text-teal-300">{digitalCount}</div>
+          <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-emerald-200/80 dark:border-white/10 backdrop-blur-md shadow-sm">
+            <span className="text-[10px] text-teal-800 dark:text-teal-300 font-extrabold uppercase">Digital PDF Copies</span>
+            <div className="text-xl sm:text-2xl font-black text-teal-700 dark:text-teal-300">{digitalCount}</div>
           </div>
-          <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            <span className="text-[10px] text-amber-300 font-extrabold uppercase">Offline Handwritten</span>
-            <div className="text-xl sm:text-2xl font-black text-amber-300">{offlineCount}</div>
+          <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-emerald-200/80 dark:border-white/10 backdrop-blur-md shadow-sm">
+            <span className="text-[10px] text-amber-800 dark:text-amber-300 font-extrabold uppercase">Offline Handwritten</span>
+            <div className="text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-300">{offlineCount}</div>
           </div>
         </div>
       </div>
@@ -226,22 +240,22 @@ const PrescriptionsPage = () => {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 flex-wrap">
-                        <span className="font-semibold text-teal-600 dark:text-teal-400">
+                      <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 flex-wrap font-medium">
+                        <span className="font-bold text-teal-700 dark:text-teal-400">
                           Dr. {p.doctorName || 'Specialist'} {p.doctorSpecialization && `(${p.doctorSpecialization})`}
                         </span>
                         <span className="text-slate-400">•</span>
-                        <span>{p.date}</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">{p.date}</span>
                         {p.diagnosis && (
                           <>
                             <span className="text-slate-400">•</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200 bg-slate-200/60 dark:bg-slate-900 px-2 py-0.5 rounded-md truncate max-w-[180px]">
+                            <span className="font-extrabold text-slate-900 dark:text-slate-100 bg-slate-200 dark:bg-slate-900 px-2.5 py-0.5 rounded-md truncate max-w-[180px]">
                               {p.diagnosis}
                             </span>
                           </>
                         )}
                         {medCount > 0 && (
-                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
                             ({medCount} {medCount === 1 ? 'medicine' : 'medicines'})
                           </span>
                         )}
@@ -303,7 +317,21 @@ const PrescriptionsPage = () => {
                     {/* Prescribed Medicines Table */}
                     {p.medicines && p.medicines.length > 0 && (
                       <div className="space-y-2">
-                        <span className="font-extrabold text-slate-400 uppercase text-[10px] block">Prescribed Medicines ({p.medicines.length})</span>
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-slate-400 uppercase text-[10px] block">Prescribed Medicines ({p.medicines.length})</span>
+                          {p.medicines.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleBuyMedicines(p.medicines)}
+                              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer"
+                              title="Buy all prescribed medicines from MediTrack Pharmacy / Stock page"
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              <span>Buy All ({p.medicines.length}) Medicines</span>
+                            </button>
+                          )}
+                        </div>
+
                         <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
                           <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 border-collapse">
                             <thead>
@@ -313,6 +341,7 @@ const PrescriptionsPage = () => {
                                 <th className="p-3">Dosage</th>
                                 <th className="p-3">Frequency</th>
                                 <th className="p-3">Duration</th>
+                                <th className="p-3 text-right">Action</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -323,6 +352,17 @@ const PrescriptionsPage = () => {
                                   <td className="p-3 font-medium">{m.dosage || '-'}</td>
                                   <td className="p-3 font-bold text-teal-600 dark:text-teal-400">{m.frequency || '-'}</td>
                                   <td className="p-3 font-medium">{m.duration || '-'}</td>
+                                  <td className="p-3 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleBuyMedicines([m])}
+                                      className="px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/80 text-teal-700 dark:text-teal-300 font-extrabold text-xs border border-teal-200 dark:border-teal-800/60 inline-flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                                      title={`Buy / Order ${m.name}`}
+                                    >
+                                      <ShoppingCart className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                                      <span>Buy</span>
+                                    </button>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>

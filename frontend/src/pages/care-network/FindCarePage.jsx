@@ -41,9 +41,9 @@ const FindCarePage = () => {
   const [query, setQuery] = useState('');
   const [facilityType, setFacilityType] = useState('ALL');
   const [emergencyOnly, setEmergencyOnly] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
-  const [facilities, setFacilities] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(() => locationService.getCachedLocation() || locationService.getDefaultLocation());
+  const [facilities, setFacilities] = useState(() => locationService.getCachedFacilities('findcare') || []);
+  const [loading, setLoading] = useState(() => !(locationService.getCachedFacilities('findcare')?.length > 0));
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
 
@@ -52,18 +52,42 @@ const FindCarePage = () => {
   }, [facilityType, emergencyOnly]);
 
   const fetchLocationAndFacilities = async () => {
-    setLoading(true);
-    let loc = locationService.getDefaultLocation();
+    const cachedFacs = locationService.getCachedFacilities('findcare');
+    const cachedLoc = locationService.getCachedLocation();
+
+    if (cachedFacs && cachedFacs.length > 0 && !query && facilityType === 'ALL' && !emergencyOnly) {
+      setFacilities(cachedFacs);
+      setLoading(false);
+      if (!selectedFacility) {
+        handleSelectFacility(cachedFacs[0], cachedLoc || userLocation);
+      }
+    } else {
+      setLoading(true);
+    }
+
+    let freshLoc = userLocation || cachedLoc || locationService.getDefaultLocation();
     try {
       const userPos = await locationService.getCurrentLocation();
-      loc = userPos;
+      if (userPos && typeof userPos.latitude === 'number') {
+        freshLoc = userPos;
+      }
     } catch (err) {
       // Fallback
     }
-    setUserLocation(loc);
+    setUserLocation(freshLoc);
+
+    const locChanged = locationService.hasLocationChanged(freshLoc, cachedLoc, 0.5);
+
+    if (!locChanged && cachedFacs && cachedFacs.length > 0 && !query && facilityType === 'ALL' && !emergencyOnly) {
+      console.log('⚡ FindCarePage serving cached facilities (location delta < 0.5km).');
+      setLoading(false);
+      return;
+    }
+
+    locationService.saveCachedLocation(freshLoc);
 
     try {
-      const endpoint = `${API_BASE}/care-network/facilities?query=${encodeURIComponent(query)}&facilityType=${facilityType}&emergency=${emergencyOnly}&lat=${loc.latitude}&lng=${loc.longitude}&city=${encodeURIComponent(loc.city || 'Jalpaiguri')}`;
+      const endpoint = `${API_BASE}/care-network/facilities?query=${encodeURIComponent(query)}&facilityType=${facilityType}&emergency=${emergencyOnly}&lat=${freshLoc.latitude}&lng=${freshLoc.longitude}&city=${encodeURIComponent(freshLoc.city || 'Jalpaiguri')}`;
       const res = await axios.get(endpoint);
       if (res.data && res.data.facilities) {
         const hospitalOnlyFacilities = res.data.facilities.filter(f => {
@@ -85,17 +109,20 @@ const FindCarePage = () => {
 
         const ranked = careRecommendationService.rankFacilities({
           facilities: hospitalOnlyFacilities,
-          userLocation: loc,
+          userLocation: freshLoc,
           requiredService: query,
           isEmergency: emergencyOnly
         });
         setFacilities(ranked);
+        if (!query && facilityType === 'ALL' && !emergencyOnly) {
+          locationService.saveCachedFacilities(ranked, freshLoc, 'findcare');
+        }
         if (ranked.length > 0) {
-          handleSelectFacility(ranked[0], loc);
+          handleSelectFacility(ranked[0], freshLoc);
         }
       }
     } catch (err) {
-      console.error('Error searching facilities:', err);
+      console.error('Error fetching facilities:', err);
     } finally {
       setLoading(false);
     }
@@ -122,20 +149,20 @@ const FindCarePage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* HEADER & SEARCH BAR */}
-      <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-4">
+      <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-cyan-50/90 dark:from-slate-800 dark:via-slate-800 dark:to-slate-900 border border-blue-200/80 dark:border-slate-700 shadow-md p-6 sm:p-8 rounded-3xl space-y-4 text-slate-900 dark:text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Search className="w-7 h-7 text-blue-600" />
+              <Search className="w-7 h-7 text-blue-600 dark:text-blue-400" />
               <span>FIND PUBLIC HEALTHCARE</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">
               Search suitable PHCs, CHCs, Rural Hospitals, ECG, X-Ray & Emergency Centers in <strong>{userLocation?.city || 'Jalpaiguri'}</strong>
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+            <span className="text-xs font-extrabold text-blue-900 dark:text-slate-300 px-3 py-1 bg-blue-100/80 dark:bg-slate-700/50 rounded-full border border-blue-200 dark:border-slate-600">
               📍 Location: {userLocation?.city || 'Jalpaiguri'} (GPS Active)
             </span>
           </div>

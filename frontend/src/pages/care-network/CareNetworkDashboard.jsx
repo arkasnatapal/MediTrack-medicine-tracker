@@ -19,9 +19,9 @@ const CareNetworkDashboard = () => {
   const { t } = useAppMode();
   const { theme, setTheme } = useTheme();
 
-  const [nearbyFacilities, setNearbyFacilities] = useState([]);
-  const [loadingFacilities, setLoadingFacilities] = useState(true);
-  const [userLocation, setUserLocation] = useState(null);
+  const [nearbyFacilities, setNearbyFacilities] = useState(() => locationService.getCachedFacilities('dashboard') || []);
+  const [loadingFacilities, setLoadingFacilities] = useState(() => !(locationService.getCachedFacilities('dashboard')?.length > 0));
+  const [userLocation, setUserLocation] = useState(() => locationService.getCachedLocation() || locationService.getDefaultLocation());
   const [isRefreshingLoc, setIsRefreshingLoc] = useState(false);
 
   const [userAppointments, setUserAppointments] = useState([]);
@@ -93,21 +93,44 @@ const CareNetworkDashboard = () => {
     setQueueDataMap(newMap);
   };
 
-  const initLocationAndFacilities = async () => {
-    setLoadingFacilities(true);
-    let loc = locationService.getDefaultLocation();
+  const initLocationAndFacilities = async (forceRefresh = false) => {
+    const cachedFacs = locationService.getCachedFacilities('dashboard');
+    const cachedLoc = locationService.getCachedLocation();
+
+    if (!forceRefresh && cachedFacs && cachedFacs.length > 0) {
+      setNearbyFacilities(cachedFacs);
+      setLoadingFacilities(false);
+    } else {
+      setLoadingFacilities(true);
+    }
+
+    let freshLoc = userLocation || cachedLoc || locationService.getDefaultLocation();
     try {
       const currentLoc = await locationService.getCurrentLocation();
-      loc = currentLoc;
+      if (currentLoc && typeof currentLoc.latitude === 'number') {
+        freshLoc = currentLoc;
+      }
     } catch (err) {
       console.warn('GPS location request error, using fallback:', err);
     }
-    setUserLocation(loc);
+    setUserLocation(freshLoc);
+
+    const locChanged = locationService.hasLocationChanged(freshLoc, cachedLoc, 0.5);
+
+    if (!forceRefresh && !locChanged && cachedFacs && cachedFacs.length > 0) {
+      console.log('⚡ Dashboard using cached facilities (location delta < 0.5km).');
+      setLoadingFacilities(false);
+      setIsRefreshingLoc(false);
+      return;
+    }
+
+    locationService.saveCachedLocation(freshLoc);
 
     try {
-      const res = await axios.get(`${API_BASE}/care-network/facilities?lat=${loc.latitude}&lng=${loc.longitude}`);
+      const res = await axios.get(`${API_BASE}/care-network/facilities?lat=${freshLoc.latitude}&lng=${freshLoc.longitude}`);
       if (res.data && res.data.facilities) {
         setNearbyFacilities(res.data.facilities);
+        locationService.saveCachedFacilities(res.data.facilities, freshLoc, 'dashboard');
       }
     } catch (err) {
       console.error('Error fetching dashboard facilities:', err);
@@ -119,7 +142,7 @@ const CareNetworkDashboard = () => {
 
   const handleRefreshLocation = () => {
     setIsRefreshingLoc(true);
-    initLocationAndFacilities();
+    initLocationAndFacilities(true);
   };
 
   const toggleTheme = () => {
@@ -304,20 +327,20 @@ const CareNetworkDashboard = () => {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-3xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white p-6 sm:p-7 shadow-xl border border-rose-400/30 relative overflow-hidden backdrop-blur-md"
+        className="rounded-3xl bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 dark:from-rose-600 dark:via-red-600 dark:to-rose-700 text-slate-900 dark:text-white p-6 sm:p-7 shadow-xl border border-rose-200/80 dark:border-rose-400/30 relative overflow-hidden backdrop-blur-md"
       >
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-xl">
             <div className="flex items-center gap-2">
               <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 dark:bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600 dark:bg-white"></span>
               </span>
-              <h2 className="text-lg sm:text-xl font-black uppercase tracking-wide flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-black uppercase tracking-wide flex items-center gap-2 text-rose-950 dark:text-white">
                 🚨 {t('needImmediateHelp') || 'Emergency Trauma & Cardiac Medical Response'}
               </h2>
             </div>
-            <p className="text-xs sm:text-sm text-rose-100 font-medium leading-relaxed">
+            <p className="text-xs sm:text-sm text-rose-800 dark:text-rose-100 font-medium leading-relaxed">
               {t('emergencyNotice') || 'For life-threatening conditions (chest pain, severe breathlessness, accident trauma), call emergency response immediately.'}
             </p>
           </div>
@@ -325,26 +348,26 @@ const CareNetworkDashboard = () => {
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto shrink-0">
             <a
               href="tel:112"
-              className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-white text-rose-700 font-black text-center shadow-lg hover:bg-rose-50 transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm"
+              className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white dark:bg-white dark:text-rose-700 font-black text-center shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm"
             >
-              <PhoneCall className="w-4 h-4" />
-              <span className='text-black dark:text-black'>DIAL 112</span>
+              <PhoneCall className="w-4 h-4 text-white dark:text-rose-600" />
+              <span>DIAL 112</span>
             </a>
 
             <a
               href="tel:108"
-              className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-black/30 hover:bg-black/40 text-white border border-white/30 font-bold text-center backdrop-blur-md transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm"
+              className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-white/90 hover:bg-white text-rose-900 border border-rose-300 dark:bg-black/30 dark:hover:bg-black/40 dark:text-white dark:border-white/30 font-bold text-center backdrop-blur-md transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm shadow-sm"
             >
-              <PhoneCall className="w-4 h-4 text-amber-300" />
-              <span className='text-white dark:text-white'>DIAL 108 (AMBULANCE)</span>
+              <PhoneCall className="w-4 h-4 text-rose-600 dark:text-amber-300" />
+              <span>DIAL 108 (AMBULANCE)</span>
             </a>
 
             <button
               onClick={() => navigate('/care-network/emergency')}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-black/40 hover:bg-black/50 text-white font-bold text-center border border-white/30 backdrop-blur-md transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm"
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white/90 hover:bg-white text-rose-900 border border-rose-300 dark:bg-black/40 dark:hover:bg-black/50 dark:text-white dark:border-white/30 font-bold text-center backdrop-blur-md transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm shadow-sm"
             >
-              <ShieldAlert className="w-4 h-4 text-amber-300" />
-              <span className='text-white dark:text-white'>{t('findImmediateCare') || 'Nearest Emergency Center'}</span>
+              <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-amber-300" />
+              <span>{t('findImmediateCare') || 'Nearest Emergency Center'}</span>
             </button>
           </div>
         </div>

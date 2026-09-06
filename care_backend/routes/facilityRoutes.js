@@ -22,20 +22,54 @@ const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   return Math.round(R * c * 10) / 10;
 };
 
-// Dynamic Local Facilities Generator as comprehensive fallback for any coordinates
-const generateLocalFacilitiesForCoordinates = (userLat, userLng, userCity = 'Jalpaiguri') => {
+// Geocode location query string (e.g. "Delhi", "Kolkata", "Bankura", "Siliguri", "Mumbai") using OpenStreetMap Nominatim
+const geocodeLocationQuery = async (locationQuery) => {
+  if (!locationQuery || typeof locationQuery !== 'string' || !locationQuery.trim()) return null;
+  const q = locationQuery.trim();
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`;
+    const res = await fetch(geoUrl, {
+      headers: {
+        'User-Agent': 'MediTrack-Care-App/1.0 (contact@meditrack.care)'
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      const item = data[0];
+      return {
+        lat: parseFloat(item.lat),
+        lon: parseFloat(item.lon),
+        displayName: item.display_name
+      };
+    }
+  } catch (err) {
+    console.warn(`Geocoding failed for '${locationQuery}':`, err.message);
+  }
+  return null;
+};
+
+// Dynamic Local Facilities Generator as clean fallback
+const generateLocalFacilitiesForCoordinates = (userLat, userLng, userCity = 'Locality') => {
   const baseLat = userLat || 26.54;
   const baseLng = userLng || 88.71;
-  const city = userCity || 'Jalpaiguri';
+  const city = userCity || 'Locality';
 
   return [
     {
       facilityId: `FAC-DYN-DH-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
+      _id: `FAC-DYN-DH-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
       name: `${city} District Hospital & Super Specialty Trauma Center`,
       facilityType: 'DISTRICT_HOSPITAL',
-      state: 'West Bengal',
+      state: city,
       district: city,
-      address: `Civil Hospital Complex, Hospital Road, ${city}`,
+      address: `Civil Hospital Complex, Main Hospital Road, ${city}`,
       latitude: baseLat + 0.005,
       longitude: baseLng + 0.003,
       phone: '+91 3561 222100',
@@ -44,15 +78,16 @@ const generateLocalFacilitiesForCoordinates = (userLat, userLng, userCity = 'Jal
       opdAvailable: true,
       operatingHours: '24/7 Apex Emergency & Trauma Center',
       isPublicFacility: true,
-      isMediTrackVerified: true,
-      canSelect: true,
-      badgeText: 'Locality District Hospital'
+      isMediTrackVerified: false,
+      canSelect: false,
+      badgeText: 'Unverified Locality Hospital'
     },
     {
       facilityId: `FAC-DYN-CHC-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
+      _id: `FAC-DYN-CHC-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
       name: `${city} Community Health Centre (CHC)`,
       facilityType: 'CHC',
-      state: 'West Bengal',
+      state: city,
       district: city,
       address: `Sub-Divisional Health Hub, DBC Road, ${city}`,
       latitude: baseLat - 0.008,
@@ -64,134 +99,19 @@ const generateLocalFacilitiesForCoordinates = (userLat, userLng, userCity = 'Jal
       operatingHours: '24 Hours OPD & Emergency',
       isPublicFacility: true,
       isMediTrackVerified: false,
-      canSelect: true,
-      badgeText: 'Locality CHC'
-    },
-    {
-      facilityId: `FAC-DYN-PHC1-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
-      name: `${city} Sadar Primary Health Centre (PHC)`,
-      facilityType: 'PHC',
-      state: 'West Bengal',
-      district: city,
-      address: `Main Market Road, Block Health Unit, ${city}`,
-      latitude: baseLat + 0.008,
-      longitude: baseLng - 0.009,
-      phone: '+91 3561 221200',
-      emergencyAvailable: true,
-      ambulanceSupported: false,
-      opdAvailable: true,
-      operatingHours: '08:00 AM - 08:00 PM',
-      isPublicFacility: true,
-      isMediTrackVerified: false,
-      canSelect: true,
-      badgeText: 'Locality PHC'
-    },
-    {
-      facilityId: `FAC-DYN-RH-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
-      name: `${city} Regional Rural Hospital & Maternity Unit`,
-      facilityType: 'RURAL_HOSPITAL',
-      state: 'West Bengal',
-      district: city,
-      address: `Rural Hospital Complex, Main Arterial Road, ${city}`,
-      latitude: baseLat - 0.018,
-      longitude: baseLng - 0.015,
-      phone: '+91 3561 229988',
-      emergencyAvailable: true,
-      ambulanceSupported: true,
-      opdAvailable: true,
-      operatingHours: '24/7 Emergency',
-      isPublicFacility: true,
-      isMediTrackVerified: false,
-      canSelect: true,
-      badgeText: 'Locality Rural Hospital'
-    },
-    {
-      facilityId: `FAC-DYN-MC-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
-      name: `${city} Government Medical College & Hospital`,
-      facilityType: 'GOVT_HOSPITAL',
-      state: 'West Bengal',
-      district: city,
-      address: `Medical College Campus, ${city}`,
-      latitude: baseLat + 0.022,
-      longitude: baseLng + 0.018,
-      phone: '+91 3561 223300',
-      emergencyAvailable: true,
-      ambulanceSupported: true,
-      opdAvailable: true,
-      operatingHours: '24/7 Multi-Specialty Tertiary Care',
-      isPublicFacility: true,
-      isMediTrackVerified: true,
-      canSelect: true,
-      badgeText: 'Medical College & Hospital'
-    },
-    {
-      facilityId: `FAC-DYN-RAIL-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
-      name: `${city} Railway Divisional Hospital`,
-      facilityType: 'GOVT_HOSPITAL',
-      state: 'West Bengal',
-      district: city,
-      address: `Station Road, Railway Colony, ${city}`,
-      latitude: baseLat - 0.012,
-      longitude: baseLng - 0.007,
-      phone: '+91 3561 227744',
-      emergencyAvailable: true,
-      ambulanceSupported: true,
-      opdAvailable: true,
-      operatingHours: '24/7 Emergency Unit',
-      isPublicFacility: true,
-      isMediTrackVerified: false,
-      canSelect: true,
-      badgeText: 'Railway Hospital'
-    },
-    {
-      facilityId: `FAC-DYN-PHC2-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
-      name: `North Block Primary Health Centre (PHC)`,
-      facilityType: 'PHC',
-      state: 'West Bengal',
-      district: city,
-      address: `North Sub-Block Road, ${city}`,
-      latitude: baseLat + 0.035,
-      longitude: baseLng + 0.025,
-      phone: '+91 3561 228811',
-      emergencyAvailable: true,
-      ambulanceSupported: false,
-      opdAvailable: true,
-      operatingHours: '08:00 AM - 04:00 PM',
-      isPublicFacility: true,
-      isMediTrackVerified: false,
-      canSelect: true,
-      badgeText: 'Sub-Block PHC'
-    },
-    {
-      facilityId: `FAC-DYN-UHC-${Math.round(baseLat * 100)}-${Math.round(baseLng * 100)}`,
-      name: `Urban Primary Health Centre (UPHC) Central`,
-      facilityType: 'PUBLIC_HEALTHCARE',
-      state: 'West Bengal',
-      district: city,
-      address: `Municipal Ward 12, ${city}`,
-      latitude: baseLat - 0.003,
-      longitude: baseLng - 0.005,
-      phone: '+91 3561 225500',
-      emergencyAvailable: true,
-      ambulanceSupported: true,
-      opdAvailable: true,
-      operatingHours: '08:00 AM - 08:00 PM',
-      isPublicFacility: true,
-      isMediTrackVerified: false,
-      canSelect: true,
-      badgeText: 'Urban Health Center'
+      canSelect: false,
+      badgeText: 'Unverified Locality Hospital'
     }
   ];
 };
 
-// OpenStreetMap Overpass API Fetcher for hospitals, clinics, healthcare centers
-const fetchRealOSMHospitals = async (userLat, userLng, userCity = 'Jalpaiguri', radius = 35000) => {
-  const defaultList = generateLocalFacilitiesForCoordinates(userLat, userLng, userCity);
 
+// OpenStreetMap Overpass API Fetcher for hospitals, clinics, healthcare centers
+const fetchRealOSMHospitals = async (userLat, userLng, userCity = 'Locality', radius = 30000) => {
   try {
     const lat = userLat || 26.54;
     const lon = userLng || 88.71;
-    const searchCity = userCity || 'Jalpaiguri';
+    const searchCity = userCity || 'Locality';
 
     const query = `
       [out:json][timeout:10];
@@ -203,7 +123,6 @@ const fetchRealOSMHospitals = async (userLat, userLng, userCity = 'Jalpaiguri', 
         way["amenity"="clinic"](around:${radius},${lat},${lon});
         node["healthcare"="hospital"](around:${radius},${lat},${lon});
         node["healthcare"="centre"](around:${radius},${lat},${lon});
-        node["healthcare"="clinic"](around:${radius},${lat},${lon});
       );
       out center;
     `;
@@ -260,9 +179,10 @@ const fetchRealOSMHospitals = async (userLat, userLng, userCity = 'Jalpaiguri', 
 
           uniqueMap.set(rawName, {
             facilityId: placeId,
+            _id: placeId,
             name: rawName,
             facilityType: fType,
-            state: el.tags?.['addr:state'] || 'West Bengal',
+            state: el.tags?.['addr:state'] || searchCity,
             district: el.tags?.['addr:city'] || searchCity,
             address: el.tags?.['addr:full'] || el.tags?.['addr:street'] || `${rawName}, ${searchCity}`,
             latitude: placeLat,
@@ -272,72 +192,68 @@ const fetchRealOSMHospitals = async (userLat, userLng, userCity = 'Jalpaiguri', 
             distanceKm: Math.round(dist * 10) / 10,
             isPublicFacility: true,
             isMediTrackVerified: false,
-            canSelect: true,
-            badgeText: 'Locality Hospital'
+            canSelect: false,
+            badgeText: 'Unverified Locality Hospital'
           });
         }
       });
     }
 
-    const osmList = Array.from(uniqueMap.values());
-
-    // Merge OSM list with default regional facilities so user gets a complete view of ALL hospitals near them!
-    const combined = [...osmList];
-    defaultList.forEach(defFac => {
-      const exists = combined.some(item =>
-        item.name.toLowerCase().includes(defFac.name.toLowerCase()) ||
-        defFac.name.toLowerCase().includes(item.name.toLowerCase())
-      );
-      if (!exists) {
-        combined.push(defFac);
-      }
-    });
-
-    return combined;
+    return Array.from(uniqueMap.values());
   } catch (err) {
-    console.warn('OSM fetch fallback in care_backend:', err.message);
+    console.warn('OSM fetch warning in care_backend:', err.message);
   }
 
-  return defaultList;
+  return generateLocalFacilitiesForCoordinates(userLat, userLng, userCity);
 };
 
 // Get all verified facilities + locality hospitals matching client map fetching
 router.get('/', async (req, res) => {
   try {
-    const { type, district, state, search, lat, lng, city, query: searchParam } = req.query;
+    const { type, district, state, search, location, searchLocation, lat, lng, city, query: searchParam } = req.query;
 
-    const userLat = lat ? parseFloat(lat) : null;
-    const userLng = lng ? parseFloat(lng) : null;
-    const userCity = city || district || 'Jalpaiguri';
+    const locationQuery = location || searchLocation || state || search || searchParam || city;
+
+    let targetLat = lat ? parseFloat(lat) : null;
+    let targetLng = lng ? parseFloat(lng) : null;
+    let searchLabel = city || district || locationQuery || 'Locality';
+
+    // Geocode location query if coordinates are not provided directly
+    if (locationQuery && (!targetLat || !targetLng)) {
+      const geoResult = await geocodeLocationQuery(locationQuery);
+      if (geoResult) {
+        targetLat = geoResult.lat;
+        targetLng = geoResult.lon;
+        searchLabel = locationQuery;
+      }
+    }
 
     const mongoQuery = {};
     if (type && type !== 'ALL') mongoQuery.facilityType = type;
-    if (district) mongoQuery.district = new RegExp(district, 'i');
-    if (state) mongoQuery.state = new RegExp(state, 'i');
-    const searchStr = search || searchParam;
-    if (searchStr) {
+    if (locationQuery) {
       mongoQuery.$or = [
-        { name: new RegExp(searchStr, 'i') },
-        { address: new RegExp(searchStr, 'i') },
-        { district: new RegExp(searchStr, 'i') },
+        { name: new RegExp(locationQuery, 'i') },
+        { address: new RegExp(locationQuery, 'i') },
+        { district: new RegExp(locationQuery, 'i') },
+        { state: new RegExp(locationQuery, 'i') },
       ];
     }
 
     const dbFacilities = await Facility.find(mongoQuery).lean();
 
     const registeredCareFacs = dbFacilities.map(f => {
-      const dist = userLat && userLng ? calculateDistanceKm(userLat, userLng, f.latitude || userLat, f.longitude || userLng) : 0;
+      const dist = targetLat && targetLng ? calculateDistanceKm(targetLat, targetLng, f.latitude || targetLat, f.longitude || targetLng) : 0;
       const isVer = f.verificationStatus === 'VERIFIED' || !f.verificationStatus || f.verificationStatus === 'PENDING_VERIFICATION';
       return {
         facilityId: f._id.toString(),
         _id: f._id,
         name: f.name,
         facilityType: f.facilityType || 'DISTRICT_HOSPITAL',
-        state: f.state || 'West Bengal',
-        district: f.district || userCity,
-        address: f.address || `${f.name}, ${userCity}`,
-        latitude: f.latitude || userLat || 26.54,
-        longitude: f.longitude || userLng || 88.71,
+        state: f.state || searchLabel,
+        district: f.district || searchLabel,
+        address: f.address || `${f.name}, ${searchLabel}`,
+        latitude: f.latitude || targetLat || 26.54,
+        longitude: f.longitude || targetLng || 88.71,
         phone: f.phone || '+91 3561 222100',
         email: f.email || 'facility@meditrack.care',
         emergencyAvailable: f.emergencyAvailable ?? true,
@@ -351,15 +267,15 @@ router.get('/', async (req, res) => {
         distanceKm: Math.round(dist * 10) / 10,
         estimatedTravelTimeMinutes: Math.round(dist * 2.5) || 5,
         isMediTrackVerified: isVer,
-        canSelect: true,
-        badgeText: isVer ? 'MediTrack Verified' : 'Unverified Locality Hospital'
+        canSelect: isVer,
+        badgeText: isVer ? 'MediTrack Verified ✓' : 'Unverified Locality Hospital'
       };
     });
 
     let osmLocalityFacs = [];
-    if (userLat && userLng) {
+    if (targetLat && targetLng) {
       try {
-        const rawOsm = await fetchRealOSMHospitals(userLat, userLng, userCity);
+        const rawOsm = await fetchRealOSMHospitals(targetLat, targetLng, searchLabel);
         osmLocalityFacs = rawOsm.map(f => {
           const isMatched = registeredCareFacs.some(rf =>
             rf.name.toLowerCase().includes(f.name.toLowerCase()) ||
@@ -372,7 +288,7 @@ router.get('/', async (req, res) => {
             estimatedTravelTimeMinutes: Math.round((f.distanceKm || 1) * 2.5) || 5,
             isMediTrackVerified: false,
             verificationStatus: 'UNVERIFIED',
-            canSelect: true,
+            canSelect: false, // Unverified options cannot be selected!
             badgeText: 'Unverified Locality Hospital'
           };
         }).filter(Boolean);
@@ -381,6 +297,7 @@ router.get('/', async (req, res) => {
       }
     }
 
+    // Verified facilities FIRST, Unverified facilities SECOND
     let allFacilities = [...registeredCareFacs, ...osmLocalityFacs];
 
     // Facility Type Filter
@@ -394,18 +311,13 @@ router.get('/', async (req, res) => {
       );
     }
 
-    // Search Query Filter
-    if (searchStr && searchStr.trim() !== '') {
-      const q = searchStr.toLowerCase();
-      allFacilities = allFacilities.filter(f =>
-        f.name.toLowerCase().includes(q) ||
-        (f.district && f.district.toLowerCase().includes(q)) ||
-        (f.address && f.address.toLowerCase().includes(q))
-      );
-    }
-
-    if (userLat && userLng) {
-      allFacilities.sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+    if (targetLat && targetLng) {
+      // Sort verified first, then by distance
+      allFacilities.sort((a, b) => {
+        if (a.isMediTrackVerified && !b.isMediTrackVerified) return -1;
+        if (!a.isMediTrackVerified && b.isMediTrackVerified) return 1;
+        return (a.distanceKm || 0) - (b.distanceKm || 0);
+      });
     }
 
     if (req.query.format === 'object' || req.query.lat) {

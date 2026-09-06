@@ -55,6 +55,7 @@ export const AuthProvider = ({ children }) => {
 
       const { token, user } = response.data;
       localStorage.setItem('token', token);
+      localStorage.setItem('meditrack_active_mode', 'MY_HEALTH');
       setUser(user);
       notify.success('Login successful!');
       return { success: true };
@@ -85,6 +86,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/verify-login-otp', { email, otp });
       const { token, user } = response.data;
       localStorage.setItem('token', token);
+      localStorage.setItem('meditrack_active_mode', 'MY_HEALTH');
       setUser(user);
       notify.success('Login successful!');
       return true;

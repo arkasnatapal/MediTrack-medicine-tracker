@@ -117,5 +117,99 @@ export const locationService = {
         Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return Math.round(R * c * 10) / 10;
+  },
+
+  // Storage Key Constants
+  CACHE_KEYS: {
+    LOCATION: 'meditrack_user_location',
+    FACILITIES: 'meditrack_cached_facilities'
+  },
+
+  // Get locally cached user location from device storage
+  getCachedLocation: () => {
+    try {
+      const raw = localStorage.getItem(locationService.CACHE_KEYS.LOCATION);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading cached location:', e);
+    }
+    return null;
+  },
+
+  // Save current location to device storage
+  saveCachedLocation: (loc) => {
+    if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') return;
+    try {
+      const locToSave = {
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        city: loc.city || 'Jalpaiguri',
+        region: loc.region || 'West Bengal',
+        country: loc.country || 'India',
+        savedAt: Date.now(),
+        isIPLocation: !!loc.isIPLocation,
+        isManual: !!loc.isManual
+      };
+      localStorage.setItem(locationService.CACHE_KEYS.LOCATION, JSON.stringify(locToSave));
+    } catch (e) {
+      console.warn('Error saving cached location:', e);
+    }
+  },
+
+  // Check if location has changed significantly (> thresholdKm, default 0.5 km)
+  hasLocationChanged: (newLoc, cachedLoc = null, thresholdKm = 0.5) => {
+    const targetCache = cachedLoc || locationService.getCachedLocation();
+    if (!targetCache) return true;
+    if (!newLoc || typeof newLoc.latitude !== 'number' || typeof newLoc.longitude !== 'number') return false;
+
+    // Check city difference or spatial distance threshold
+    if (newLoc.city && targetCache.city && newLoc.city.toLowerCase() !== targetCache.city.toLowerCase()) {
+      return true;
+    }
+
+    const dist = locationService.calculateDistanceKm(
+      targetCache.latitude,
+      targetCache.longitude,
+      newLoc.latitude,
+      newLoc.longitude
+    );
+    return dist > thresholdKm;
+  },
+
+  // Get cached hospitals/facilities for a given cache key (e.g. 'emergency', 'dashboard', 'appointments')
+  getCachedFacilities: (cacheKey = 'default') => {
+    try {
+      const raw = localStorage.getItem(`${locationService.CACHE_KEYS.FACILITIES}_${cacheKey}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.facilities) && parsed.facilities.length > 0) {
+          return parsed.facilities;
+        }
+      }
+    } catch (e) {
+      console.warn(`Error reading cached facilities [${cacheKey}]:`, e);
+    }
+    return null;
+  },
+
+  // Save hospitals/facilities to local device storage
+  saveCachedFacilities: (facilities, loc = null, cacheKey = 'default') => {
+    if (!Array.isArray(facilities) || facilities.length === 0) return;
+    try {
+      const payload = {
+        facilities,
+        location: loc || locationService.getCachedLocation(),
+        savedAt: Date.now()
+      };
+      localStorage.setItem(`${locationService.CACHE_KEYS.FACILITIES}_${cacheKey}`, JSON.stringify(payload));
+    } catch (e) {
+      console.warn(`Error saving cached facilities [${cacheKey}]:`, e);
+    }
   }
 };
+

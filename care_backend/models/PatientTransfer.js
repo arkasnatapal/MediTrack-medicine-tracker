@@ -5,6 +5,7 @@ const patientTransferSchema = new mongoose.Schema(
     patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'PatientRecord', required: true },
     originatingFacilityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Facility', required: true },
     destinationFacilityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Facility', required: true },
+    referringDoctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
     reason: { type: String, required: true },
     clinicalSummary: { type: String, required: true },
     urgency: { type: String, enum: ['NORMAL', 'URGENT', 'CRITICAL'], default: 'CRITICAL' },
@@ -19,6 +20,20 @@ const patientTransferSchema = new mongoose.Schema(
     oxygenRequired: { type: Boolean, default: false },
     accompanyingDoctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
     accompanyingStaffName: { type: String },
+    patientFamilyConsent: {
+      consentGiven: { type: Boolean, default: false },
+      familyMemberName: { type: String },
+      familyRelation: { type: String },
+      familyContact: { type: String },
+      consentNotes: { type: String },
+    },
+    isInterState: { type: Boolean, default: false },
+    interStateDoctorConfirmation: {
+      confirmed: { type: Boolean, default: false },
+      doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
+      confirmedAt: { type: Date },
+      clinicalJustification: { type: String },
+    },
     attachedReports: [{ title: String, fileUrl: String }],
     status: {
       type: String,
@@ -42,3 +57,4 @@ const patientTransferSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model('PatientTransfer', patientTransferSchema);
+

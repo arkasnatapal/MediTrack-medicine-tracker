@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Pill, Search, Building2, AlertCircle, ExternalLink, ChevronRight, Info, 
   CheckCircle2, ShoppingCart, ShieldCheck, Tag, Sparkles, MapPin, Truck, Store, 
-  ArrowRight, BookOpen, AlertTriangle, ShieldAlert, HeartPulse, RefreshCw, Activity, Heart, HelpCircle
+  ArrowRight, BookOpen, AlertTriangle, ShieldAlert, HeartPulse, RefreshCw, Activity, Heart, HelpCircle, ShoppingBag, X
 } from 'lucide-react';
 import { onlineMedicineService } from '../../services/onlineMedicineService';
 import { locationService } from '../../services/locationService';
@@ -16,38 +17,90 @@ const popularMedicines = [
 ];
 
 const MedicineAvailabilityPage = () => {
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('Pan 40');
-  const [userLocation, setUserLocation] = useState(null);
-  const [inventoryList, setInventoryList] = useState([]);
-  const [onlineData, setOnlineData] = useState(null);
+  const [userLocation, setUserLocation] = useState(() => locationService.getCachedLocation() || locationService.getDefaultLocation());
+  const [inventoryList, setInventoryList] = useState(() => locationService.getCachedFacilities('medicine') || []);
+  const [onlineDataList, setOnlineDataList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeView, setActiveView] = useState('ALL'); // 'ALL' | 'PUBLIC' | 'ONLINE'
+  const [basketMedicines, setBasketMedicines] = useState([]);
 
   useEffect(() => {
     initUserLocation();
   }, []);
 
+  useEffect(() => {
+    if (location.state?.medicines && Array.isArray(location.state.medicines)) {
+      const meds = location.state.medicines;
+      setBasketMedicines(meds);
+      const names = meds.map(m => (typeof m === 'string' ? m : m.name)).filter(Boolean);
+      if (names.length > 0) {
+        setSearchTerm(names.join(', '));
+      }
+      executeSearch(meds);
+    }
+  }, [location.state]);
+
+  const handleBuyAllTata1mg = (meds) => {
+    if (!meds || meds.length === 0) return;
+    const medList = meds.map(m => (typeof m === 'string' ? m : m.name)).filter(Boolean);
+    if (medList.length === 0) return;
+
+    // 1. Immediately update UI search term and trigger multi-search across all items
+    setSearchTerm(medList.join(', '));
+    executeSearch(meds);
+
+    // 2. Open Tata 1mg order pages for all medicines, staggered to bypass browser popup blockers
+    medList.forEach((medName, idx) => {
+      setTimeout(() => {
+        window.open(`https://www.1mg.com/search/all?name=${encodeURIComponent(medName)}`, '_blank');
+      }, idx * 300);
+    });
+  };
+
   const initUserLocation = async () => {
-    let loc = locationService.getDefaultLocation();
+    const cachedLoc = locationService.getCachedLocation();
+    const cachedMeds = locationService.getCachedFacilities('medicine');
+
+    if (cachedMeds && cachedMeds.length > 0) {
+      setInventoryList(cachedMeds);
+    }
+
+    let loc = userLocation || cachedLoc || locationService.getDefaultLocation();
     try {
       const currentLoc = await locationService.getCurrentLocation();
-      loc = currentLoc;
+      if (currentLoc && typeof currentLoc.latitude === 'number') {
+        loc = currentLoc;
+      }
     } catch (err) {
       console.warn('Location detection using default:', err);
     }
     setUserLocation(loc);
-    executeSearch('Pan 40', loc);
+
+    const locChanged = locationService.hasLocationChanged(loc, cachedLoc, 0.5);
+
+    if (!location.state?.medicines) {
+      if (!locChanged && cachedMeds && cachedMeds.length > 0) {
+        console.log('⚡ MedicineAvailabilityPage serving cached pharmacy stock (location delta < 0.5km).');
+        return;
+      }
+      const initialQuery = location.state?.searchQuery || 'Pan 40';
+      executeSearch(initialQuery, loc);
+    }
+    locationService.saveCachedLocation(loc);
   };
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      executeSearch(searchTerm.trim(), userLocation);
+      const items = searchTerm.split(',').map(s => s.trim()).filter(Boolean);
+      executeSearch(items.length > 1 ? items : items[0], userLocation);
     }
   };
 
-  const executeSearch = async (query, loc = userLocation) => {
-    if (!query) return;
+  const executeSearch = async (queryOrList, loc = userLocation) => {
+    if (!queryOrList) return;
     setLoading(true);
 
     try {
@@ -55,15 +108,31 @@ const MedicineAvailabilityPage = () => {
       const lng = loc ? loc.longitude : '';
       const city = loc ? (loc.city || 'Jalpaiguri') : 'Jalpaiguri';
 
-      // 1. Fetch Location-Aware Public Facility Inventory from DB (strictly in user's city e.g. Jalpaiguri - NO Pune/Delhi)
-      const invRes = await axios.get(`${API_BASE}/care-network/inventory?name=${encodeURIComponent(query)}&lat=${lat}&lng=${lng}&city=${encodeURIComponent(city)}`);
-      if (invRes.data && invRes.data.inventory) {
-        setInventoryList(invRes.data.inventory);
-      }
+      const queries = Array.isArray(queryOrList)
+        ? queryOrList.map(m => (typeof m === 'string' ? m : m.name)).filter(Boolean)
+        : (typeof queryOrList === 'string' ? queryOrList.split(',').map(s => s.trim()).filter(Boolean) : [queryOrList.name]);
 
-      // 2. Fetch Real Medicine Packaging Photo & Online Pharmacy Deep Links live from Tata 1mg API
-      const onlineDetails = await onlineMedicineService.fetchReal1mgMedicineDetails(query);
-      setOnlineData(onlineDetails);
+      if (queries.length === 0) return;
+
+      // 1. Fetch Location-Aware Public Facility Inventory for queries
+      const invPromises = queries.map(q =>
+        axios.get(`${API_BASE}/care-network/inventory?name=${encodeURIComponent(q)}&lat=${lat}&lng=${lng}&city=${encodeURIComponent(city)}`)
+          .catch(() => ({ data: { inventory: [] } }))
+      );
+      const invResults = await Promise.all(invPromises);
+
+      let combinedInventory = [];
+      invResults.forEach(res => {
+        if (res.data && Array.isArray(res.data.inventory)) {
+          combinedInventory.push(...res.data.inventory);
+        }
+      });
+      setInventoryList(combinedInventory);
+
+      // 2. Fetch Real Medicine Packaging Photos & Online Pharmacy Deep Links for ALL queries in parallel
+      const onlinePromises = queries.map(q => onlineMedicineService.fetchReal1mgMedicineDetails(q));
+      const onlineResults = await Promise.all(onlinePromises);
+      setOnlineDataList(onlineResults);
 
     } catch (err) {
       console.error('Error fetching medicine details:', err);
@@ -72,23 +141,21 @@ const MedicineAvailabilityPage = () => {
     }
   };
 
-  const clinical = onlineData?.clinicalDetails || {};
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
       {/* HEADER CARD & SEARCH BAR */}
-      <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-5">
+      <div className="bg-gradient-to-r from-teal-50/90 via-emerald-50/90 to-cyan-50/90 dark:from-slate-800 dark:via-slate-800 dark:to-slate-900 border border-teal-200/80 dark:border-slate-700 shadow-md p-6 sm:p-8 rounded-3xl space-y-5 text-slate-900 dark:text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 text-xs font-black uppercase">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 border border-teal-300/60 dark:border-transparent text-xs font-black uppercase">
               <Pill className="w-4 h-4 text-teal-600 dark:text-teal-400" />
               <span>Public Stock Tracker + Live Tata 1mg Aggregator</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
               MEDICINE AVAILABILITY & ONLINE ORDER HUB
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">
               Check free government stock in <strong>{userLocation?.city || 'Jalpaiguri'}</strong> public health centers or order online with live Tata 1mg product photos, usage guidelines & platform order links.
             </p>
           </div>
@@ -163,6 +230,103 @@ const MedicineAvailabilityPage = () => {
         </div>
       </div>
 
+      {/* PRESCRIBED MEDICINES BUY BASKET BANNER */}
+      {basketMedicines.length > 0 && (
+        <div className="bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 dark:from-emerald-950 dark:via-slate-900 dark:to-teal-950 border border-emerald-500/40 rounded-3xl p-6 shadow-xl text-white space-y-4 animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/30 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <ShoppingBag className="w-5 h-5 text-emerald-400 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  Prescribed Medicines Buy Basket ({basketMedicines.length} Items)
+                </h3>
+                <p className="text-xs text-slate-300 font-medium">
+                  Direct online order & public stock verification from your Doctor Prescription
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const names = basketMedicines.map(m => typeof m === 'string' ? m : m.name).filter(Boolean);
+                  setSearchTerm(names.join(', '));
+                  executeSearch(basketMedicines);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-400 border border-emerald-500/40 font-extrabold text-xs flex items-center gap-1.5 shadow transition cursor-pointer"
+                title="Show all basket medicines in stock & online order panels"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Show All ({basketMedicines.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleBuyAllTata1mg(basketMedicines)}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition active:scale-95 cursor-pointer ring-2 ring-emerald-400/50 animate-pulse"
+                title="Open online order search links on Tata 1mg for all prescribed medicines"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Buy All ({basketMedicines.length}) Online via Tata 1mg</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBasketMedicines([])}
+                className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+                title="Dismiss Basket"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {basketMedicines.map((m, idx) => (
+              <div key={idx} className="p-3.5 rounded-2xl bg-slate-950/80 border border-emerald-500/30 flex items-center justify-between gap-3">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="font-extrabold text-white text-xs truncate flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="truncate">{m.name}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Dosage: <strong className="text-slate-200">{m.dosage || '500mg'}</strong> • <span className="text-emerald-400 font-bold">{m.frequency || '1-0-1'}</span> ({m.duration || '5 days'})
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm(m.name);
+                      executeSearch(m.name);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold text-[11px] border border-slate-700 flex items-center gap-1 transition cursor-pointer"
+                    title={`Check live public hospital stock for ${m.name}`}
+                  >
+                    <Search className="w-3 h-3 text-cyan-400" />
+                    <span>Stock</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => window.open(`https://www.1mg.com/search/all?name=${encodeURIComponent(m.name)}`, '_blank')}
+                    className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-[11px] border border-emerald-500/40 flex items-center gap-1 transition cursor-pointer"
+                    title={`Order ${m.name} on Tata 1mg`}
+                  >
+                    <ShoppingCart className="w-3 h-3 text-emerald-400" />
+                    <span>Buy</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ANIMATED LOADING SPINNER STATE */}
       {loading && (
         <div className="p-10 text-center bg-white/60 dark:bg-slate-800/60 rounded-3xl border border-slate-200 dark:border-slate-700 backdrop-blur-md shadow-lg space-y-3">
@@ -235,197 +399,191 @@ const MedicineAvailabilityPage = () => {
             </div>
           )}
 
-          {/* BRANCH 2: ONLINE ORDER OPTIONS (REAL TATA 1MG PHOTO + INTEGRATED USAGE & SAFETY DETAILS) */}
-          {(activeView === 'ALL' || activeView === 'ONLINE') && onlineData && (
-            <div className={`${activeView === 'ONLINE' ? 'lg:col-span-12' : 'lg:col-span-7'} space-y-4`}>
+          {/* BRANCH 2: ONLINE ORDER OPTIONS (REAL TATA 1MG PHOTO + INTEGRATED USAGE & SAFETY DETAILS FOR ALL MEDICINES) */}
+          {(activeView === 'ALL' || activeView === 'ONLINE') && onlineDataList.length > 0 && (
+            <div className={`${activeView === 'ONLINE' ? 'lg:col-span-12' : 'lg:col-span-7'} space-y-6`}>
               
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-indigo-600" />
-                  <span>Online Order Options & Medicine Guide</span>
+                  <span>Online Order Options & Medicine Guide ({onlineDataList.length} Medicines)</span>
                 </h2>
                 <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
-                  Live Tata 1mg Product Photo
+                  Live Tata 1mg Product Photos
                 </span>
               </div>
 
-              {/* MEDICINE PRODUCT CARD WITH REAL TATA 1MG GUMLET PHOTO & LIVE PRICING */}
-              <div className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-6">
-                
-                <div className="flex flex-col sm:flex-row gap-5 items-start">
-                  
-                  {/* REAL PRODUCT PACKAGING PHOTO WITH ONERROR AUTO-FALLBACK TO GUARANTEE 100% WORKING IMAGES */}
-                  <div className="w-full sm:w-44 h-44 rounded-2xl overflow-hidden bg-white p-2 shrink-0 border border-slate-200 dark:border-slate-700 relative shadow-md flex items-center justify-center">
-                    <img 
-                      src={onlineData.image} 
-                      alt={onlineData.name}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://onemg.gumlet.io/a_ignore,w_380,h_380,c_fit,q_auto,f_auto/rhqxp1hutcnkcdjbeapd.jpg';
-                      }}
-                      className="max-h-full max-w-full object-contain rounded-xl"
-                    />
-                    <span className="absolute bottom-2 left-2 text-[10px] font-black px-2.5 py-0.5 rounded bg-rose-600 text-white backdrop-blur-md shadow">
-                      {onlineData.discount}
-                    </span>
-                  </div>
+              {/* RENDER PRODUCT CARDS FOR ALL MEDICINES IN onlineDataList */}
+              {onlineDataList.map((item, itemIdx) => {
+                const clinical = item.clinicalDetails || {};
+                return (
+                  <div key={itemIdx} className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-6">
+                    
+                    <div className="flex flex-col sm:flex-row gap-5 items-start">
+                      
+                      {/* REAL PRODUCT PACKAGING PHOTO WITH ONERROR AUTO-FALLBACK */}
+                      <div className="w-full sm:w-44 h-44 rounded-2xl overflow-hidden bg-white p-2 shrink-0 border border-slate-200 dark:border-slate-700 relative shadow-md flex items-center justify-center">
+                        <img 
+                          src={item.image} 
+                          alt={item.name}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://onemg.gumlet.io/a_ignore,w_380,h_380,c_fit,q_auto,f_auto/rhqxp1hutcnkcdjbeapd.jpg';
+                          }}
+                          className="max-h-full max-w-full object-contain rounded-xl"
+                        />
+                        <span className="absolute bottom-2 left-2 text-[10px] font-black px-2.5 py-0.5 rounded bg-rose-600 text-white backdrop-blur-md shadow">
+                          {item.discount}
+                        </span>
+                      </div>
 
-                  {/* MEDICINE INFO & PRICE */}
-                  <div className="space-y-2 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 uppercase">
-                        {onlineData.category}
-                      </span>
+                      {/* MEDICINE INFO & PRICE */}
+                      <div className="space-y-2 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 uppercase">
+                            {item.category}
+                          </span>
 
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        onlineData.prescriptionRequired ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                      }`}>
-                        {onlineData.prescriptionRequired ? '🔴 Prescription Required' : '🟢 OTC Medicine'}
-                      </span>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                            item.prescriptionRequired ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                          }`}>
+                            {item.prescriptionRequired ? '🔴 Prescription Required' : '🟢 OTC Medicine'}
+                          </span>
+                        </div>
+
+                        <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                          {item.name}
+                        </h3>
+
+                        <p className="text-xs text-slate-500 font-medium">
+                          {item.genericName} • <strong className="text-slate-700 dark:text-slate-300">{item.manufacturer}</strong>
+                        </p>
+
+                        <p className="text-xs text-slate-400 font-medium">
+                          Packaging: {item.packSize}
+                        </p>
+
+                        <div className="flex items-baseline gap-2.5 pt-1">
+                          <span className="text-2xl font-black text-slate-900 dark:text-white">
+                            ₹{item.price.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-slate-400 line-through">
+                            MRP ₹{item.mrp.toFixed(2)}
+                          </span>
+                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            Save {item.discount}
+                          </span>
+                        </div>
+                      </div>
+
                     </div>
 
-                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                      {onlineData.name}
-                    </h3>
+                    {/* PLATFORM DIRECT ORDER BUTTONS GRID */}
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 space-y-3">
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Store className="w-4 h-4 text-indigo-500" />
+                          <span>Order <strong className="text-indigo-600 dark:text-indigo-400">{item.name}</strong> Online from Authorized Platforms:</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-semibold">Live Merchant Links</span>
+                      </div>
 
-                    <p className="text-xs text-slate-500 font-medium">
-                      {onlineData.genericName} • <strong className="text-slate-700 dark:text-slate-300">{onlineData.manufacturer}</strong>
-                    </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {item.platforms.map(platform => (
+                          <a
+                            key={platform.id}
+                            href={platform.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all flex items-center justify-between group shadow-sm active:scale-98"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-lg">{platform.logo}</span>
+                              <div>
+                                <h4 className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                  {platform.name}
+                                </h4>
+                                <span className="text-[10px] text-slate-400 font-medium block">
+                                  ⚡ {platform.deliveryTime}
+                                </span>
+                              </div>
+                            </div>
 
-                    <p className="text-xs text-slate-400 font-medium">
-                      Packaging: {onlineData.packSize}
-                    </p>
-
-                    <div className="flex items-baseline gap-2.5 pt-1">
-                      <span className="text-2xl font-black text-slate-900 dark:text-white">
-                        ₹{onlineData.price.toFixed(2)}
-                      </span>
-                      <span className="text-xs text-slate-400 line-through">
-                        MRP ₹{onlineData.mrp.toFixed(2)}
-                      </span>
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                        Save {onlineData.discount}
-                      </span>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* PLATFORM DIRECT ORDER BUTTONS GRID */}
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 space-y-3">
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <Store className="w-4 h-4 text-indigo-500" />
-                      <span>Order Online from Authorized Pharmacy Platforms:</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-semibold">Live Merchant Links</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {onlineData.platforms.map(platform => (
-                      <a
-                        key={platform.id}
-                        href={platform.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all flex items-center justify-between group shadow-sm active:scale-98"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-lg">{platform.logo}</span>
-                          <div>
-                            <h4 className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                              {platform.name}
-                            </h4>
-                            <span className="text-[10px] text-slate-400 font-medium block">
-                              ⚡ {platform.deliveryTime}
+                            <span className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] flex items-center gap-1 shrink-0 shadow-sm">
+                              Order <ExternalLink className="w-3 h-3" />
                             </span>
+                          </a>
+                        ))}
+                      </div>
+
+                    </div>
+
+                    {/* CLINICAL SAFETY & USAGE GUIDE FOR THIS MEDICINE */}
+                    {clinical.indications && (
+                      <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                              {item.name} — Clinical Safety & Usage Guide
+                            </h4>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
+                            Verified Medical Data
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          <div className="p-3 rounded-xl bg-teal-50/70 dark:bg-teal-900/20 border border-teal-200/80 dark:border-teal-800/60 space-y-1">
+                            <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 uppercase flex items-center gap-1">
+                              <HeartPulse className="w-3 h-3" /> What it is used for
+                            </span>
+                            <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 leading-snug">
+                              {clinical.indications}
+                            </p>
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-200/80 dark:border-indigo-800/60 space-y-1">
+                            <span className="text-[10px] font-black text-indigo-800 dark:text-indigo-300 uppercase flex items-center gap-1">
+                              <HelpCircle className="w-3 h-3" /> How to Use & Dosage
+                            </span>
+                            <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 leading-snug">
+                              {clinical.howToUse}
+                            </p>
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-900/20 border border-amber-200/80 dark:border-amber-800/60 space-y-1">
+                            <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Precautions & Warnings
+                            </span>
+                            <p className="text-[11px] font-medium text-amber-900 dark:text-amber-200 leading-snug">
+                              {clinical.precautions}
+                            </p>
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                            <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-blue-500" /> Mechanism of Action
+                            </span>
+                            <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-snug">
+                              {clinical.mechanismOfAction}
+                            </p>
                           </div>
                         </div>
 
-                        <span className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] flex items-center gap-1 shrink-0 shadow-sm">
-                          Order <ExternalLink className="w-3 h-3" />
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-
-                </div>
-
-                {/* INTEGRATED TATA 1MG CLINICAL USAGE & MEDICAL SAFETY SECTION (EMBEDDED DIRECTLY IN ONLINE SECTION CARD) */}
-                <div className="pt-5 border-t border-slate-100 dark:border-slate-700/60 space-y-4">
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                        Tata 1mg Clinical Usage & Medical Safety Guide
-                      </h4>
-                    </div>
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
-                      Verified Clinical Data
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-                    
-                    {/* WHAT IT IS USED FOR */}
-                    <div className="p-4 rounded-2xl bg-teal-50/70 dark:bg-teal-900/20 border border-teal-200/80 dark:border-teal-800/60 space-y-1.5">
-                      <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 uppercase flex items-center gap-1">
-                        <HeartPulse className="w-3.5 h-3.5" /> What it is used for (Indications)
-                      </span>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">
-                        {clinical.indications}
-                      </p>
-                    </div>
-
-                    {/* HOW TO USE / DOSAGE */}
-                    <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-200/80 dark:border-indigo-800/60 space-y-1.5">
-                      <span className="text-[10px] font-black text-indigo-800 dark:text-indigo-300 uppercase flex items-center gap-1">
-                        <HelpCircle className="w-3.5 h-3.5" /> How to Use & Dosage Guidance
-                      </span>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">
-                        {clinical.howToUse}
-                      </p>
-                    </div>
-
-                    {/* MECHANISM OF ACTION */}
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                      <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-blue-500" /> How it Works (Mechanism)
-                      </span>
-                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                        {clinical.mechanismOfAction}
-                      </p>
-                    </div>
-
-                    {/* SAFETY PRECAUTIONS */}
-                    <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-900/20 border border-amber-200/80 dark:border-amber-800/60 space-y-1.5">
-                      <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5" /> Safety Precautions & Warnings
-                      </span>
-                      <p className="text-xs font-medium text-amber-900 dark:text-amber-200 leading-relaxed">
-                        {clinical.precautions}
-                      </p>
-                    </div>
-
-                    {/* ALCOHOL & FOOD WARNINGS */}
-                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-1">
-                      <span className="text-[10px] font-black text-slate-500 uppercase">🍷 Alcohol & Food Precautions</span>
-                      <p className="text-xs text-slate-700 dark:text-slate-300">{clinical.alcoholInteraction}</p>
-                    </div>
-
-                    {/* PREGNANCY SAFETY */}
-                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-1">
-                      <span className="text-[10px] font-black text-slate-500 uppercase">🤰 Pregnancy & Breastfeeding Safety</span>
-                      <p className="text-xs text-slate-700 dark:text-slate-300">{clinical.pregnancySafety}</p>
-                    </div>
+                        {clinical.pregnancySafety && (
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                            <span className="text-[10px] font-black text-slate-500 uppercase">🤰 Pregnancy & Breastfeeding Safety</span>
+                            <p className="text-xs text-slate-700 dark:text-slate-300">{clinical.pregnancySafety}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                   </div>
-
-                </div>
-
-              </div>
+                );
+              })}
 
             </div>
           )}

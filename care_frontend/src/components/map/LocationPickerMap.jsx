@@ -140,6 +140,43 @@ export default function LocationPickerMap({ latitude, longitude, onLocationSelec
     groupObj = localityLayerGroupRef.current
   ) => {
     setLoadingHospitals(true);
+
+    // Helper for 0.5km spatial threshold
+    const calcDist = (lat1, lon1, lat2, lon2) => {
+      if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+      const R = 6371;
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+    };
+
+    // Check device local storage cache
+    try {
+      const rawCache = localStorage.getItem('meditrack_care_picker_cache');
+      if (rawCache) {
+        const cacheObj = JSON.parse(rawCache);
+        if (
+          cacheObj &&
+          Array.isArray(cacheObj.facilities) &&
+          cacheObj.facilities.length > 0 &&
+          cacheObj.fType === fType &&
+          cacheObj.q === q &&
+          calcDist(lat, lng, cacheObj.lat, cacheObj.lng) <= 0.5
+        ) {
+          console.log('⚡ LocationPickerMap serving cached locality hospitals (delta < 0.5km).');
+          setLocalityHospitals(cacheObj.facilities);
+          if (groupObj) {
+            renderHospitalMarkers(cacheObj.facilities, groupObj);
+          }
+          setLoadingHospitals(false);
+          return;
+        }
+      }
+    } catch (cacheErr) {
+      console.warn('LocationPickerMap cache read error:', cacheErr);
+    }
+
     try {
       let facilitiesList = [];
       const queryParams = `lat=${lat}&lng=${lng}&city=${encodeURIComponent(currentCity)}&facilityType=${encodeURIComponent(fType)}&query=${encodeURIComponent(q)}`;
@@ -160,6 +197,13 @@ export default function LocationPickerMap({ latitude, longitude, onLocationSelec
       setLocalityHospitals(facilitiesList);
       if (groupObj) {
         renderHospitalMarkers(facilitiesList, groupObj);
+      }
+
+      if (facilitiesList.length > 0) {
+        localStorage.setItem(
+          'meditrack_care_picker_cache',
+          JSON.stringify({ lat, lng, fType, q, facilities: facilitiesList, timestamp: Date.now() })
+        );
       }
     } catch (e) {
       console.warn('Error fetching nearby facilities for registration map:', e.message);

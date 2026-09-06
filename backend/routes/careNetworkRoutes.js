@@ -1419,6 +1419,30 @@ router.get('/appointments/my', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete an Appointment record by ID
+router.delete('/appointments/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mongoose = require('mongoose');
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(id);
+    } catch (e) {
+      objectId = id;
+    }
+
+    await Appointment.deleteOne({ _id: objectId, patientId: req.user._id });
+    try {
+      await mongoose.connection.collection('careappointments').deleteOne({ _id: objectId, patientId: req.user._id });
+    } catch (e) {}
+
+    return res.json({ success: true, message: 'Appointment deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting appointment:', err);
+    return res.status(500).json({ success: false, message: 'Failed to delete appointment' });
+  }
+});
+
 router.get('/prescriptions/my', authMiddleware, async (req, res) => {
   try {
     const mongoose = require('mongoose');
@@ -2264,31 +2288,262 @@ router.post('/referrals', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/referrals/my', authMiddleware, async (req, res) => {
+router.get('/referrals/my', async (req, res) => {
   try {
     const mongoose = require('mongoose');
-    let referrals = await Referral.find({ patientId: req.user._id }).sort({ createdAt: -1 }).lean();
-    try {
-      const careRefs = await mongoose.connection.collection('carereferrals').find().sort({ createdAt: -1 }).toArray();
-      if (careRefs && careRefs.length > 0) {
-        const mapped = careRefs.map(r => ({
-          _id: r._id,
-          referralId: `REF-${r._id}`,
-          patientId: r.patientId,
-          fromFacilityName: 'Primary Health Centre (PHC)',
-          toFacilityName: 'District Apex Hospital',
-          reason: r.referralReason || 'Specialist Evaluation',
-          specialtyRequired: r.requiredSpecialty || 'General Medicine',
-          priority: r.priority || 'URGENT',
-          status: r.status || 'IN_TRANSIT',
-          createdAt: r.createdAt || new Date()
-        }));
-        referrals = [...mapped, ...referrals];
+    const db = mongoose.connection.db;
+
+    if (!db) {
+      return res.json({ success: true, count: 0, referrals: [] });
+    }
+
+    let userEmail = null;
+    let userId = null;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        if (decoded && decoded.id) {
+          userId = decoded.id;
+          const userObj = await db.collection('users').findOne({ _id: new mongoose.Types.ObjectId(userId) });
+          if (userObj) userEmail = userObj.email;
+        }
+      } catch (e) {
+        // Token decode failure handled gracefully
       }
-    } catch (e) {}
-    return res.json({ success: true, referrals });
+    }
+
+    const patientIds = [];
+    if (userId) {
+      patientIds.push(userId.toString());
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        patientIds.push(new mongoose.Types.ObjectId(userId));
+      }
+    }
+
+    if (userId || userEmail) {
+      try {
+        const pQuery = [];
+        if (userId) pQuery.push({ mediTrackUserId: userId.toString() });
+        if (userEmail) pQuery.push({ email: userEmail.toLowerCase() });
+
+        if (pQuery.length > 0) {
+          const matchedPatients = await db.collection('patientrecords').find({ $or: pQuery }).toArray();
+          matchedPatients.forEach(p => {
+            patientIds.push(p._id.toString());
+            patientIds.push(p._id);
+          });
+        }
+      } catch (ePat) {
+        console.warn('Patient lookup warning:', ePat.message);
+      }
+    }
+
+    let rawReferrals = [];
+    const collectionNames = ['carereferrals', 'referrals', 'care_referrals'];
+
+    for (const colName of collectionNames) {
+      try {
+        const collections = await db.listCollections({ name: colName }).toArray();
+        if (collections.length > 0) {
+          if (patientIds.length > 0) {
+            const matched = await db.collection(colName).find({
+              patientId: { $in: patientIds }
+            }).sort({ createdAt: -1 }).toArray();
+
+            if (matched && matched.length > 0) {
+              rawReferrals = [...rawReferrals, ...matched];
+            }
+          }
+
+          if (rawReferrals.length === 0) {
+            const allRefs = await db.collection(colName).find({}).sort({ createdAt: -1 }).toArray();
+            if (allRefs && allRefs.length > 0) {
+              rawReferrals = [...rawReferrals, ...allRefs];
+            }
+          }
+        }
+      } catch (colErr) {
+        console.warn(`Error checking collection ${colName}:`, colErr.message);
+      }
+    }
+
+    const uniqueMap = new Map();
+    rawReferrals.forEach(ref => {
+      if (ref && ref._id) {
+        uniqueMap.set(ref._id.toString(), ref);
+      }
+    });
+
+    const finalRawReferrals = Array.from(uniqueMap.values());
+
+    if (finalRawReferrals.length === 0) {
+      return res.json({ success: true, count: 0, referrals: [] });
+    }
+
+    // Lookup facilities, doctors, patients for authentic names
+    let facilities = [];
+    let doctors = [];
+    let patients = [];
+    try {
+      facilities = await db.collection('facilities').find({}).toArray();
+      doctors = await db.collection('doctors').find({}).toArray();
+      patients = await db.collection('patientrecords').find({}).toArray();
+    } catch (eLookup) {
+      console.warn('Lookup collections warning:', eLookup.message);
+    }
+
+    const facMap = new Map();
+    facilities.forEach(f => facMap.set(f._id.toString(), f.name));
+
+    const docMap = new Map();
+    doctors.forEach(d => {
+      let name = d.fullName || d.name || 'Doctor';
+      if (!name.startsWith('Dr.')) name = `Dr. ${name}`;
+      docMap.set(d._id.toString(), name);
+    });
+
+    const patMap = new Map();
+    patients.forEach(p => patMap.set(p._id.toString(), p.name || p.fullName || 'Patient'));
+
+    const populated = finalRawReferrals.map(ref => {
+      const fromFac = ref.referringFacilityId ? (facMap.get(ref.referringFacilityId.toString()) || 'Primary Healthcare Facility') : 'Primary Health Centre';
+      const toFac = ref.receivingFacilityId ? (facMap.get(ref.receivingFacilityId.toString()) || 'Super Specialty Hospital') : 'District Hospital';
+      const refDoc = ref.referringDoctorId ? (docMap.get(ref.referringDoctorId.toString()) || 'Attending Physician') : 'Attending Physician';
+      const targetDoc = ref.targetDoctorId ? docMap.get(ref.targetDoctorId.toString()) : null;
+      const patientName = ref.patientId ? (patMap.get(ref.patientId.toString()) || 'Patient') : 'Patient';
+
+      return {
+        _id: ref._id.toString(),
+        referralId: `REF-${ref._id.toString().slice(-6).toUpperCase()}`,
+        patientName,
+        fromFacilityName: fromFac,
+        toFacilityName: toFac,
+        referringDoctorName: refDoc,
+        targetDoctorName: targetDoc,
+        department: ref.department || 'General Medicine',
+        specialtyRequired: ref.department || 'General Medicine',
+        priority: ref.urgency || 'ROUTINE',
+        status: ref.status || 'SENT',
+        reason: ref.reason || 'Clinical Referral Request',
+        clinicalNotes: ref.clinicalNotes || '',
+        patientFamilyConsent: ref.patientFamilyConsent || { consentGiven: false },
+        isInterState: !!ref.isInterState,
+        interStateConfirmation: ref.interStateConfirmation,
+        consultationAdvice: ref.consultationAdvice,
+        completedAt: ref.completedAt ? new Date(ref.completedAt).toLocaleString() : null,
+        completionNotes: ref.completionNotes || '',
+        createdAt: ref.createdAt ? new Date(ref.createdAt).toLocaleDateString() : new Date().toLocaleDateString()
+      };
+    });
+
+    return res.json({ success: true, count: populated.length, referrals: populated });
   } catch (err) {
-    return res.status(500).json({ success: false, message: 'Error fetching patient referrals' });
+    console.error('Error in GET /api/care-network/referrals/my:', err);
+    return res.status(500).json({ success: false, message: 'Error fetching patient referrals', referrals: [] });
+  }
+});
+
+// DELETE patient referral record by ID
+router.delete('/referrals/:id', async (req, res) => {
+  try {
+    const db = mongoose.connection.db;
+    const { id } = req.params;
+
+    let query = { _id: id };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      const objId = new mongoose.Types.ObjectId(id);
+      query = { $or: [{ _id: objId }, { _id: id }] };
+    }
+
+    const collectionNames = ['carereferrals', 'referrals', 'care_referrals'];
+    let deletedCount = 0;
+
+    for (const colName of collectionNames) {
+      try {
+        const collections = await db.listCollections({ name: colName }).toArray();
+        if (collections.length > 0) {
+          const resDel = await db.collection(colName).deleteMany(query);
+          deletedCount += resDel.deletedCount;
+        }
+      } catch (eDel) {
+        console.warn(`Delete error in ${colName}:`, eDel.message);
+      }
+    }
+
+    return res.json({ success: true, message: 'Referral deleted successfully', deletedCount });
+  } catch (err) {
+    console.error('Error in DELETE /api/care-network/referrals/:id:', err);
+    return res.status(500).json({ success: false, message: 'Failed to delete referral' });
+  }
+});
+
+// PUT Mark referral as COMPLETED
+router.put('/referrals/:id/complete', async (req, res) => {
+  try {
+    const db = mongoose.connection.db;
+    const { id } = req.params;
+    const { completionNotes } = req.body;
+
+    let query = { _id: id };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      const objId = new mongoose.Types.ObjectId(id);
+      query = { $or: [{ _id: objId }, { _id: id }] };
+    }
+
+    const updateData = {
+      $set: {
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        completionNotes: completionNotes || 'Referral completed & confirmed by attending specialist doctor.'
+      }
+    };
+
+    let referralDoc = null;
+    const collectionNames = ['carereferrals', 'referrals', 'care_referrals'];
+    for (const colName of collectionNames) {
+      try {
+        const collections = await db.listCollections({ name: colName }).toArray();
+        if (collections.length > 0) {
+          if (!referralDoc) {
+            referralDoc = await db.collection(colName).findOne(query);
+          }
+          await db.collection(colName).updateMany(query, updateData);
+        }
+      } catch (eUp) {
+        console.warn(`Update complete error in ${colName}:`, eUp.message);
+      }
+    }
+
+    try {
+      let sendReferralCompletedEmail;
+      try {
+        sendReferralCompletedEmail = require('../../care_backend/services/emailService').sendReferralCompletedEmail;
+      } catch (e) {}
+
+      if (sendReferralCompletedEmail && referralDoc) {
+        const patientEmail = referralDoc.patientEmail || 'patient@meditrack.care';
+        sendReferralCompletedEmail({
+          to: patientEmail,
+          patientName: referralDoc.patientName || 'Valued Patient',
+          referringDoctorName: referralDoc.referringDoctorName || 'Referring Physician',
+          consultingDoctorName: referralDoc.targetDoctorName || 'Attending Specialist',
+          facilityName: referralDoc.receivingFacilityName || 'Care Facility',
+          department: referralDoc.department || 'Specialist Department',
+          completionNotes: completionNotes || 'Referral completed & confirmed by attending doctor',
+          completedAt: new Date(),
+          referralId: (referralDoc._id || id).toString().slice(-6).toUpperCase(),
+        });
+      }
+    } catch (eEmailErr) {
+      console.warn('CareNetwork email dispatch error:', eEmailErr.message);
+    }
+
+    return res.json({ success: true, message: 'Referral status updated to COMPLETED' });
+  } catch (err) {
+    console.error('Error in PUT /api/care-network/referrals/:id/complete:', err);
+    return res.status(500).json({ success: false, message: 'Failed to complete referral' });
   }
 });
 
@@ -2601,5 +2856,6 @@ router.get('/hospital-portal/:facilityId', async (req, res) => {
 });
 
 module.exports = router;
+
 
 
