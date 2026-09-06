@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
+import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
 import {
   Building2, Calendar, Users, ArrowUpRight, ArrowDownLeft, Stethoscope,
   Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus, History, Printer
@@ -10,6 +11,9 @@ import {
 
 export default function FacilityDashboard() {
   const { user, logout } = useAuth();
+
+  const facilityId = user?.facility?._id || user?.facilityId?._id || user?.facilityId;
+  const facilityName = user?.facility?.name || user?.facilityId?.name || (typeof user?.facilityId === 'object' ? user?.facilityId?.name : null) || user?.name || 'Care Facility';
 
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
@@ -347,8 +351,6 @@ export default function FacilityDashboard() {
     expiryDate: '2027-12-31',
   });
 
-  const facilityId = user?.facility?._id || user?.facilityId?._id || user?.facilityId;
-
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -528,63 +530,225 @@ export default function FacilityDashboard() {
       <div className="ambient-orb-cyan bottom-10 right-10 animate-float-reverse" />
 
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 liquid-glass border-r border-white/10 p-6 flex flex-col justify-between shrink-0 relative z-20 backdrop-blur-2xl">
-        <div>
-          <div className="flex items-center space-x-3 mb-8">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-500/20 to-emerald-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 shadow-lg shadow-teal-500/20">
-              <Building2 className="w-6 h-6" />
+      <aside className="w-full md:w-72 bg-slate-950/90 border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0 relative z-20 backdrop-blur-2xl shadow-2xl">
+        <div className="space-y-6">
+          {/* Header Facility Card */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-900/40 border border-slate-800/80 shadow-lg relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-teal-500/20 transition-all" />
+            <div className="flex items-center space-x-3 relative z-10">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-500/20 via-teal-500/10 to-emerald-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300 shadow-md shadow-teal-500/10 shrink-0">
+                <Building2 className="w-6 h-6 text-teal-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-display text-sm font-extrabold text-white truncate" title={facilityName}>
+                  {facilityName}
+                </h2>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 ${
+                    user?.verificationStatus === 'VERIFIED'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${user?.verificationStatus === 'VERIFIED' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                    {user?.verificationStatus || 'PENDING'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h2 className="font-display text-sm font-extrabold text-white truncate max-w-[140px]">{user?.facility?.name || 'Care Facility'}</h2>
-              <span className={`text-[10px] font-tech px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${user?.verificationStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}`}>
-                {user?.verificationStatus || 'PENDING'}
+            
+            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+              <span className="flex items-center gap-1 text-teal-400">
+                <Activity className="w-3 h-3 text-emerald-400 animate-pulse" />
+                Live Hub Node
               </span>
+              <span className="text-slate-500">ID: {String(facilityId || '').slice(-6)}</span>
             </div>
           </div>
 
-          <nav className="space-y-1.5 text-xs font-tech font-semibold">
-            {[
-              { id: 'overview', label: 'Overview', icon: Activity },
-              { id: 'doctors', label: 'Doctors & Staff', icon: Stethoscope },
-              { id: 'teleconsultations', label: 'Teleconsult Allocations', icon: Video },
-              { id: 'appointments', label: 'OPD Appointments', icon: Calendar },
-              { id: 'bed-admissions', label: 'Bed Admissions', icon: Bed },
-              { id: 'transfers', label: 'Emergency Transfers', icon: ArrowUpRight },
-              { id: 'referrals', label: 'Referrals', icon: Layers },
-              { id: 'inventory', label: 'Medicine Inventory', icon: Package },
-              { id: 'capacity', label: 'Bed Capacity', icon: Bed },
-            ].map(item => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition ${activeTab === item.id ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
+          {/* Navigation Links Grouped */}
+          <nav className="space-y-4 text-xs font-semibold">
+            
+            {/* Group 1: Core Operations */}
+            <div>
+              <span className="px-3 text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold block mb-1.5">
+                Core Command
+              </span>
+              <div className="space-y-1">
+                {[
+                  { id: 'overview', label: 'Overview Command', icon: Activity },
+                  { id: 'appointments', label: 'OPD Appointments', icon: Calendar },
+                  { id: 'doctors', label: 'Doctors & Roster', icon: Stethoscope },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
+                        isActive 
+                          ? 'bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-emerald-500/10 text-teal-300 border border-teal-500/40 shadow-lg shadow-teal-500/10 font-bold' 
+                          : 'text-slate-400 hover:bg-slate-900/90 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-teal-400' : 'text-slate-400'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Group 2: Emergency & Clinical Care */}
+            <div>
+              <span className="px-3 text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold block mb-1.5">
+                Emergency &amp; Ward
+              </span>
+              <div className="space-y-1">
+                {[
+                  { id: 'bed-admissions', label: 'Bed Admissions', icon: Bed },
+                  { id: 'transfers', label: 'Emergency Transfers', icon: ArrowUpRight },
+                  { id: 'referrals', label: 'Hospital Referrals', icon: Layers },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
+                        isActive 
+                          ? 'bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-emerald-500/10 text-teal-300 border border-teal-500/40 shadow-lg shadow-teal-500/10 font-bold' 
+                          : 'text-slate-400 hover:bg-slate-900/90 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-teal-400' : 'text-slate-400'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Group 3: Telehealth & Standards */}
+            <div>
+              <span className="px-3 text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold block mb-1.5">
+                Telehealth &amp; Data
+              </span>
+              <div className="space-y-1">
+                {[
+                  { id: 'teleconsultations', label: 'Teleconsult Allocations', icon: Video },
+                  { id: 'fhir', label: 'HL7 FHIR Interop', icon: ShieldAlert },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
+                        isActive 
+                          ? 'bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-emerald-500/10 text-teal-300 border border-teal-500/40 shadow-lg shadow-teal-500/10 font-bold' 
+                          : 'text-slate-400 hover:bg-slate-900/90 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-teal-400' : 'text-slate-400'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Group 4: Resources */}
+            <div>
+              <span className="px-3 text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold block mb-1.5">
+                Resource Allocation
+              </span>
+              <div className="space-y-1">
+                {[
+                  { id: 'capacity', label: 'Bed Capacity Matrix', icon: Bed },
+                  { id: 'inventory', label: 'Medicine Inventory', icon: Package },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
+                        isActive 
+                          ? 'bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-emerald-500/10 text-teal-300 border border-teal-500/40 shadow-lg shadow-teal-500/10 font-bold' 
+                          : 'text-slate-400 hover:bg-slate-900/90 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-teal-400' : 'text-slate-400'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
           </nav>
         </div>
 
-        <div className="pt-6 border-t border-slate-800">
-          <button onClick={logout} className="w-full flex items-center space-x-2 text-xs font-semibold text-rose-400 hover:text-rose-300">
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
-          </button>
+        {/* Sidebar Footer Profile */}
+        <div className="pt-4 mt-6 border-t border-slate-800/80 space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center space-x-2">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300 font-mono text-xs font-bold border border-teal-500/30">
+                FA
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-200 block leading-tight">{user?.name || 'Administrator'}</span>
+                <span className="text-[10px] text-slate-400 font-mono">Facility Admin</span>
+              </div>
+            </div>
+            <button 
+              onClick={logout} 
+              className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition"
+              title="Sign Out of Facility Portal"
+            >
+              <LogOut className="w-4 h-4 text-rose-400" />
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-5 border-b border-slate-800/80 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white capitalize">{activeTab} Dashboard</h1>
-            <p className="text-xs text-slate-400">MediTrack Care Network Provider Portal • Facility ID: {facilityId || 'N/A'}</p>
+            <div className="flex items-center space-x-2">
+              <h1 className="text-2xl font-extrabold text-white capitalize font-display tracking-tight">
+                {activeTab === 'overview' ? 'Command Center Overview' : `${activeTab.replace('-', ' ')} Dashboard`}
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                LIVE
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+              <span>MediTrack Care Provider Portal</span>
+              <span>•</span>
+              <span className="font-mono text-teal-400">Facility: {facilityName}</span>
+              <span>•</span>
+              <span className="font-mono text-slate-500">ID: {facilityId || 'N/A'}</span>
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => {
                 if (activeTab === 'bed-admissions') {
@@ -594,42 +758,263 @@ export default function FacilityDashboard() {
                 }
                 setShowHistoryModal(true);
               }}
-              className="px-3.5 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 font-bold text-xs flex items-center gap-1.5 border border-teal-500/30 shadow-sm transition"
+              className="px-3.5 py-2 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 font-bold text-xs flex items-center gap-1.5 border border-teal-500/30 shadow-sm transition"
               title="Open Hospital History Archive Modal"
             >
-              <History className="w-3.5 h-3.5 text-teal-400" />
-              <span>History</span>
-              <span className="px-1.5 py-0.2 bg-teal-400/20 text-teal-300 text-[10px] rounded-full font-extrabold">
+              <History className="w-4 h-4 text-teal-400" />
+              <span>Archive</span>
+              <span className="px-1.5 py-0.2 bg-teal-400/20 text-teal-300 text-[10px] rounded-full font-extrabold font-mono">
                 {appointments.filter(a => a.status === 'COMPLETED').length + bedBookings.filter(b => b.status === 'DISCHARGED').length}
               </span>
             </button>
-            <button onClick={loadDashboardData} className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <button onClick={loadDashboardData} className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700/80 transition shadow-sm">
+              <RefreshCw className={`w-4 h-4 text-teal-400 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
             </button>
           </div>
         </div>
 
-        {/* Overview Tab */}
+        {/* Overview Tab (Command Center Visual Dashboard) */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                <span className="text-xs text-slate-400 font-medium">Associated Doctors</span>
-                <div className="text-2xl font-extrabold text-teal-400 mt-1">{associations.length || doctors.length}</div>
+          <div className="space-y-8">
+            {/* Live Triage Signal Status Banner */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-950/60 via-slate-900/90 to-slate-950 border border-teal-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                  <Activity className="w-5 h-5 text-emerald-400 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                    Emergency Triage Network Active
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Real-time synchronization active with district hospital nodes, OPD token queues, and video tele-triage streams.
+                  </p>
+                </div>
               </div>
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                <span className="text-xs text-slate-400 font-medium">Pending Teleconsults</span>
-                <div className="text-2xl font-extrabold text-amber-400 mt-1">{teleSessions.filter(s => s.status === 'PENDING').length}</div>
-              </div>
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                <span className="text-xs text-slate-400 font-medium">Today Appointments</span>
-                <div className="text-2xl font-extrabold text-white mt-1">{appointments.length}</div>
-              </div>
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                <span className="text-xs text-slate-400 font-medium">ICU Beds Available</span>
-                <div className="text-2xl font-extrabold text-cyan-400 mt-1">{capacity?.icuBeds?.available ?? 0} / {capacity?.icuBeds?.total ?? 0}</div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="px-3 py-1.5 rounded-xl bg-black/40 border border-slate-700/80 text-[11px] font-mono text-teal-300">
+                  ⚡ Latency 24ms
+                </span>
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-mono font-bold text-emerald-300">
+                  100% ABDM Sync
+                </span>
               </div>
             </div>
+
+            {/* 4 Summary Hero Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              
+              {/* Card 1: Associated Doctors */}
+              <div className="p-5 rounded-2xl bg-slate-900/80 border border-teal-500/30 hover:border-teal-500/50 shadow-xl transition group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-teal-500/20 transition-all" />
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Associated Doctors</span>
+                  <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center border border-teal-500/30">
+                    <Stethoscope className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-3xl font-extrabold text-white font-mono tracking-tight">
+                  {associations.length || doctors.length}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-[11px] text-teal-300 font-medium pt-2 border-t border-slate-800">
+                  <span>Verified Roster</span>
+                  <span className="text-emerald-400 font-bold">Active</span>
+                </div>
+              </div>
+
+              {/* Card 2: Pending Teleconsults */}
+              <div className="p-5 rounded-2xl bg-slate-900/80 border border-amber-500/30 hover:border-amber-500/50 shadow-xl transition group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-amber-500/20 transition-all" />
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Pending Teleconsults</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                    <Video className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-3xl font-extrabold text-amber-400 font-mono tracking-tight">
+                  {teleSessions.filter(s => s.status === 'PENDING').length}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-[11px] text-amber-300/90 font-medium pt-2 border-t border-slate-800">
+                  <span>Live Video Queue</span>
+                  <span className="font-mono text-xs font-bold text-amber-400">Triage Ready</span>
+                </div>
+              </div>
+
+              {/* Card 3: Today Appointments */}
+              <div className="p-5 rounded-2xl bg-slate-900/80 border border-emerald-500/30 hover:border-emerald-500/50 shadow-xl transition group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Today Appointments</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-3xl font-extrabold text-white font-mono tracking-tight">
+                  {appointments.length}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-[11px] text-emerald-300 font-medium pt-2 border-t border-slate-800">
+                  <span>OPD Schedule</span>
+                  <span className="text-emerald-400 font-bold">{appointments.filter(a => a.status === 'CHECKED_IN').length} Checked In</span>
+                </div>
+              </div>
+
+              {/* Card 4: ICU Beds Available */}
+              <div className="p-5 rounded-2xl bg-slate-900/80 border border-cyan-500/30 hover:border-cyan-500/50 shadow-xl transition group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-cyan-500/20 transition-all" />
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">ICU Beds Free</span>
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                    <Bed className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-3xl font-extrabold text-cyan-300 font-mono tracking-tight">
+                  {capacity?.icuBeds?.available ?? 0} <span className="text-lg text-slate-400 font-normal">/ {capacity?.icuBeds?.total ?? 10}</span>
+                </div>
+                <div className="mt-3 space-y-1.5 pt-2 border-t border-slate-800">
+                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      className="bg-cyan-400 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${Math.min(100, Math.round(((capacity?.icuBeds?.available ?? 0) / (capacity?.icuBeds?.total || 1)) * 100))}%` }} 
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-cyan-300/80 font-mono">
+                    <span>Occupancy Rate</span>
+                    <span>{100 - Math.min(100, Math.round(((capacity?.icuBeds?.available ?? 0) / (capacity?.icuBeds?.total || 1)) * 100))}%</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Live OPD Appointments Stream Table Widget */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300">
+                    <Users className="w-5 h-5 text-teal-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Live OPD Patient Queue &amp; Triage</h3>
+                    <p className="text-xs text-slate-400">Active patient tokens scheduled for OPD consultation today</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('appointments')}
+                  className="text-xs font-bold text-teal-400 hover:text-teal-300 flex items-center gap-1 self-start sm:self-auto"
+                >
+                  <span>Manage All OPD Appointments ({appointments.length})</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {appointments.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-xs font-mono bg-slate-950/40 rounded-2xl border border-dashed border-slate-800">
+                  No active OPD appointments scheduled for today.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
+                        <th className="pb-3 px-3">Token #</th>
+                        <th className="pb-3 px-3">Patient Name</th>
+                        <th className="pb-3 px-3">Doctor Assigned</th>
+                        <th className="pb-3 px-3">Time Slot</th>
+                        <th className="pb-3 px-3">Status</th>
+                        <th className="pb-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/80">
+                      {appointments.slice(0, 5).map(apt => (
+                        <tr key={apt._id} className="hover:bg-slate-800/40 transition">
+                          <td className="py-3 px-3 font-mono font-bold text-teal-400">
+                            {apt.tokenNumber || 'T-101'}
+                          </td>
+                          <td className="py-3 px-3 font-bold text-white">
+                            {apt.patientName || apt.patientId?.name || 'Walk-in Patient'}
+                          </td>
+                          <td className="py-3 px-3 text-slate-300">
+                            {apt.doctorId?.fullName || registeredDoctors.find(d => d._id === apt.doctorId)?.fullName || 'Pending Doctor'}
+                          </td>
+                          <td className="py-3 px-3 font-mono text-slate-300">
+                            {apt.timeSlot || '10:00 AM'}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono uppercase ${
+                              apt.status === 'COMPLETED' 
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : apt.status === 'CHECKED_IN'
+                                ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            }`}>
+                              {apt.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              onClick={() => openAssignDoctorModal(apt)}
+                              className="px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 text-[11px] font-bold border border-teal-500/30 transition"
+                            >
+                              Assign Doctor
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Action Command Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <button
+                onClick={() => setActiveTab('doctors')}
+                className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-teal-500/40 text-left transition space-y-2 group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold text-white group-hover:text-teal-300 transition-colors">Associate Doctor</h4>
+                <p className="text-[11px] text-slate-400">Add registered specialist clinicians to hospital roster</p>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('bed-admissions')}
+                className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-emerald-500/40 text-left transition space-y-2 group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Bed className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors">Approve Bed Admission</h4>
+                <p className="text-[11px] text-slate-400">Allot ICU &amp; Ward beds with admission passes</p>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('teleconsultations')}
+                className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 text-left transition space-y-2 group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Video className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">Teleconsult Triage</h4>
+                <p className="text-[11px] text-slate-400">Allocate video session rooms &amp; LiveKit streams</p>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('fhir')}
+                className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 text-left transition space-y-2 group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">HL7 FHIR R4 Bundle</h4>
+                <p className="text-[11px] text-slate-400">Export interoperable clinical records &amp; LOINC maps</p>
+              </button>
+            </div>
+
           </div>
         )}
 
@@ -673,7 +1058,7 @@ export default function FacilityDashboard() {
                     <option value="Emergency Trauma">Emergency Trauma</option>
                     <option value="Pediatrics">Pediatrics</option>
                     <option value="General Surgery">General Surgery</option>
-                    <option value="ICU">ICU & Critical Care</option>
+                    <option value="ICU">ICU &amp; Critical Care</option>
                     <option value="Orthopedics">Orthopedics</option>
                     <option value="Neurology">Neurology</option>
                     <option value="Gynecology">Gynecology</option>
@@ -710,8 +1095,8 @@ export default function FacilityDashboard() {
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 font-semibold">
                       <th className="py-2.5 px-3">Doctor Name</th>
-                      <th className="py-2.5 px-3">Specialization & Qualification</th>
-                      <th className="py-2.5 px-3">Department & Designation</th>
+                      <th className="py-2.5 px-3">Specialization &amp; Qualification</th>
+                      <th className="py-2.5 px-3">Department &amp; Designation</th>
                       <th className="py-2.5 px-3">Employment Type</th>
                       <th className="py-2.5 px-3">Status</th>
                       <th className="py-2.5 px-3">Actions</th>
@@ -764,7 +1149,6 @@ export default function FacilityDashboard() {
                               </>
                             )}
                           </td>
-
                         </tr>
                       ))
                     )}
@@ -1515,6 +1899,13 @@ export default function FacilityDashboard() {
             <p className="text-xs text-slate-400">Manage all facility records for {activeTab}.</p>
           </div>
         )}
+
+        {/* HL7 FHIR Interoperability Hub */}
+        {activeTab === 'fhir' && (
+          <FhirProviderDashboard facilityId={user?.facilityId} />
+        )}
+
+
 
         {/* Emergency Transfer Status Action Modal */}
         {showTransferModal && selectedTransfer && (

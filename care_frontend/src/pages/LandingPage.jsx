@@ -94,7 +94,6 @@ export default function LandingPage() {
             <div className="flex flex-col">
               <span className="font-display text-lg font-extrabold tracking-tight text-[var(--text-main)] flex items-center gap-1.5">
                 MediTrack <span className="text-teal-600 dark:text-teal-400 font-bold">Care</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
               </span>
               <span className="text-[10px] text-[var(--text-muted)] tracking-wider font-mono uppercase">
                 Public Health Ecosystem
@@ -161,18 +160,18 @@ export default function LandingPage() {
       <main className="w-full max-w-[1536px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 pt-6 pb-12 relative z-10 flex-grow">
         
         {/* Section 2: Full-Width Widescreen Hero Container Card */}
-        <section className="w-full relative rounded-[36px] overflow-hidden mb-16 border border-[var(--border-card)] shadow-2xl bg-slate-900 text-white min-h-[580px] lg:min-h-[640px] flex flex-col justify-between p-8 md:p-14 reveal-on-scroll">
-          {/* Background Image backdrop */}
+        <section className="w-full relative rounded-[36px] overflow-hidden mb-16 border border-[var(--border-card)] shadow-2xl bg-slate-950 text-white min-h-[580px] lg:min-h-[640px] flex flex-col justify-between p-8 md:p-14 reveal-on-scroll">
+          {/* High-Quality Background Image featuring Doctors, Nurses & Hospital Care */}
           <div 
             className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-700 scale-105"
             style={{
-              backgroundImage: `linear-gradient(135deg, rgba(8, 15, 26, 0.9) 0%, rgba(13, 148, 136, 0.35) 60%, rgba(4, 47, 38, 0.85) 100%), url('https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1800&q=80')`
+              backgroundImage: `linear-gradient(to right, rgba(8, 15, 26, 0.93) 0%, rgba(10, 20, 32, 0.75) 50%, rgba(13, 148, 136, 0.2) 100%), linear-gradient(180deg, rgba(8, 15, 26, 0.4) 0%, rgba(4, 25, 30, 0.85) 100%), url('https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1920&q=80')`
             }}
           />
 
           {/* Top Rating & Verification Badge */}
           <div className="relative z-10 flex items-center justify-between">
-            <div className="inline-flex items-center space-x-2 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 text-xs font-bold text-white shadow-lg">
+            <div className="inline-flex items-center space-x-2 bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 text-xs font-bold text-white shadow-lg">
               <div className="flex items-center text-amber-400">
                 <Star className="w-3.5 h-3.5 fill-amber-400 stroke-none" />
                 <span className="ml-1 text-white">4.9</span>
@@ -194,9 +193,11 @@ export default function LandingPage() {
 
           {/* Center Display Typography */}
           <div className="relative z-10 my-12 max-w-3xl">
-            <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-[1.05] mb-6">
+            <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-[1.05] mb-6 drop-shadow-lg">
               Unified Public Healthcare & <br />
-              <span className="text-emerald-300">Telemedicine Engine</span>
+              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300 bg-clip-text text-transparent">
+                Telemedicine Engine
+              </span>
             </h1>
 
             <p className="text-slate-200 text-base sm:text-lg max-w-xl font-normal leading-relaxed mb-8 drop-shadow font-sans">
@@ -229,7 +230,7 @@ export default function LandingPage() {
 
           {/* Bottom Right Floating Glass Badge */}
           <div className="relative z-10 flex justify-end">
-            <div className="bg-black/50 backdrop-blur-md border border-white/25 p-3.5 sm:p-4 rounded-2xl flex items-center space-x-3.5 shadow-2xl max-w-xs text-white">
+            <div className="bg-black/60 backdrop-blur-md border border-white/25 p-3.5 sm:p-4 rounded-2xl flex items-center space-x-3.5 shadow-2xl max-w-xs text-white">
               <div className="flex -space-x-2.5 overflow-hidden shrink-0">
                 <img 
                   className="inline-block h-9 w-9 rounded-full ring-2 ring-emerald-400 object-cover" 

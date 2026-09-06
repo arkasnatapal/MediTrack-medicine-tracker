@@ -1,3 +1,4 @@
+// MediTrack Care Network Server - Updated 2026-09-06 T17:47
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -38,7 +39,7 @@ app.use(cors({
   origin: true, // Dynamically reflect origin to avoid CORS blockage during dev
   credentials: true,
 }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb', type: ['application/json', 'application/fhir+json', 'application/*+json'] }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('dev'));
 
@@ -70,6 +71,12 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/integration', integrationRoutes);
 app.use('/api/livekit', livekitRoutes);
+
+// HL7 FHIR Interoperability API Routes (Shared Core - Instant Fast Resolved V4)
+const fhirRoutes = require('../backend/fhir/routes/fhirRoutes');
+app.use('/fhir', fhirRoutes);
+app.use('/api/fhir', fhirRoutes);
+
 
 
 // Error handling middleware

@@ -44,7 +44,7 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb', type: ['application/json', 'application/fhir+json', 'application/*+json'] }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('dev'));
 
@@ -88,6 +88,10 @@ app.use('/api/hospital-details', require('./src/hospital-detail/hospital-detail.
 app.use('/api/checkups', require('./routes/checkupRoutes'));
 app.use('/api/care-network', require('./routes/careNetworkRoutes'));
 app.use('/api/abdm', require('./routes/abdmRoutes'));
+
+const fhirRoutes = require('./fhir/routes/fhirRoutes');
+app.use('/fhir', fhirRoutes);
+app.use('/api/fhir', fhirRoutes);
 
 const googleRoutes = require("./routes/googleRoutes");
 app.use("/api/google", googleRoutes);

@@ -281,7 +281,11 @@ router.get('/me', protect, async (req, res) => {
       }
     }
 
-    res.json(user);
+    const userObj = user.toObject();
+    userObj.facility = user.facilityId;
+    userObj.doctor = user.doctorId;
+
+    res.json(userObj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

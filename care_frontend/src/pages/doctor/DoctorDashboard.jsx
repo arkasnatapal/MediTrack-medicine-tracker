@@ -9,6 +9,7 @@ import {
   X, ArrowUpRight, Layers, Bed, Activity, AlertTriangle, Search, Dna, Pill, Heart, Sparkles, Users, Printer
 } from 'lucide-react';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
+import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
 
 
 export default function DoctorDashboard() {
@@ -788,6 +789,7 @@ export default function DoctorDashboard() {
               { id: 'appointments', label: 'My Appointments', icon: Calendar, badge: appointments.length },
               { id: 'referrals', label: 'My Referrals', icon: FileText, badge: referrals.filter(r => r.status !== 'COMPLETED').length },
               { id: 'facilities', label: 'Associated Facilities', icon: Building2, badge: associations.length },
+              { id: 'fhir', label: 'HL7 FHIR Interoperability', icon: ShieldCheck, badge: 0 },
             ].map(item => {
               const Icon = item.icon;
               return (
@@ -2652,6 +2654,13 @@ export default function DoctorDashboard() {
             </div>
           </div>
         )}
+
+        {/* ----------------- TAB 6: HL7 FHIR INTEROPERABILITY ----------------- */}
+        {activeTab === 'fhir' && (
+          <FhirProviderDashboard doctorId={user?.doctorId || user?.doctor} />
+        )}
+
+
 
         {/* LiveKit Call Modal */}
         {showLiveKitModal && liveKitRoomName && (

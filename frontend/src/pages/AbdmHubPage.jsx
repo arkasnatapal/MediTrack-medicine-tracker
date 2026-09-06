@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, QrCode, Lock, Building2, Sparkles, AlertCircle, RefreshCw, CheckCircle2, FileText, ArrowRight, Code2, Database, Layers } from 'lucide-react';
+import { ShieldCheck, QrCode, Lock, Building2, Sparkles, AlertCircle, RefreshCw, CheckCircle2, FileText, ArrowRight, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AbhaCard from '../components/abdm/AbhaCard';
 import AbdmConsentManager from '../components/abdm/AbdmConsentManager';
 import AbdmOpdScanModal from '../components/abdm/AbdmOpdScanModal';
-import AbdmFhirInspectorModal from '../components/abdm/AbdmFhirInspectorModal';
 import { abdmService } from '../services/abdmService';
 
 const AbdmHubPage = () => {
@@ -12,11 +11,6 @@ const AbdmHubPage = () => {
   const [consents, setConsents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpdModalOpen, setIsOpdModalOpen] = useState(false);
-
-  // HL7 FHIR Inspector state
-  const [selectedConsentForFhir, setSelectedConsentForFhir] = useState(null);
-  const [fhirBundleData, setFhirBundleData] = useState(null);
-  const [isFhirModalOpen, setIsFhirModalOpen] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -60,18 +54,6 @@ const AbdmHubPage = () => {
     }
   };
 
-  const handleInspectFhir = async (consent) => {
-    setSelectedConsentForFhir(consent);
-    try {
-      const bundleRes = await abdmService.getFhirBundle(consent._id);
-      setFhirBundleData(bundleRes);
-    } catch (err) {
-      console.error('Error loading FHIR bundle:', err);
-    } finally {
-      setIsFhirModalOpen(true);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-white pt-24 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -101,33 +83,6 @@ const AbdmHubPage = () => {
             <QrCode className="w-5 h-5 text-slate-950" />
             Scan & Share OPD Token
           </motion.button>
-        </div>
-
-        {/* HL7 FHIR Interoperability Status Banner */}
-        <div className="bg-gradient-to-r from-cyan-950/70 via-slate-900 to-blue-950/70 p-4 rounded-3xl border border-cyan-800/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-              <Code2 className="w-6 h-6" />
-            </div>
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-white text-sm">HL7 FHIR Release 4 Engine</span>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold border border-emerald-500/30 uppercase">
-                  M1 • M2 • M3 READY
-                </span>
-              </div>
-              <p className="text-xs text-slate-300">
-                Encodes & decodes standardized digital health records (LOINC, SNOMED CT) compliant with ABDM gateway protocols.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 self-end md:self-auto text-xs">
-            <div className="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 font-mono text-cyan-300 flex items-center gap-1.5">
-              <Database className="w-3.5 h-3.5 text-blue-400" />
-              <span>Standard: <strong>HL7 FHIR R4</strong></span>
-            </div>
-          </div>
         </div>
 
         {loading ? (
@@ -179,7 +134,6 @@ const AbdmHubPage = () => {
             <AbdmConsentManager 
               consents={consents} 
               onRespondConsent={handleRespondConsent}
-              onInspectFhir={handleInspectFhir}
             />
           </div>
         )}
@@ -193,20 +147,11 @@ const AbdmHubPage = () => {
           />
         )}
 
-        {/* HL7 FHIR Bundle Inspector Modal */}
-        {isFhirModalOpen && (
-          <AbdmFhirInspectorModal
-            isOpen={isFhirModalOpen}
-            onClose={() => setIsFhirModalOpen(false)}
-            consent={selectedConsentForFhir}
-            fhirData={fhirBundleData}
-          />
-        )}
-
       </div>
     </div>
   );
 };
 
 export default AbdmHubPage;
+
 

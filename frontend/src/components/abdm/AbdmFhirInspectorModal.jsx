@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { X, Code2, ShieldCheck, Copy, Check, FileText, Activity, Database, Sparkles, Layers, Cpu } from 'lucide-react';
+import { X, Code2, ShieldCheck, Copy, Check, Download, Upload, Activity, Database, Sparkles, Layers, Cpu, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { fhirService } from '../../services/fhirService';
 
 const AbdmFhirInspectorModal = ({ isOpen, onClose, consent, fhirData }) => {
-  const [activeTab, setActiveTab] = useState('VISUAL'); // 'VISUAL' or 'RAW_JSON'
+  const [activeTab, setActiveTab] = useState('VISUAL'); // 'VISUAL' | 'RAW_JSON' | 'IMPORT'
   const [copied, setCopied] = useState(false);
+  const [importJsonText, setImportJsonText] = useState('');
+  const [importStatus, setImportStatus] = useState(null); // { type: 'success'|'error', message: '' }
+  const [exporting, setExporting] = useState(false);
 
-  if (!isOpen || !consent) return null;
+  if (!isOpen) return null;
 
-  const bundle = fhirData?.fhirBundle || {};
+  const bundle = fhirData?.fhirBundle || fhirData || {};
   const entries = bundle.entry || [];
   const jsonString = JSON.stringify(bundle, null, 2);
 
@@ -16,6 +20,43 @@ const AbdmFhirInspectorModal = ({ isOpen, onClose, consent, fhirData }) => {
     navigator.clipboard.writeText(jsonString);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadEverythingBundle = async () => {
+    try {
+      setExporting(true);
+      const patientId = consent?.userId || 'patient-demo';
+      const everythingData = await fhirService.getPatientEverythingBundle(patientId) || bundle;
+      const blob = new Blob([JSON.stringify(everythingData, null, 2)], { type: 'application/fhir+json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `FHIR_R4_Patient_Everything_${patientId}_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Export failed: ' + err.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportSubmit = async () => {
+    setImportStatus(null);
+    try {
+      const parsed = JSON.parse(importJsonText);
+      const result = await fhirService.importBundle(parsed);
+      setImportStatus({
+        type: 'success',
+        message: `Successfully imported & validated ${result.count || 1} FHIR resource(s)!`
+      });
+      setImportJsonText('');
+    } catch (err) {
+      setImportStatus({
+        type: 'error',
+        message: 'Import Rejected: ' + err.message
+      });
+    }
   };
 
   return (
@@ -41,7 +82,7 @@ const AbdmFhirInspectorModal = ({ isOpen, onClose, consent, fhirData }) => {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Standardized Health Record Envelope requested by <span className="font-bold text-slate-200">{consent.requesterName}</span>
+                  Standardized Health Record Envelope {consent ? `requested by ${consent.requesterName}` : ''}
                 </p>
               </div>
             </div>
@@ -63,7 +104,7 @@ const AbdmFhirInspectorModal = ({ isOpen, onClose, consent, fhirData }) => {
               </div>
               <div className="flex items-center gap-1.5 font-mono text-[11px] hidden sm:flex">
                 <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Profile: <strong className="text-slate-300">ABDM DocumentBundle R4</strong></span>
+                <span>Profile: <strong className="text-slate-300">HL7 FHIR R4 (4.0.1)</strong></span>
               </div>
             </div>
 
@@ -88,27 +129,48 @@ const AbdmFhirInspectorModal = ({ isOpen, onClose, consent, fhirData }) => {
               >
                 <Code2 className="w-3.5 h-3.5" /> Raw FHIR JSON
               </button>
+              <button
+                onClick={() => setActiveTab('IMPORT')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                  activeTab === 'IMPORT'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" /> Import FHIR
+              </button>
             </div>
           </div>
 
           {/* Content Body */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {activeTab === 'VISUAL' ? (
+            {activeTab === 'VISUAL' && (
               <div className="space-y-6">
-                {/* Envelope Status Banner */}
-                <div className="bg-gradient-to-r from-blue-950/60 via-slate-900 to-indigo-950/60 p-4 rounded-2xl border border-blue-800/40 flex items-start gap-3">
-                  <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
-                  <div className="space-y-1 text-xs">
-                    <div className="font-bold text-white text-sm flex items-center gap-2">
-                      ABDM Certified Digital Health Record Bundle
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
-                        Signed & Verified
-                      </span>
+                {/* Status Banner */}
+                <div className="bg-gradient-to-r from-blue-950/60 via-slate-900 to-indigo-950/60 p-4 rounded-2xl border border-blue-800/40 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1 text-xs">
+                      <div className="font-bold text-white text-sm flex items-center gap-2">
+                        HL7 FHIR R4 (4.0.1) Validated Interoperability Bundle
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
+                          Validated & Verified
+                        </span>
+                      </div>
+                      <p className="text-slate-300">
+                        Translates MediTrack records into <strong>HL7 FHIR R4</strong> standard resources (Patient, Observation, Condition, MedicationRequest, ServiceRequest, CarePlan).
+                      </p>
                     </div>
-                    <p className="text-slate-300">
-                      This payload adheres to <strong>HL7 FHIR Release 4</strong> specifications and Indian <strong>NRCES / ABDM</strong> guidelines. It enables seamless cross-hospital clinical data portability.
-                    </p>
                   </div>
+
+                  <button
+                    onClick={handleDownloadEverythingBundle}
+                    disabled={exporting}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg transition-all shrink-0 flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    {exporting ? 'Exporting...' : 'Export $everything Bundle'}
+                  </button>
                 </div>
 
                 {/* FHIR Resources List */}
@@ -132,42 +194,48 @@ const AbdmFhirInspectorModal = ({ isOpen, onClose, consent, fhirData }) => {
                               </span>
                               <span className="text-xs text-slate-400 font-mono">ID: #{res.id}</span>
                             </div>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              {res.status ? `Status: ${res.status.toUpperCase()}` : 'Valid'}
+                            <span className="text-[10px] text-emerald-400 font-mono">
+                              {res.status ? `Status: ${res.status.toUpperCase()}` : 'VALID'}
                             </span>
                           </div>
 
-                          {/* Specific resource views */}
-                          {res.resourceType === 'Composition' && (
-                            <div className="text-xs space-y-1.5 text-slate-300">
-                              <div><strong className="text-slate-100">Title:</strong> {res.title}</div>
-                              <div><strong className="text-slate-100">LOINC Code:</strong> <span className="font-mono text-cyan-300">{res.type?.coding?.[0]?.code}</span> ({res.type?.coding?.[0]?.display})</div>
-                              <div><strong className="text-slate-100">Author:</strong> {res.author?.[0]?.display}</div>
-                            </div>
-                          )}
-
+                          {/* Resource Detail Snippets */}
                           {res.resourceType === 'Patient' && (
                             <div className="text-xs space-y-1.5 text-slate-300">
-                              <div><strong className="text-slate-100">Full Name:</strong> {res.name?.[0]?.text}</div>
+                              <div><strong className="text-slate-100">Full Name:</strong> {res.name?.[0]?.text || res.name?.[0]?.family}</div>
                               <div className="flex flex-wrap gap-2">
-                                <span><strong>ABHA Number:</strong> <span className="font-mono text-amber-300">{res.identifier?.[0]?.value}</span></span>
+                                <span><strong>Gender:</strong> <span className="font-mono text-cyan-300">{res.gender}</span></span>
                                 <span>•</span>
-                                <span><strong>ABHA Address:</strong> <span className="font-mono text-cyan-300">{res.identifier?.[1]?.value}</span></span>
+                                <span><strong>Birth Date:</strong> <span className="font-mono text-amber-300">{res.birthDate || 'N/A'}</span></span>
                               </div>
                             </div>
                           )}
 
-                          {res.resourceType === 'MedicationRequest' && (
+                          {res.resourceType === 'Observation' && (
                             <div className="text-xs space-y-1.5 text-slate-300">
-                              <div><strong className="text-slate-100">Medication (SNOMED CT):</strong> <span className="font-semibold text-emerald-300">{res.medicationCodeableConcept?.text}</span> <span className="font-mono text-slate-400">({res.medicationCodeableConcept?.coding?.[0]?.code})</span></div>
-                              <div><strong className="text-slate-100">Dosage Instruction:</strong> <span className="text-slate-200">{res.dosageInstruction?.[0]?.text}</span></div>
+                              <div><strong className="text-slate-100">Observation (LOINC):</strong> <span className="font-semibold text-cyan-300">{res.code?.text || res.code?.coding?.[0]?.display}</span> <span className="font-mono text-slate-400">({res.code?.coding?.[0]?.code})</span></div>
+                              <div><strong className="text-slate-100">Value:</strong> <span className="text-emerald-300 font-bold">{res.valueQuantity?.value} {res.valueQuantity?.unit || res.valueString}</span></div>
                             </div>
                           )}
 
                           {res.resourceType === 'Condition' && (
                             <div className="text-xs space-y-1.5 text-slate-300">
-                              <div><strong className="text-slate-100">Diagnosis / Symptom:</strong> <span className="font-semibold text-rose-300">{res.code?.text}</span> <span className="font-mono text-slate-400">({res.code?.coding?.[0]?.code})</span></div>
-                              <div><strong className="text-slate-100">Verification:</strong> <span className="text-emerald-400 uppercase font-mono text-[10px]">{res.verificationStatus?.coding?.[0]?.code}</span></div>
+                              <div><strong className="text-slate-100">Diagnosis (SNOMED CT):</strong> <span className="font-semibold text-rose-300">{res.code?.text || res.code?.coding?.[0]?.display}</span> <span className="font-mono text-slate-400">({res.code?.coding?.[0]?.code})</span></div>
+                              <div><strong className="text-slate-100">Clinical Status:</strong> <span className="text-emerald-400 uppercase font-mono text-[10px]">{res.clinicalStatus?.coding?.[0]?.code || 'active'}</span></div>
+                            </div>
+                          )}
+
+                          {res.resourceType === 'MedicationRequest' && (
+                            <div className="text-xs space-y-1.5 text-slate-300">
+                              <div><strong className="text-slate-100">Medication (RxNorm):</strong> <span className="font-semibold text-emerald-300">{res.medicationCodeableConcept?.text}</span> <span className="font-mono text-slate-400">({res.medicationCodeableConcept?.coding?.[0]?.code})</span></div>
+                              <div><strong className="text-slate-100">Dosage Instruction:</strong> <span className="text-slate-200">{res.dosageInstruction?.[0]?.text}</span></div>
+                            </div>
+                          )}
+
+                          {res.resourceType === 'ServiceRequest' && (
+                            <div className="text-xs space-y-1.5 text-slate-300">
+                              <div><strong className="text-slate-100">Referral Request:</strong> <span className="font-semibold text-amber-300">{res.code?.text}</span></div>
+                              <div><strong className="text-slate-100">Priority:</strong> <span className="text-amber-400 uppercase font-mono text-[10px]">{res.priority}</span></div>
                             </div>
                           )}
                         </div>
@@ -176,7 +244,9 @@ const AbdmFhirInspectorModal = ({ isOpen, onClose, consent, fhirData }) => {
                   </div>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {activeTab === 'RAW_JSON' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400 font-mono">Syntax: HL7 FHIR Release 4 JSON</span>
@@ -193,6 +263,43 @@ const AbdmFhirInspectorModal = ({ isOpen, onClose, consent, fhirData }) => {
                   <pre className="text-xs font-mono text-cyan-300 leading-relaxed">
                     {jsonString}
                   </pre>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'IMPORT' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-2">
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <Upload className="w-4 h-4 text-cyan-400" /> External FHIR R4 JSON Importer
+                  </h4>
+                  <p className="text-xs text-slate-300">
+                    Paste any standard HL7 FHIR R4 JSON Bundle or Resource below to validate and ingest it into MediTrack.
+                  </p>
+                </div>
+
+                {importStatus && (
+                  <div className={`p-4 rounded-2xl text-xs flex items-center gap-2 ${importStatus.type === 'success' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}`}>
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{importStatus.message}</span>
+                  </div>
+                )}
+
+                <textarea
+                  value={importJsonText}
+                  onChange={(e) => setImportJsonText(e.target.value)}
+                  placeholder="Paste FHIR JSON payload here..."
+                  className="w-full h-48 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500"
+                />
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleImportSubmit}
+                    disabled={!importJsonText.trim()}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-lg flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" /> Validate & Ingest FHIR Resource
+                  </button>
                 </div>
               </div>
             )}

@@ -114,6 +114,19 @@ def get_session_result(session_id: str):
         "result": session["result"]
     }
 
+from .fhir_adapter import convert_triage_to_fhir_bundle
+
+@app.post("/api/v1/triage/fhir")
+def get_triage_fhir(req: TriageMessageRequest):
+    result = process_message(req)
+    result_dict = result.dict() if hasattr(result, "dict") else dict(result)
+    fhir_bundle = convert_triage_to_fhir_bundle(result_dict, patient_id=req.session_id or "patient-demo")
+    return {
+        "success": True,
+        "triage_result": result,
+        "fhir_bundle": fhir_bundle
+    }
+
 @app.post("/api/v1/triage/session/{session_id}/feedback")
 def submit_feedback(session_id: str, feedback: TriageFeedbackRequest):
     session = session_store.get_session(session_id)

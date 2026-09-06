@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { ShieldCheck, Building2, Stethoscope, CheckCircle, XCircle, AlertOctagon, RefreshCw, FileText, LogOut } from 'lucide-react';
+import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -83,6 +84,7 @@ export default function AdminDashboard() {
               { id: 'verification', label: 'Provider Verification', icon: CheckCircle },
               { id: 'metrics', label: 'Platform Analytics', icon: Building2 },
               { id: 'audit', label: 'Security Audit Logs', icon: FileText },
+              { id: 'fhir', label: 'HL7 FHIR Interoperability', icon: ShieldCheck },
             ].map(item => {
               const Icon = item.icon;
               return (
@@ -224,6 +226,11 @@ export default function AdminDashboard() {
               <div className="text-slate-300 mt-2">{metrics.activeReferrals} Active Referrals</div>
             </div>
           </div>
+        )}
+
+        {/* HL7 FHIR Interoperability Hub */}
+        {activeTab === 'fhir' && (
+          <FhirProviderDashboard />
         )}
       </main>
     </div>

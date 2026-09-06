@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Lock, ShieldCheck, CheckCircle2, XCircle, Clock, FileText, AlertCircle, RefreshCw, ChevronRight, Building2, User, Code2 } from 'lucide-react';
+import { Lock, ShieldCheck, CheckCircle2, XCircle, Clock, FileText, AlertCircle, RefreshCw, ChevronRight, Building2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const AbdmConsentManager = ({ consents, onRespondConsent, onInspectFhir }) => {
+const AbdmConsentManager = ({ consents, onRespondConsent }) => {
+
   const [loadingId, setLoadingId] = useState(null);
   const [filter, setFilter] = useState('ALL'); // ALL, PENDING, GRANTED, DENIED
 
@@ -142,17 +143,8 @@ const AbdmConsentManager = ({ consents, onRespondConsent, onInspectFhir }) => {
                 </div>
 
                 <div className="flex gap-2 w-full sm:w-auto">
-                  {consent.status === 'GRANTED' && (
-                    <button
-                      onClick={() => onInspectFhir && onInspectFhir(consent)}
-                      className="px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 font-bold transition-all text-xs flex items-center gap-1.5 shadow-sm"
-                    >
-                      <Code2 className="w-3.5 h-3.5 text-cyan-400" />
-                      Inspect HL7 FHIR Bundle
-                    </button>
-                  )}
-
                   {consent.status === 'PENDING' && (
+
                     <>
                       <button
                         disabled={loadingId === consent._id}
