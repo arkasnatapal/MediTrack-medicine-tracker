@@ -191,6 +191,8 @@ const AppointmentsPage = () => {
       }
     } catch (err) {
       console.error('Error fetching facilities for city:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -518,15 +520,24 @@ const AppointmentsPage = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Select Public Healthcare Facility in {selectedCity}:
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Select Public Healthcare Facility in {selectedCity}:</span>
+                    {loading && (
+                      <span className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-bold animate-pulse">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Loading Facilities...</span>
+                      </span>
+                    )}
                   </label>
                   <select
                     value={selectedFacilityId}
                     onChange={(e) => setSelectedFacilityId(e.target.value)}
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none"
+                    disabled={loading || !Array.isArray(facilities) || facilities.length === 0}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none disabled:opacity-60 transition-all"
                   >
-                    {facilities.length === 0 ? (
+                    {loading ? (
+                      <option value="">⏳ Fetching public healthcare facilities in {selectedCity}...</option>
+                    ) : !Array.isArray(facilities) || facilities.length === 0 ? (
                       <option value="">No healthcare facilities found in {selectedCity}</option>
                     ) : (
                       facilities.map(f => {
@@ -631,15 +642,24 @@ const AppointmentsPage = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Select Target Public Hospital in {selectedCity}:
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Select Target Public Hospital in {selectedCity}:</span>
+                    {loading && (
+                      <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold animate-pulse">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Loading Hospitals...</span>
+                      </span>
+                    )}
                   </label>
                   <select
                     value={selectedFacilityId}
                     onChange={(e) => setSelectedFacilityId(e.target.value)}
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none"
+                    disabled={loading || !Array.isArray(facilities) || facilities.length === 0}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-none disabled:opacity-60 transition-all"
                   >
-                    {facilities.length === 0 ? (
+                    {loading ? (
+                      <option value="">⏳ Fetching public hospitals in {selectedCity}...</option>
+                    ) : !Array.isArray(facilities) || facilities.length === 0 ? (
                       <option value="">No healthcare facilities found in {selectedCity}</option>
                     ) : (
                       facilities.map(f => {

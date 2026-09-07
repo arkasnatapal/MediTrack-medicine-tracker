@@ -19,6 +19,7 @@ export default function TeleconsultationPage() {
   const [activeSession, setActiveSession] = useState(null);
   const [mySessions, setMySessions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingFacilities, setLoadingFacilities] = useState(true);
 
   // Call Room States
   const [inCall, setInCall] = useState(false);
@@ -51,24 +52,43 @@ export default function TeleconsultationPage() {
 
   // Fetch Facilities & Existing Sessions
   const loadInitialData = async () => {
+    setLoadingFacilities(true);
     try {
       const [facRes, sessRes] = await Promise.all([
-        axios.get(`${CARE_BACKEND_URL}/api/facilities`),
-        axios.get(`${CARE_BACKEND_URL}/api/teleconsultations`),
+        axios.get(`${CARE_BACKEND_URL}/api/facilities`).catch(err => {
+          console.warn('Care facilities fetch fallback:', err.message);
+          return { data: [] };
+        }),
+        axios.get(`${CARE_BACKEND_URL}/api/teleconsultations`).catch(err => {
+          console.warn('Teleconsultations fetch fallback:', err.message);
+          return { data: [] };
+        }),
       ]);
-      setFacilities(facRes.data || []);
-      if (facRes.data.length > 0 && !selectedFacilityId) {
-        setSelectedFacilityId(facRes.data[0]._id);
+
+      const facsArray = Array.isArray(facRes.data)
+        ? facRes.data
+        : (Array.isArray(facRes.data?.facilities) ? facRes.data.facilities : (facRes.data?.data || []));
+
+      const sessArray = Array.isArray(sessRes.data)
+        ? sessRes.data
+        : (Array.isArray(sessRes.data?.teleconsultations) ? sessRes.data.teleconsultations : (sessRes.data?.data || []));
+
+      setFacilities(facsArray);
+      if (facsArray.length > 0 && !selectedFacilityId) {
+        setSelectedFacilityId(facsArray[0]._id || facsArray[0].facilityId || '');
       }
-      setMySessions(sessRes.data || []);
-      if (sessRes.data && sessRes.data.length > 0 && !activeSession) {
-        setActiveSession(sessRes.data[0]);
-        setPostMessages(sessRes.data[0].postSessionMessages || []);
-        setPostMessagesLeft(sessRes.data[0].postSessionMessagesLeft ?? 10);
-        setInSessionChat(sessRes.data[0].inSessionChat || []);
+
+      setMySessions(sessArray);
+      if (sessArray.length > 0 && !activeSession) {
+        setActiveSession(sessArray[0]);
+        setPostMessages(sessArray[0].postSessionMessages || []);
+        setPostMessagesLeft(sessArray[0].postSessionMessagesLeft ?? 10);
+        setInSessionChat(sessArray[0].inSessionChat || []);
       }
     } catch (err) {
       console.error('Failed to load initial teleconsultation data:', err);
+    } finally {
+      setLoadingFacilities(false);
     }
   };
 
@@ -320,18 +340,33 @@ export default function TeleconsultationPage() {
             </h2>
 
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Select Target Hospital / PHC *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-slate-700 dark:text-slate-300">Select Target Hospital / PHC *</label>
+                {loadingFacilities && (
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-500 animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Loading Facilities...</span>
+                  </span>
+                )}
+              </div>
               <select
                 value={selectedFacilityId}
                 onChange={e => setSelectedFacilityId(e.target.value)}
+                disabled={loadingFacilities || !Array.isArray(facilities) || facilities.length === 0}
                 required
-                className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-slate-900 dark:text-white"
+                className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold text-slate-900 dark:text-white disabled:opacity-60 transition-all"
               >
-                {facilities.map(f => (
-                  <option key={f._id} value={f._id}>
-                    {f.name} ({f.facilityType} • {f.district || 'District'})
-                  </option>
-                ))}
+                {loadingFacilities ? (
+                  <option value="">⏳ Loading healthcare facilities from database...</option>
+                ) : !Array.isArray(facilities) || facilities.length === 0 ? (
+                  <option value="">No healthcare facilities found</option>
+                ) : (
+                  facilities.map(f => (
+                    <option key={f._id || f.facilityId} value={f._id || f.facilityId}>
+                      {f.name} ({f.facilityType || 'Hospital'} • {f.district || f.state || 'District'})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -378,8 +413,8 @@ export default function TeleconsultationPage() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 active:scale-95"
+              disabled={loading || loadingFacilities}
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 active:scale-95"
             >
               <Send className="w-4 h-4" />
               <span>Send Request to Hospital Portal</span>
@@ -390,41 +425,45 @@ export default function TeleconsultationPage() {
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl text-xs space-y-3">
             <h3 className="font-bold text-slate-900 dark:text-white">Your Recent Teleconsultation Sessions</h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {mySessions.map(s => (
-                <div
-                  key={s._id}
-                  onClick={() => {
-                    setActiveSession(s);
-                    setPostMessages(s.postSessionMessages || []);
-                    setPostMessagesLeft(s.postSessionMessagesLeft ?? 10);
-                    setInSessionChat(s.inSessionChat || []);
-                  }}
-                  className={`p-3 rounded-xl border cursor-pointer transition ${activeSession?._id === s._id ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 font-bold' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'}`}
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold truncate max-w-[200px]">{s.specialty} • {s.facilityName}</span>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${s.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' : s.status === 'ACTIVE' ? 'bg-indigo-500/20 text-indigo-400 animate-pulse' : s.status === 'TERMINATED' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
-                        {s.status}
+              {Array.isArray(mySessions) && mySessions.length > 0 ? (
+                mySessions.map(s => (
+                  <div
+                    key={s._id || s.meetingIdentifier}
+                    onClick={() => {
+                      setActiveSession(s);
+                      setPostMessages(s.postSessionMessages || []);
+                      setPostMessagesLeft(s.postSessionMessagesLeft ?? 10);
+                      setInSessionChat(s.inSessionChat || []);
+                    }}
+                    className={`p-3 rounded-xl border cursor-pointer transition ${activeSession?._id === s._id ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 font-bold' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'}`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold truncate max-w-[200px]">{s.specialty} • {s.facilityName}</span>
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${s.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' : s.status === 'ACTIVE' ? 'bg-indigo-500/20 text-indigo-400 animate-pulse' : s.status === 'TERMINATED' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
+                          {s.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteSession(s._id || s.meetingIdentifier, e)}
+                          title="Delete session permanently"
+                          className="p-1 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1 flex justify-between items-center">
+                      <span>ID: {s.meetingIdentifier}</span>
+                      <span className="text-indigo-400 font-bold flex items-center gap-1">
+                        <Calendar className="w-3 h-3" /> {s.scheduledTime || 'Pending Time'}
                       </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteSession(s._id || s.meetingIdentifier, e)}
-                        title="Delete session permanently"
-                        className="p-1 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-1 flex justify-between items-center">
-                    <span>ID: {s.meetingIdentifier}</span>
-                    <span className="text-indigo-400 font-bold flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {s.scheduledTime || 'Pending Time'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-slate-400 text-xs text-center py-4">No previous teleconsultation sessions found.</p>
+              )}
             </div>
           </div>
         </div>
