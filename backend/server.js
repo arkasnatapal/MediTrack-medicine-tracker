@@ -33,14 +33,69 @@ if (!fs.existsSync(uploadsDir)) {
   }
 }
 
-// Global CORS & Preflight Middleware
+// Express CORS Configuration via Environment Variables & express cors package
+const allowedOriginsFromEnv = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+  : [];
+
+const allowedOriginsList = Array.from(new Set([
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  'https://meditrack-ultimate.vercel.app',
+  'https://meditrack-care-frontend.vercel.app',
+  'https://meditrack-care.vercel.app',
+  'https://meditrack-backendalpha.vercel.app',
+  'https://meditrack-careback.vercel.app',
+  'https://meditrack-careback-ult.vercel.app',
+  'https://meditrack-carefacility-ult.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5000',
+  'http://localhost:5001',
+  'http://localhost:3000',
+  ...allowedOriginsFromEnv,
+])).filter(Boolean);
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      origin.endsWith('.vercel.app') ||
+      allowedOriginsList.includes(origin)
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'x-user-id',
+    'x-facility-id',
+    'X-CSRF-Token',
+    'Accept-Version',
+    'Content-Length',
+    'Content-MD5',
+    'Date',
+    'X-Api-Version'
+  ],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Explicit header middleware fallback for Vercel/serverless request contexts
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
+  const origin = req.headers.origin || process.env.CLIENT_URL || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id, x-facility-id, X-CSRF-Token, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version');
