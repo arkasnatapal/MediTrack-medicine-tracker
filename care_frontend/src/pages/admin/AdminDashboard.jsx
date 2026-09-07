@@ -63,9 +63,7 @@ export default function AdminDashboard() {
       {/* Mobile Top Header */}
       <div className="md:hidden bg-slate-950/95 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
+          <img src="/logo.png" alt="MediTrack Logo" className="w-7 h-7 object-contain rounded-lg" />
           <span className="font-display text-xs font-bold text-white">Care Admin Console</span>
         </div>
         <button

@@ -769,9 +769,7 @@ export default function DoctorDashboard() {
       {/* Mobile Top Header */}
       <div className="md:hidden bg-slate-950/95 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
-            <Stethoscope className="w-4 h-4" />
-          </div>
+          <img src="/logo.png" alt="MediTrack Logo" className="w-7 h-7 object-contain rounded-lg" />
           <span className="font-display text-xs font-bold text-white truncate max-w-[180px]">
             {doctorName.startsWith('Dr.') ? doctorName : `Dr. ${doctorName}`}
           </span>

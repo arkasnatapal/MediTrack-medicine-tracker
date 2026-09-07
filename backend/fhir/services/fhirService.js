@@ -365,13 +365,33 @@ class FhirService {
           const db = mongoose.connection;
           const patientMap = new Map();
 
-          // 1. Query users collection for registered patients
-          const userFilter = {};
-          if (params.name) {
-            userFilter.name = new RegExp(params.name, 'i');
+          const filter = {};
+          if (scopedPatientIds !== null && scopedPatientIds.length > 0) {
+            filter._id = buildScopedPatientQuery(scopedPatientIds);
+          } else if (scopedPatientIds !== null && scopedPatientIds.length === 0 && !params.facilityId && !params.doctorId) {
+            resources = [];
+            break;
           }
-          const regUsers = await db.collection('users').find(userFilter).limit(50).toArray().catch(() => []);
-          regUsers.forEach(u => {
+
+          if (params.name) {
+            filter.name = new RegExp(params.name, 'i');
+          }
+          if (params.identifier) {
+            const cleanId = params.identifier.replace('Patient/', '');
+            const isObjId = mongoose.Types.ObjectId.isValid(cleanId);
+            filter.$or = [
+              ...(isObjId ? [{ _id: cleanId }] : []),
+              { abhaNumber: params.identifier },
+              { abhaAddress: params.identifier },
+              { memberId: params.identifier }
+            ];
+          }
+
+          let users = [];
+          if (UserModel && (scopedPatientIds === null || scopedPatientIds.length > 0)) {
+            users = await UserModel.find(filter).limit(50);
+          }
+          users.forEach(u => {
             const role = (u.role || '').toUpperCase();
             if (role !== 'DOCTOR' && role !== 'FACILITY_ADMIN' && role !== 'SYSTEM_ADMIN' && role !== 'ADMIN') {
               const fhirP = toFhirPatient(u);
@@ -379,43 +399,61 @@ class FhirService {
             }
           });
 
-          // 2. Query careappointments for hospital patient records (e.g. ARKA, Arkasnata Pal)
-          const apptQuery = {};
-          if (params.name) {
-            apptQuery.patientName = new RegExp(params.name, 'i');
-          }
-          const appts = await db.collection('careappointments').find(apptQuery).limit(50).toArray().catch(() => []);
-          appts.forEach(a => {
-            if (a.patientName) {
-              const pid = String(a._id);
-              if (!patientMap.has(pid)) {
-                patientMap.set(pid, toFhirPatient({
-                  _id: a._id,
-                  name: a.patientName,
-                  email: a.patientEmail || `${a.patientName.toLowerCase().replace(/\s+/g, '')}@meditrack.care`,
-                  phoneNumber: a.patientPhone || '',
-                  gender: a.patientGender || 'unspecified',
-                  age: a.patientAge
-                }));
-              }
+          // Also query appointment & bed admission patient records strictly linked to this facility/doctor
+          if (params.facilityId || params.doctorId) {
+            const facQuery = {};
+            if (params.facilityId) {
+              const cleanFacId = String(params.facilityId);
+              const isObjId = mongoose.Types.ObjectId.isValid(cleanFacId);
+              facQuery.$or = [
+                { facilityId: cleanFacId },
+                ...(isObjId ? [{ facilityId: new mongoose.Types.ObjectId(cleanFacId) }] : [])
+              ];
             }
-          });
+            if (params.doctorId) {
+              const cleanDocId = String(params.doctorId);
+              const isObjId = mongoose.Types.ObjectId.isValid(cleanDocId);
+              facQuery.$or = [
+                { doctorId: cleanDocId },
+                ...(isObjId ? [{ doctorId: new mongoose.Types.ObjectId(cleanDocId) }] : [])
+              ];
+            }
+            if (params.name) {
+              facQuery.patientName = new RegExp(params.name, 'i');
+            }
 
-          // 3. Query bedadmissions for hospital bed patients
-          const bedAdmissions = await db.collection('bedadmissions').find(apptQuery).limit(50).toArray().catch(() => []);
-          bedAdmissions.forEach(b => {
-            if (b.patientName) {
-              const pid = String(b._id);
-              if (!patientMap.has(pid)) {
-                patientMap.set(pid, toFhirPatient({
-                  _id: b._id,
-                  name: b.patientName,
-                  phoneNumber: b.contactPhone || '',
-                  gender: b.gender || 'unspecified'
-                }));
+            const appts = await db.collection('careappointments').find(facQuery).limit(50).toArray().catch(() => []);
+            appts.forEach(a => {
+              if (a.patientName) {
+                const pid = String(a._id);
+                if (!patientMap.has(pid)) {
+                  patientMap.set(pid, toFhirPatient({
+                    _id: a._id,
+                    name: a.patientName,
+                    email: a.patientEmail || `${a.patientName.toLowerCase().replace(/\s+/g, '')}@meditrack.care`,
+                    phoneNumber: a.patientPhone || '',
+                    gender: a.patientGender || 'unspecified',
+                    age: a.patientAge
+                  }));
+                }
               }
-            }
-          });
+            });
+
+            const beds = await db.collection('bedadmissions').find(facQuery).limit(50).toArray().catch(() => []);
+            beds.forEach(b => {
+              if (b.patientName) {
+                const pid = String(b._id);
+                if (!patientMap.has(pid)) {
+                  patientMap.set(pid, toFhirPatient({
+                    _id: b._id,
+                    name: b.patientName,
+                    phoneNumber: b.contactPhone || '',
+                    gender: b.gender || 'unspecified'
+                  }));
+                }
+              }
+            });
+          }
 
           resources = Array.from(patientMap.values());
           break;

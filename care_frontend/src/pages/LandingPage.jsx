@@ -86,19 +86,21 @@ export default function LandingPage() {
       <div className="atmospheric-bg" />
 
       {/* Redesigned Full-Width Floating Header */}
-      <header className="w-full sticky top-3 z-50 px-4 sm:px-8 lg:px-12">
-        <div className="w-full max-w-[1536px] mx-auto bg-[var(--nav-bg)] backdrop-blur-2xl border border-[var(--border-card)] px-6 py-3.5 rounded-full shadow-xl flex items-center justify-between transition-colors duration-300">
+      <header className="w-full sticky top-2 sm:top-3 z-50 px-2 sm:px-8 lg:px-12">
+        <div className="w-full max-w-[1536px] mx-auto bg-[var(--nav-bg)] backdrop-blur-2xl border border-[var(--border-card)] px-3 sm:px-6 py-2 sm:py-3.5 rounded-full shadow-xl flex items-center justify-between transition-colors duration-300">
           
           {/* Left Brand Identity */}
-          <Link to="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 rounded-2xl bg-teal-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
-              <Activity className="w-5 h-5 text-white animate-pulse" />
-            </div>
+          <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group shrink-0">
+            <img 
+              src="/logo.png" 
+              alt="MediTrack Logo" 
+              className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-xl group-hover:scale-105 transition-transform"
+            />
             <div className="flex flex-col">
-              <span className="font-display text-lg font-extrabold tracking-tight text-[var(--text-main)] flex items-center gap-1.5">
+              <span className="font-display text-sm sm:text-lg font-extrabold tracking-tight text-[var(--text-main)] flex items-center gap-1">
                 MediTrack <span className="text-teal-600 dark:text-teal-400 font-bold">Care</span>
               </span>
-              <span className="text-[10px] text-[var(--text-muted)] tracking-wider font-mono uppercase">
+              <span className="hidden sm:block text-[10px] text-[var(--text-muted)] tracking-wider font-mono uppercase">
                 Public Health Ecosystem
               </span>
             </div>
@@ -114,12 +116,12 @@ export default function LandingPage() {
           </nav>
 
           {/* Right Action Controls */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
               aria-label="Toggle theme"
-              className="w-9 h-9 rounded-full bg-[var(--bg-pill)] border border-[var(--border-card)] flex items-center justify-center text-[var(--text-main)] hover:border-teal-500 transition-all shadow-sm"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[var(--bg-pill)] border border-[var(--border-card)] flex items-center justify-center text-[var(--text-main)] hover:border-teal-500 transition-all shadow-sm"
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-teal-700" />}
@@ -144,10 +146,10 @@ export default function LandingPage() {
               <span>Admin</span>
             </Link>
 
-            {/* Access Portal Primary Action Button */}
+            {/* Access Portal Primary Action Button - Hidden on Mobile */}
             <Link
               to="/facility/auth?mode=login"
-              className="btn-arrow-primary text-xs py-2.5 px-4 sm:px-5"
+              className="hidden sm:inline-flex btn-arrow-primary text-xs py-2.5 px-5"
             >
               <span>Access Portal</span>
               <span className="btn-arrow-circle">
@@ -158,10 +160,10 @@ export default function LandingPage() {
             {/* Mobile Hamburger Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden w-9 h-9 rounded-full bg-[var(--bg-pill)] border border-[var(--border-card)] flex items-center justify-center text-[var(--text-main)] hover:border-teal-500 transition-all"
+              className="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[var(--bg-pill)] border border-[var(--border-card)] flex items-center justify-center text-[var(--text-main)] hover:border-teal-500 transition-all"
               aria-label="Toggle mobile menu"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMobileMenuOpen ? <X className="w-4 h-4 sm:w-5 sm:h-5" /> : <Menu className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
           </div>
 
@@ -175,22 +177,34 @@ export default function LandingPage() {
             <a href="#services" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-teal-500 transition-colors py-1">Our Services</a>
             <a href="#trust" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-teal-500 transition-colors py-1">Programs</a>
             <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-teal-500 transition-colors py-1">FAQ</a>
-            <div className="pt-3 border-t border-[var(--border-card)] flex flex-wrap gap-2">
-              <button
-                onClick={() => { setIsMobileMenuOpen(false); setShowApiModal(true); }}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-500"
-              >
-                <FileCode2 className="w-3.5 h-3.5" />
-                <span>API Portal</span>
-              </button>
+            <div className="pt-3 border-t border-[var(--border-card)] flex flex-col space-y-2">
               <Link
-                to="/admin/login"
+                to="/facility/auth?mode=login"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-full border border-[var(--border-card)] bg-[var(--bg-pill)] text-[var(--text-muted)]"
+                className="btn-arrow-primary text-xs py-2.5 px-5 justify-center w-full"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                <span>System Admin</span>
+                <span>Access Portal</span>
+                <span className="btn-arrow-circle">
+                  <ArrowUpRight className="w-3.5 h-3.5 text-white" />
+                </span>
               </Link>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); setShowApiModal(true); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-500"
+                >
+                  <FileCode2 className="w-3.5 h-3.5" />
+                  <span>API Portal</span>
+                </button>
+                <Link
+                  to="/admin/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-full border border-[var(--border-card)] bg-[var(--bg-pill)] text-[var(--text-muted)]"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Admin</span>
+                </Link>
+              </div>
             </div>
           </div>
         )}
