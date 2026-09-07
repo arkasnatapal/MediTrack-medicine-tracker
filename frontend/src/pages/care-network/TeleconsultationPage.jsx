@@ -3,7 +3,8 @@ import { Video, VideoOff, Mic, MicOff, PhoneOff, Send, CheckCircle2, Clock, Aler
 import axios from 'axios';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 
-const CARE_BACKEND_URL = import.meta.env.VITE_CARE_BACKEND_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5001' : '');
+const CARE_BACKEND_URL = import.meta.env.VITE_CARE_BACKEND_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5001' : 'https://meditrack-careback.vercel.app');
+const MAIN_API_BASE = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000/api' : 'https://meditrack-backendalpha.vercel.app/api');
 
 export default function TeleconsultationPage() {
 
@@ -54,24 +55,37 @@ export default function TeleconsultationPage() {
   const loadInitialData = async () => {
     setLoadingFacilities(true);
     try {
-      const [facRes, sessRes] = await Promise.all([
-        axios.get(`${CARE_BACKEND_URL}/api/facilities`).catch(err => {
-          console.warn('Care facilities fetch fallback:', err.message);
-          return { data: [] };
-        }),
-        axios.get(`${CARE_BACKEND_URL}/api/teleconsultations`).catch(err => {
-          console.warn('Teleconsultations fetch fallback:', err.message);
-          return { data: [] };
-        }),
-      ]);
+      let facsArray = [];
+      try {
+        const facRes = await axios.get(`${CARE_BACKEND_URL}/api/facilities`);
+        facsArray = Array.isArray(facRes.data)
+          ? facRes.data
+          : (Array.isArray(facRes.data?.facilities) ? facRes.data.facilities : (facRes.data?.data || []));
+      } catch (errCare) {
+        console.warn('Care backend facilities fetch warning, trying main backend fallback:', errCare.message);
+      }
 
-      const facsArray = Array.isArray(facRes.data)
-        ? facRes.data
-        : (Array.isArray(facRes.data?.facilities) ? facRes.data.facilities : (facRes.data?.data || []));
+      // Fallback to main backend if care backend returned no facilities
+      if (!facsArray || facsArray.length === 0) {
+        try {
+          const mainRes = await axios.get(`${MAIN_API_BASE}/care-network/facilities`);
+          facsArray = Array.isArray(mainRes.data?.facilities)
+            ? mainRes.data.facilities
+            : (Array.isArray(mainRes.data) ? mainRes.data : []);
+        } catch (errMain) {
+          console.warn('Main backend facilities fetch warning:', errMain.message);
+        }
+      }
 
-      const sessArray = Array.isArray(sessRes.data)
-        ? sessRes.data
-        : (Array.isArray(sessRes.data?.teleconsultations) ? sessRes.data.teleconsultations : (sessRes.data?.data || []));
+      let sessArray = [];
+      try {
+        const sessRes = await axios.get(`${CARE_BACKEND_URL}/api/teleconsultations`);
+        sessArray = Array.isArray(sessRes.data)
+          ? sessRes.data
+          : (Array.isArray(sessRes.data?.teleconsultations) ? sessRes.data.teleconsultations : (sessRes.data?.data || []));
+      } catch (errSess) {
+        console.warn('Teleconsultations fetch fallback:', errSess.message);
+      }
 
       setFacilities(facsArray);
       if (facsArray.length > 0 && !selectedFacilityId) {
