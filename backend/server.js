@@ -95,6 +95,17 @@ app.use(morgan('dev'));
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Ensure Database Connection for Serverless Execution
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('Database connection error:', err.message);
+    next(err);
+  }
+});
+
 // Routes
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to MediTrack API' });

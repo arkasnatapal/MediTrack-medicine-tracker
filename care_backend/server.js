@@ -100,6 +100,17 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
+// Ensure Database Connection for Serverless Execution
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('Care DB connection error:', err.message);
+    next(err);
+  }
+});
+
 // API Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', service: 'MediTrack Care Network Provider Backend', timestamp: new Date() });

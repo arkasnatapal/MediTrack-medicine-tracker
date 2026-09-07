@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require("jsonwebtoken");
 const { google } = require("googleapis");
 const User = require("../models/User");
+const connectDB = require("../config/db");
 const { createOAuthClient, getAuthUrl } = require("../utils/googleCalendar");
 const { sendOtpEmail } = require("../utils/email");
 
@@ -11,6 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "changeme"; // use existing secret
 // GET /api/auth/google/url?mode=login|signup
 router.get("/url", async (req, res) => {
   try {
+    await connectDB();
     const mode = req.query.mode === "signup" ? "signup" : "login";
     const url = getAuthUrl(mode, req);
     if (!url) {
@@ -36,6 +38,7 @@ router.get("/callback", async (req, res) => {
   }
 
   try {
+    await connectDB();
     const { code, error, state } = req.query;
 
     if (error) {
