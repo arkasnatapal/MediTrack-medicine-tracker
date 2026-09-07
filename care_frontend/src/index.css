@@ -235,3 +235,13 @@ select option {
 .font-display {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
 }
+
+/* Mobile Scrollbar Hide Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

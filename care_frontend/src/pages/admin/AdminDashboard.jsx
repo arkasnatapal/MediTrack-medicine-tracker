@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { ShieldCheck, Building2, Stethoscope, CheckCircle, XCircle, AlertOctagon, RefreshCw, FileText, LogOut } from 'lucide-react';
+import { ShieldCheck, Building2, Stethoscope, CheckCircle, XCircle, AlertOctagon, RefreshCw, FileText, LogOut, Menu, X } from 'lucide-react';
 import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('verification');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [metrics, setMetrics] = useState(null);
   const [pendingFacilities, setPendingFacilities] = useState([]);
   const [pendingDoctors, setPendingDoctors] = useState([]);
@@ -19,15 +20,15 @@ export default function AdminDashboard() {
     try {
       const [metRes, pendRes, logRes] = await Promise.all([
         api.get('/admin/metrics'),
-        api.get('/admin/pending'),
+        api.get('/admin/pending-verifications'),
         api.get('/admin/audit-logs'),
       ]);
       setMetrics(metRes.data);
-      setPendingFacilities(pendRes.data.facilities);
-      setPendingDoctors(pendRes.data.doctors);
-      setAuditLogs(logRes.data);
+      setPendingFacilities(pendRes.data.facilities || []);
+      setPendingDoctors(pendRes.data.doctors || []);
+      setAuditLogs(logRes.data || []);
     } catch (err) {
-      console.error('Failed to load admin oversight data:', err);
+      console.error('Failed to load admin data:', err);
     } finally {
       setLoading(false);
     }
@@ -40,42 +41,53 @@ export default function AdminDashboard() {
   const handleVerifyFacility = async (id, status) => {
     try {
       await api.put(`/admin/verify-facility/${id}`, { status });
-      alert(`Facility set to ${status}`);
+      alert(`Facility status updated to ${status}`);
       loadAdminData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Verification update failed');
+      alert('Action failed');
     }
   };
 
   const handleVerifyDoctor = async (id, status) => {
     try {
       await api.put(`/admin/verify-doctor/${id}`, { status });
-      alert(`Doctor set to ${status}`);
+      alert(`Doctor status updated to ${status}`);
       loadAdminData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Verification update failed');
+      alert('Action failed');
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col md:flex-row relative overflow-hidden selection:bg-amber-400 selection:text-slate-950 font-sans">
-      {/* Grainy Texture Overlay */}
-      <div className="grainy-overlay" />
+    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col md:flex-row relative font-sans">
+      {/* Mobile Top Header */}
+      <div className="md:hidden bg-slate-950/95 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <span className="font-display text-xs font-bold text-white">Care Admin Console</span>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
 
-      {/* Floating Ambient Mesh Orbs */}
-      <div className="ambient-orb-purple -top-20 -left-20 animate-float-slow" />
-      <div className="ambient-orb-cyan bottom-10 right-10 animate-float-reverse" />
-
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 liquid-glass border-r border-white/10 p-6 flex flex-col justify-between shrink-0 relative z-20 backdrop-blur-2xl">
+      {/* Sidebar Navigation */}
+      <aside className={`w-full md:w-64 bg-slate-950 border-r border-slate-800 p-6 flex flex-col justify-between shrink-0 relative z-30 backdrop-blur-2xl transition-all duration-300 ${isMobileMenuOpen ? 'flex' : 'hidden md:flex'}`}>
         <div>
           <div className="flex items-center space-x-3 mb-8">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md shadow-amber-500/10">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="font-display text-sm font-extrabold text-white">System Admin</h2>
-              <span className="text-[10px] font-tech text-amber-300 font-bold uppercase tracking-wider block">Root Oversight</span>
+              <h2 className="font-display text-sm font-bold text-white">System Admin</h2>
+              <span className="text-[10px] text-amber-400 font-mono font-semibold block uppercase tracking-wider">
+                MediTrack Core
+              </span>
             </div>
           </div>
 
@@ -90,7 +102,7 @@ export default function AdminDashboard() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
                   className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition ${activeTab === item.id ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                 >
                   <Icon className="w-4 h-4" />
@@ -110,7 +122,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Administrative Screen */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
           <div>
             <h1 className="text-2xl font-bold text-white capitalize">{activeTab} Console</h1>

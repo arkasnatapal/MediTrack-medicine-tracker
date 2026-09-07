@@ -136,8 +136,8 @@ export default function PatientCareIntegrationSimulator() {
       </div>
 
       {/* Tabs */}
-      <div className="max-w-6xl mx-auto w-full px-6 pt-6">
-        <div className="flex space-x-2 border-b border-slate-800 pb-3">
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pt-6">
+        <div className="flex overflow-x-auto gap-2 border-b border-slate-800 pb-3 no-scrollbar">
           {[
             { id: 'queue', label: 'Live Queue Token Monitor', icon: Clock },
             { id: 'telechat', label: 'Post-Session Teleconsult Chat (10 Max)', icon: MessageSquare },

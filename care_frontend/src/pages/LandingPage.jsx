@@ -5,7 +5,7 @@ import {
   HeartPulse, UserCheck, PhoneCall, Layers, CheckCircle2, 
   Sun, Moon, Star, X, ExternalLink, Sparkles, Check, Hospital, 
   Users, ChevronRight, FileCode2, ArrowRight, MessageSquare, Plus, Minus,
-  Globe, Linkedin, Instagram, Facebook, Mail, Phone, MapPin, Radio
+  Globe, Linkedin, Instagram, Facebook, Mail, Phone, MapPin, Radio, Menu
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { useScrollReveal } from '../hooks/useScrollReveal';
@@ -14,6 +14,9 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   useScrollReveal();
+
+  // State for Mobile Navigation Drawer
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // State for API Modal (Separate External Portal)
   const [showApiModal, setShowApiModal] = useState(false);
@@ -144,16 +147,53 @@ export default function LandingPage() {
             {/* Access Portal Primary Action Button */}
             <Link
               to="/facility/auth?mode=login"
-              className="btn-arrow-primary text-xs py-2.5 px-5"
+              className="btn-arrow-primary text-xs py-2.5 px-4 sm:px-5"
             >
               <span>Access Portal</span>
               <span className="btn-arrow-circle">
                 <ArrowUpRight className="w-3.5 h-3.5 text-white" />
               </span>
             </Link>
+
+            {/* Mobile Hamburger Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden w-9 h-9 rounded-full bg-[var(--bg-pill)] border border-[var(--border-card)] flex items-center justify-center text-[var(--text-main)] hover:border-teal-500 transition-all"
+              aria-label="Toggle mobile menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
 
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden mt-3 mx-auto w-full max-w-[1536px] bg-[var(--nav-bg)] backdrop-blur-2xl border border-[var(--border-card)] rounded-2xl p-5 shadow-2xl flex flex-col space-y-4 text-sm font-bold text-[var(--text-main)] animate-fade-in">
+            <a href="#about" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-teal-500 transition-colors py-1">Home</a>
+            <a href="#about" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-teal-500 transition-colors py-1">About Us</a>
+            <a href="#services" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-teal-500 transition-colors py-1">Our Services</a>
+            <a href="#trust" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-teal-500 transition-colors py-1">Programs</a>
+            <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-teal-500 transition-colors py-1">FAQ</a>
+            <div className="pt-3 border-t border-[var(--border-card)] flex flex-wrap gap-2">
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); setShowApiModal(true); }}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-500"
+              >
+                <FileCode2 className="w-3.5 h-3.5" />
+                <span>API Portal</span>
+              </button>
+              <Link
+                to="/admin/login"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-full border border-[var(--border-card)] bg-[var(--bg-pill)] text-[var(--text-muted)]"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                <span>System Admin</span>
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Full-Screen Layout Wrapper */}

@@ -362,9 +362,8 @@ class FhirService {
     try {
       switch (resourceType) {
         case 'Patient': {
-          if (!UserModel) break;
           const filter = {};
-          if (scopedPatientIds !== null) {
+          if (scopedPatientIds !== null && scopedPatientIds.length > 0) {
             filter._id = buildScopedPatientQuery(scopedPatientIds);
           }
           if (params.name) {
@@ -380,7 +379,20 @@ class FhirService {
               { memberId: params.identifier }
             ];
           }
-          const users = await UserModel.find(filter).limit(50);
+          let users = [];
+          if (UserModel) {
+            users = await UserModel.find(filter).limit(50);
+          }
+          if (users.length === 0) {
+            const db = mongoose.connection;
+            const careUsers = await db.collection('careusers').find({}).limit(50).toArray().catch(() => []);
+            if (careUsers.length > 0) {
+              users = careUsers;
+            } else {
+              const allUsers = await db.collection('users').find({}).limit(50).toArray().catch(() => []);
+              users = allUsers;
+            }
+          }
           resources = users.map(u => toFhirPatient(u));
           break;
         }

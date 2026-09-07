@@ -5,7 +5,7 @@ import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
 import {
   Building2, Calendar, Users, ArrowUpRight, ArrowDownLeft, Stethoscope,
-  Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus, History, Printer
+  Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus, History, Printer, Menu
 } from 'lucide-react';
 
 
@@ -17,6 +17,7 @@ export default function FacilityDashboard() {
 
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyModalSubTab, setHistoryModalSubTab] = useState('appointments');
 
@@ -529,8 +530,26 @@ export default function FacilityDashboard() {
       <div className="ambient-orb-teal -top-20 -left-20 animate-float-slow" />
       <div className="ambient-orb-cyan bottom-10 right-10 animate-float-reverse" />
 
+      {/* Mobile Top Header */}
+      <div className="md:hidden bg-slate-950/95 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300">
+            <Building2 className="w-4 h-4" />
+          </div>
+          <span className="font-display text-xs font-bold text-white truncate max-w-[180px]">{facilityName}</span>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-72 bg-slate-950/90 border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0 relative z-20 backdrop-blur-2xl shadow-2xl">
+      <aside className={`w-full md:w-72 bg-slate-950/95 border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0 relative z-30 backdrop-blur-2xl shadow-2xl transition-all duration-300 ${
+        isMobileMenuOpen ? 'flex' : 'hidden md:flex'
+      }`}>
         <div className="space-y-6">
           {/* Header Facility Card */}
           <div className="p-3.5 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-900/40 border border-slate-800/80 shadow-lg relative overflow-hidden group">
@@ -584,7 +603,7 @@ export default function FacilityDashboard() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
                       className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
                         isActive 
                           ? 'bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-emerald-500/10 text-teal-300 border border-teal-500/40 shadow-lg shadow-teal-500/10 font-bold' 
@@ -618,7 +637,7 @@ export default function FacilityDashboard() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
                       className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
                         isActive 
                           ? 'bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-emerald-500/10 text-teal-300 border border-teal-500/40 shadow-lg shadow-teal-500/10 font-bold' 
@@ -651,7 +670,7 @@ export default function FacilityDashboard() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
                       className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
                         isActive 
                           ? 'bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-emerald-500/10 text-teal-300 border border-teal-500/40 shadow-lg shadow-teal-500/10 font-bold' 
@@ -684,7 +703,7 @@ export default function FacilityDashboard() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
                       className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
                         isActive 
                           ? 'bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-emerald-500/10 text-teal-300 border border-teal-500/40 shadow-lg shadow-teal-500/10 font-bold' 

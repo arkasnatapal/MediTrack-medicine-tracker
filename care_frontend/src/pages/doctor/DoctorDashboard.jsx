@@ -6,7 +6,7 @@ import {
   PhoneOff, RefreshCw, Send, CheckCircle, CheckCircle2, AlertCircle, Plus, ShieldCheck,
   LogOut, MessageSquare, UserPlus, Filter, Check, ArrowRight, ShieldAlert,
   Mail, Phone, Info, Award, Radio, Trash2, Maximize2, Minimize2, Volume2, History,
-  X, ArrowUpRight, Layers, Bed, Activity, AlertTriangle, Search, Dna, Pill, Heart, Sparkles, Users, Printer
+  X, ArrowUpRight, Layers, Bed, Activity, AlertTriangle, Search, Dna, Pill, Heart, Sparkles, Users, Printer, Menu
 } from 'lucide-react';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
@@ -17,6 +17,7 @@ export default function DoctorDashboard() {
 
   const [activeTab, setActiveTab] = useState('queue');
   const [loading, setLoading] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Clinical Data States
   const [appointments, setAppointments] = useState([]);
@@ -765,8 +766,28 @@ export default function DoctorDashboard() {
       <div className="ambient-orb-cyan -top-20 -left-20 animate-float-slow" />
       <div className="ambient-orb-teal bottom-10 right-10 animate-float-reverse" />
 
+      {/* Mobile Top Header */}
+      <div className="md:hidden bg-slate-950/95 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+            <Stethoscope className="w-4 h-4" />
+          </div>
+          <span className="font-display text-xs font-bold text-white truncate max-w-[180px]">
+            {doctorName.startsWith('Dr.') ? doctorName : `Dr. ${doctorName}`}
+          </span>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 liquid-glass border-r border-white/10 p-6 flex flex-col justify-between shrink-0 relative z-20 backdrop-blur-2xl">
+      <aside className={`w-full md:w-64 liquid-glass border-r border-white/10 p-6 flex flex-col justify-between shrink-0 relative z-30 backdrop-blur-2xl transition-all duration-300 ${
+        isMobileMenuOpen ? 'flex' : 'hidden md:flex'
+      }`}>
         <div>
           <div className="flex items-center space-x-3 mb-8">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-teal-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-lg shadow-cyan-500/20">
@@ -795,7 +816,7 @@ export default function DoctorDashboard() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition ${activeTab === item.id ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                 >
                   <div className="flex items-center space-x-3 truncate">
