@@ -80,12 +80,15 @@ try {
   try {
     fhirRoutes = require('../backend/fhir/routes/fhirRoutes');
   } catch (err) {
-    console.warn('FHIR shared core routes unavailable:', err.message);
+    console.error('❌ Error loading FHIR routes:', e.message);
   }
 }
 if (fhirRoutes) {
   app.use('/fhir', fhirRoutes);
   app.use('/api/fhir', fhirRoutes);
+  console.log('✅ FHIR R4 routes mounted at /fhir and /api/fhir');
+} else {
+  console.error('❌ WARNING: FHIR routes failed to mount!');
 }
 
 // Error handling middleware
