@@ -709,7 +709,7 @@ const generateLocalDiagnosticCentersForCoordinates = (userLat, userLng, userCity
 // -------------------------------------------------------------
 router.get('/facilities', async (req, res) => {
   try {
-    const { query, facilityType, emergency, service, lat, lng, city, maxDistance } = req.query;
+    const { query, facilityType, emergency, service, lat, lng, city, maxDistance, onlyRegistered, registeredOnly, onlyWithinArea } = req.query;
 
     const CITY_COORDS = {
       'jalpaiguri': { lat: 26.5400, lng: 88.7100 },
@@ -784,32 +784,38 @@ router.get('/facilities', async (req, res) => {
       console.warn('Care facilities collection query warning:', e.message);
     }
 
+    const isOnlyRegistered = onlyRegistered === 'true' || registeredOnly === 'true';
+
     // Also fetch real OpenStreetMap locality hospitals for the current city
     let osmLocalityFacs = [];
-    try {
-      const rawOsm = await fetchRealOSMHospitals(userLat, userLng, userCity);
-      osmLocalityFacs = rawOsm.map(f => {
-        const isMatched = registeredCareFacs.some(rf =>
-          rf.name.toLowerCase().includes(f.name.toLowerCase()) ||
-          f.name.toLowerCase().includes(rf.name.toLowerCase())
-        );
-        if (isMatched) return null;
+    if (!isOnlyRegistered) {
+      try {
+        const rawOsm = await fetchRealOSMHospitals(userLat, userLng, userCity);
+        osmLocalityFacs = rawOsm.map(f => {
+          const isMatched = registeredCareFacs.some(rf =>
+            rf.name.toLowerCase().includes(f.name.toLowerCase()) ||
+            f.name.toLowerCase().includes(rf.name.toLowerCase())
+          );
+          if (isMatched) return null;
 
-        return {
-          ...f,
-          isMediTrackVerified: false,
-          verificationStatus: 'UNVERIFIED',
-          canSelect: false,
-          badgeText: 'Unverified / Not on MediTrack'
-        };
-      }).filter(Boolean);
-    } catch (errOsm) {
-      console.warn('OSM fetch warning:', errOsm.message);
+          return {
+            ...f,
+            isMediTrackVerified: false,
+            verificationStatus: 'UNVERIFIED',
+            canSelect: false,
+            badgeText: 'Unverified / Not on MediTrack'
+          };
+        }).filter(Boolean);
+      } catch (errOsm) {
+        console.warn('OSM fetch warning:', errOsm.message);
+      }
     }
 
     // Combine MediTrack Verified facilities, Unverified Locality Hospitals, DB facilities, and generated fallback local facilities
-    const generatedLocal = generateLocalFacilitiesForCoordinates(userLat, userLng, userCity);
-    let rawCombined = [...registeredCareFacs, ...osmLocalityFacs, ...dbFacilities, ...generatedLocal];
+    const generatedLocal = isOnlyRegistered ? [] : generateLocalFacilitiesForCoordinates(userLat, userLng, userCity);
+    let rawCombined = isOnlyRegistered
+      ? [...registeredCareFacs, ...dbFacilities.filter(f => f.verificationStatus === 'VERIFIED' || !f.verificationStatus)]
+      : [...registeredCareFacs, ...osmLocalityFacs, ...dbFacilities, ...generatedLocal];
     
     // Recalculate distance for ALL facilities relative to current user coordinates
     rawCombined = rawCombined.map(f => {
@@ -830,14 +836,18 @@ router.get('/facilities', async (req, res) => {
     });
     let allFacilities = Array.from(uniqueMap.values());
 
+    if (isOnlyRegistered) {
+      allFacilities = allFacilities.filter(f => f.isMediTrackVerified !== false && f.verificationStatus !== 'UNVERIFIED');
+    }
+
     // Proximity Filter: Default max distance threshold 80km (unless searching another specific city explicitly)
-    const effectiveMaxDist = maxDistance ? parseFloat(maxDistance) : 80;
+    const effectiveMaxDist = maxDistance ? parseFloat(maxDistance) : (onlyWithinArea === 'true' ? 50 : 80);
     const qLower = (query || '').toLowerCase().trim();
     const isExplicitDistantSearch = qLower.includes('pune') || qLower.includes('delhi') || qLower.includes('mumbai') || qLower.includes('kolkata') || qLower.includes('chennai') || qLower.includes('amritsar');
 
     if (!isExplicitDistantSearch) {
       let localOnly = allFacilities.filter(f => f.distanceKm <= effectiveMaxDist);
-      if (localOnly.length >= 2) {
+      if (localOnly.length >= 1 || isOnlyRegistered) {
         allFacilities = localOnly;
       } else {
         allFacilities = allFacilities.filter(f => f.distanceKm <= 120);

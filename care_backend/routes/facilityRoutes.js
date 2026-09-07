@@ -210,7 +210,7 @@ const fetchRealOSMHospitals = async (userLat, userLng, userCity = 'Locality', ra
 // Get all verified facilities + locality hospitals matching client map fetching
 router.get('/', async (req, res) => {
   try {
-    const { type, district, state, search, location, searchLocation, lat, lng, city, query: searchParam } = req.query;
+    const { type, district, state, search, location, searchLocation, lat, lng, city, query: searchParam, onlyRegistered, registeredOnly, onlyWithinArea, maxDistance } = req.query;
 
     const locationQuery = location || searchLocation || state || search || searchParam || city;
 
@@ -230,7 +230,7 @@ router.get('/', async (req, res) => {
 
     const mongoQuery = {};
     if (type && type !== 'ALL') mongoQuery.facilityType = type;
-    if (locationQuery) {
+    if (locationQuery && !(onlyRegistered === 'true' || registeredOnly === 'true')) {
       mongoQuery.$or = [
         { name: new RegExp(locationQuery, 'i') },
         { address: new RegExp(locationQuery, 'i') },
@@ -272,8 +272,10 @@ router.get('/', async (req, res) => {
       };
     });
 
+    const isOnlyRegistered = onlyRegistered === 'true' || registeredOnly === 'true';
     let osmLocalityFacs = [];
-    if (targetLat && targetLng) {
+
+    if (!isOnlyRegistered && targetLat && targetLng) {
       try {
         const rawOsm = await fetchRealOSMHospitals(targetLat, targetLng, searchLabel);
         osmLocalityFacs = rawOsm.map(f => {
@@ -288,7 +290,7 @@ router.get('/', async (req, res) => {
             estimatedTravelTimeMinutes: Math.round((f.distanceKm || 1) * 2.5) || 5,
             isMediTrackVerified: false,
             verificationStatus: 'UNVERIFIED',
-            canSelect: false, // Unverified options cannot be selected!
+            canSelect: false,
             badgeText: 'Unverified Locality Hospital'
           };
         }).filter(Boolean);
@@ -297,8 +299,13 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // Verified facilities FIRST, Unverified facilities SECOND
-    let allFacilities = [...registeredCareFacs, ...osmLocalityFacs];
+    let allFacilities = isOnlyRegistered ? registeredCareFacs : [...registeredCareFacs, ...osmLocalityFacs];
+
+    // Filter by area / max distance if specified or onlyWithinArea is set
+    if (targetLat && targetLng && (onlyWithinArea === 'true' || maxDistance)) {
+      const maxKm = maxDistance ? parseFloat(maxDistance) : 50;
+      allFacilities = allFacilities.filter(f => f.distanceKm <= maxKm);
+    }
 
     // Facility Type Filter
     if (type && type !== 'ALL') {

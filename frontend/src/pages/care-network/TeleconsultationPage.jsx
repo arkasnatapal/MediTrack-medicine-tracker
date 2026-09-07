@@ -57,7 +57,7 @@ export default function TeleconsultationPage() {
     try {
       let facsArray = [];
       try {
-        const facRes = await axios.get(`${CARE_BACKEND_URL}/api/facilities`);
+        const facRes = await axios.get(`${CARE_BACKEND_URL}/api/facilities?onlyRegistered=true&onlyWithinArea=true`);
         facsArray = Array.isArray(facRes.data)
           ? facRes.data
           : (Array.isArray(facRes.data?.facilities) ? facRes.data.facilities : (facRes.data?.data || []));
@@ -68,7 +68,7 @@ export default function TeleconsultationPage() {
       // Fallback to main backend if care backend returned no facilities
       if (!facsArray || facsArray.length === 0) {
         try {
-          const mainRes = await axios.get(`${MAIN_API_BASE}/care-network/facilities`);
+          const mainRes = await axios.get(`${MAIN_API_BASE}/care-network/facilities?onlyRegistered=true&onlyWithinArea=true`);
           facsArray = Array.isArray(mainRes.data?.facilities)
             ? mainRes.data.facilities
             : (Array.isArray(mainRes.data) ? mainRes.data : []);
@@ -76,6 +76,13 @@ export default function TeleconsultationPage() {
           console.warn('Main backend facilities fetch warning:', errMain.message);
         }
       }
+
+      // Strict filter: ONLY keep MediTrack verified/registered facilities
+      facsArray = facsArray.filter(f =>
+        f.isMediTrackVerified !== false &&
+        f.verificationStatus !== 'UNVERIFIED' &&
+        f.canSelect !== false
+      );
 
       let sessArray = [];
       try {
