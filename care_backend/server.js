@@ -73,11 +73,20 @@ app.use('/api/integration', integrationRoutes);
 app.use('/api/livekit', livekitRoutes);
 
 // HL7 FHIR Interoperability API Routes (Shared Core - Instant Fast Resolved V4)
-const fhirRoutes = require('../backend/fhir/routes/fhirRoutes');
-app.use('/fhir', fhirRoutes);
-app.use('/api/fhir', fhirRoutes);
-
-
+let fhirRoutes;
+try {
+  fhirRoutes = require('./fhir/routes/fhirRoutes');
+} catch (e) {
+  try {
+    fhirRoutes = require('../backend/fhir/routes/fhirRoutes');
+  } catch (err) {
+    console.warn('FHIR shared core routes unavailable:', err.message);
+  }
+}
+if (fhirRoutes) {
+  app.use('/fhir', fhirRoutes);
+  app.use('/api/fhir', fhirRoutes);
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -98,12 +107,14 @@ server.on('error', (error) => {
   process.exit(1);
 });
 
-server.listen(PORT, () => {
-  console.log(`🏥 MediTrack Care Network Backend running on http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`🏥 MediTrack Care Network Backend running on http://localhost:${PORT}`);
+  });
+}
 
 process.on('SIGTERM', () => {
   server.close(() => console.log('Care Backend server shut down cleanly.'));
 });
 
-module.exports = { app, server };
+module.exports = app;

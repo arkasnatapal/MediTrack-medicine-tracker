@@ -3,7 +3,7 @@ import { Video, VideoOff, Mic, MicOff, PhoneOff, Send, CheckCircle2, Clock, Aler
 import axios from 'axios';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 
-const CARE_BACKEND_URL = 'http://localhost:5001';
+const CARE_BACKEND_URL = import.meta.env.VITE_CARE_BACKEND_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5001' : '');
 
 export default function TeleconsultationPage() {
 

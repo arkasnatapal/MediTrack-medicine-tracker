@@ -4,8 +4,8 @@ import L from 'leaflet';
 import { MapPin, Navigation, Search, CheckCircle2, Building2, Sparkles, LocateFixed, RefreshCw, ChevronRight, Compass, ShieldAlert, ArrowUpRight } from 'lucide-react';
 import axios from 'axios';
 
-const CARE_BACKEND_API = import.meta.env.VITE_CARE_API_URL || 'http://localhost:5001/api';
-const MAIN_BACKEND_API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const CARE_BACKEND_API = import.meta.env.VITE_CARE_API_URL || import.meta.env.VITE_CARE_API_BASE_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5001/api' : '/api');
+const MAIN_BACKEND_API = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000/api' : 'https://meditrack-backendalpha.vercel.app/api');
 
 // Create Circular Marker Icons matching Client Map (Image 1 / Screenshot)
 const createCustomDivIcon = (type, isVerified = false, isEmergency = false) => {
