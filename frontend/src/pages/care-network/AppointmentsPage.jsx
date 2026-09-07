@@ -105,8 +105,11 @@ const AppointmentsPage = () => {
     // Serve cached facilities instantly if available
     const cachedFacs = locationService.getCachedFacilities('appointments');
     if (cachedFacs && cachedFacs.length > 0) {
-      setFacilitiesList(cachedFacs);
-      setLoadingFacilities(false);
+      setFacilities(cachedFacs);
+      if (!selectedFacilityId) {
+        setSelectedFacilityId(cachedFacs[0].facilityId || cachedFacs[0]._id);
+      }
+      setLoading(false);
     }
 
     try {
@@ -135,13 +138,14 @@ const AppointmentsPage = () => {
 
     if (!locChanged && cachedFacs && cachedFacs.length > 0) {
       console.log('⚡ AppointmentsPage serving cached facilities (location delta < 0.5km).');
-      setFacilitiesList(cachedFacs);
-      setLoadingFacilities(false);
+      setFacilities(cachedFacs);
+      setSelectedFacilityId(prev => prev || cachedFacs[0].facilityId || cachedFacs[0]._id);
+      setLoading(false);
       return;
     }
 
     try {
-      setLoadingFacilities(true);
+      setLoading(true);
       const res = await axios.get(
         `${API_BASE}/care-network/facilities?city=${encodeURIComponent(cityName)}&lat=${queryLat}&lng=${queryLng}`
       );
