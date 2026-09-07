@@ -12,11 +12,29 @@ if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_OAUTH_REDIRECT_URL) {
   console.warn("⚠️ Google OAuth env vars missing. Calendar integration will be disabled.");
 }
 
-function createOAuthClient() {
+function getRedirectUrl(req) {
+  if (req) {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+      return `${proto}://${host}/api/auth/google/callback`;
+    }
+  }
+  if (process.env.GOOGLE_OAUTH_REDIRECT_URL && !process.env.GOOGLE_OAUTH_REDIRECT_URL.includes('localhost')) {
+    return process.env.GOOGLE_OAUTH_REDIRECT_URL;
+  }
+  if (process.env.VERCEL) {
+    return "https://meditrack-backendalpha.vercel.app/api/auth/google/callback";
+  }
+  return process.env.GOOGLE_OAUTH_REDIRECT_URL || "http://localhost:5000/api/auth/google/callback";
+}
+
+function createOAuthClient(req) {
+  const redirectUrl = getRedirectUrl(req);
   return new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    GOOGLE_OAUTH_REDIRECT_URL
+    redirectUrl
   );
 }
 
@@ -82,8 +100,8 @@ function getUtcDateForTargetTime(dateStr, timeStr, timeZone) {
   return new Date(utcDate.getTime() - offsetMs);
 }
 
-function getAuthUrl(mode = "login") {
-  const oAuth2Client = createOAuthClient();
+function getAuthUrl(mode = "login", req = null) {
+  const oAuth2Client = createOAuthClient(req);
   const scopes = (GOOGLE_CALENDAR_SCOPES || "https://www.googleapis.com/auth/calendar.events,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/userinfo.profile")
     .split(",")
     .map((s) => s.trim());

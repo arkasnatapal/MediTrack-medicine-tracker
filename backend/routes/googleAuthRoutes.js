@@ -12,7 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "changeme"; // use existing secret
 router.get("/url", async (req, res) => {
   try {
     const mode = req.query.mode === "signup" ? "signup" : "login";
-    const url = getAuthUrl(mode);
+    const url = getAuthUrl(mode, req);
     if (!url) {
       return res
         .status(500)
@@ -30,9 +30,13 @@ router.get("/url", async (req, res) => {
 // GET /api/auth/google/callback?code=...&state=...
 // This is for LOGIN/SIGNUP + calendar auto-connect
 router.get("/callback", async (req, res) => {
+  let frontendBase = process.env.APP_BASE_URL || process.env.FRONTEND_URL;
+  if (!frontendBase || (process.env.VERCEL && frontendBase.includes("localhost"))) {
+    frontendBase = process.env.VERCEL ? "https://meditrack-ultimate.vercel.app" : (frontendBase || "http://localhost:5173");
+  }
+
   try {
     const { code, error, state } = req.query;
-    const frontendBase = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
 
     if (error) {
       console.error("Google OAuth error:", error);
@@ -56,7 +60,7 @@ router.get("/callback", async (req, res) => {
       }
     }
 
-    const oAuth2Client = createOAuthClient();
+    const oAuth2Client = createOAuthClient(req);
     const { tokens } = await oAuth2Client.getToken(code);
     oAuth2Client.setCredentials(tokens);
 
@@ -77,7 +81,7 @@ router.get("/callback", async (req, res) => {
       );
     }
 
-const cloudinary = require("../utils/cloudinary");
+    const cloudinary = require("../utils/cloudinary");
 
     // Find existing user by google.id OR email
     let user = await User.findOne({
@@ -175,12 +179,10 @@ const cloudinary = require("../utils/cloudinary");
     }
 
   } catch (err) {
-    console.error("Error in Google auth callback:", err);
-    const frontendBase = process.env.APP_BASE_URL || "https://meditrack-ultimate.vercel.app";
+    console.error("Error in Google auth callback:", err?.response?.data || err.message || err);
+    const errorDetails = err?.response?.data?.error_description || err?.message || "Failed to log in with Google";
     return res.redirect(
-      `${frontendBase}/login?googleError=${encodeURIComponent(
-        "Failed to log in with Google"
-      )}`
+      `${frontendBase}/login?googleError=${encodeURIComponent(errorDetails)}`
     );
   }
 });
