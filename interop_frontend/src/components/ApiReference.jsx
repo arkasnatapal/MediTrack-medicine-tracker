@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { BookOpen, Code, Play, RefreshCw, Copy, Check, Sparkles, Terminal, Shield, Key, ChevronRight, Search } from 'lucide-react';
+import { SERVER_URL as API_BASE } from '../config';
 
 export default function ApiReference() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -13,8 +14,6 @@ export default function ApiReference() {
   const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [authHeaderMode, setAuthHeaderMode] = useState('BEARER'); // 'BEARER' | 'API_KEY' | 'NONE'
   const [requestBodyText, setRequestBodyText] = useState('');
-
-  const API_BASE = 'http://localhost:5002';
 
   const categories = [
     { id: 'ALL', name: 'All Endpoints' },
@@ -196,7 +195,7 @@ export default function ApiReference() {
 
         <div className="flex items-center space-x-3">
           <div className="px-3.5 py-1.5 bg-[#020d09] border border-white/15 rounded-xl text-xs font-mono text-white/80">
-            Base URL: <span className="text-[#a6f120] font-bold">http://localhost:5002</span>
+            Base URL: <span className="text-[#a6f120] font-bold">{API_BASE}</span>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Search, Plus, CheckCircle, AlertTriangle, RefreshCw, Database, Download, FileJson, Check, Shield } from 'lucide-react';
+import { FHIR_BASE as API_BASE } from '../config';
 
 const RESOURCES = [
   'Patient', 'Observation', 'Encounter', 'Condition', 'MedicationRequest',
@@ -20,8 +21,6 @@ export default function FhirExplorer() {
   const [activeTab, setActiveTab] = useState('browse'); // 'browse' | 'create' | 'validator'
   const [validationResult, setValidationResult] = useState(null);
   const [viewMode, setViewMode] = useState('JSON'); // 'JSON' | 'VISUAL'
-
-  const API_BASE = 'http://localhost:5002/fhir';
 
   const fetchResources = async () => {
     setLoading(true);

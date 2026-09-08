@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Shield, RefreshCw, CheckCircle, Database } from 'lucide-react';
+import { API_BASE } from '../config';
 
 export default function SandboxManager() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
-
-  const API_BASE = 'http://localhost:5002/api/v1';
 
   const handleSeed = async () => {
     setLoading(true);

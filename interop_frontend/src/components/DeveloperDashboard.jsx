@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Key, Shield, Plus, CheckCircle, Copy, Radio, Lock } from 'lucide-react';
+import { API_BASE } from '../config';
 
 export default function DeveloperDashboard() {
   const [clients, setClients] = useState([]);
@@ -8,8 +9,6 @@ export default function DeveloperDashboard() {
   const [newClientName, setNewClientName] = useState('');
   const [createdClient, setCreatedClient] = useState(null);
   const [copied, setCopied] = useState(false);
-
-  const API_BASE = 'http://localhost:5002/api/v1';
 
   const fetchClients = async () => {
     setLoading(true);

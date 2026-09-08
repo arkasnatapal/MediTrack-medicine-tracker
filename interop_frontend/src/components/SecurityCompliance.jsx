@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Shield, Lock, FileText, CheckCircle2, Eye, UserCheck, KeyRound, RefreshCw, Activity, Terminal } from 'lucide-react';
+import { API_BASE } from '../config';
 
 export default function SecurityCompliance() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const API_BASE = 'http://localhost:5002/api/v1';
 
   const fetchAuditLogs = async () => {
     setLoading(true);

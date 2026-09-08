@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Building2, Check, CheckCircle2, Copy, Key, Shield, Sparkles, Wand2, ArrowRight, ArrowLeft, RefreshCw, Send } from 'lucide-react';
+import { API_BASE, FHIR_BASE } from '../config';
 
 export default function HospitalOnboardingWizard({ setActiveTab }) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -21,9 +22,6 @@ export default function HospitalOnboardingWizard({ setActiveTab }) {
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [copiedSecret, setCopiedSecret] = useState(false);
-
-  const API_BASE = 'http://localhost:5002/api/v1';
-  const FHIR_BASE = 'http://localhost:5002/fhir';
 
   const handleStep2Next = async () => {
     setLoading(true);

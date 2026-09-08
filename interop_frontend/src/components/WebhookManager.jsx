@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Radio, Plus, Trash2, CheckCircle, Clock } from 'lucide-react';
+import { API_BASE } from '../config';
 
 export default function WebhookManager() {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -9,8 +10,6 @@ export default function WebhookManager() {
   const [name, setName] = useState('');
   const [selectedEvents, setSelectedEvents] = useState(['patient.created', 'observation.created', 'triage.completed']);
   const [loading, setLoading] = useState(false);
-
-  const API_BASE = 'http://localhost:5002/api/v1';
 
   const fetchData = async () => {
     setLoading(true);
