@@ -7,6 +7,7 @@ const CareJourneyEvent = require('../models/CareJourneyEvent');
 const Doctor = require('../models/Doctor');
 const { sendTeleconsultationEmail } = require('../services/emailService');
 const { protect, authorizeRoles, logAudit } = require('../middleware/authMiddleware');
+const { emitDomainEvent } = require('../services/realtimeService');
 
 // Get all teleconsultation sessions
 router.get('/', async (req, res) => {
@@ -53,6 +54,17 @@ router.put('/:id/claim', protect, authorizeRoles('DOCTOR', 'SYSTEM_ADMIN'), asyn
     session.meetingLink = meetingLink;
 
     await session.save();
+
+    emitDomainEvent({
+      type: 'teleconsultation.confirmed',
+      resourceType: 'Teleconsultation',
+      resourceId: session._id,
+      patientId: session.patientId,
+      doctorId: session.doctorId,
+      facilityId: session.facilityId,
+      version: Date.now(),
+      data: session
+    });
 
     if (session.patientEmail) {
       await sendTeleconsultationEmail({
@@ -128,6 +140,17 @@ router.post('/request', async (req, res) => {
       postSessionMessagesSent: 0,
     });
 
+    emitDomainEvent({
+      type: 'teleconsultation.scheduled',
+      resourceType: 'Teleconsultation',
+      resourceId: session._id,
+      patientId: session.patientId,
+      doctorId: session.doctorId || null,
+      facilityId: session.facilityId,
+      version: Date.now(),
+      data: session
+    });
+
     res.status(201).json(session);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -171,6 +194,17 @@ router.put('/:id/assign', async (req, res) => {
       });
     }
 
+    emitDomainEvent({
+      type: 'teleconsultation.confirmed',
+      resourceType: 'Teleconsultation',
+      resourceId: session._id,
+      patientId: session.patientId,
+      doctorId: session.doctorId,
+      facilityId: session.facilityId,
+      version: Date.now(),
+      data: session
+    });
+
     res.json(session);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -186,6 +220,17 @@ router.put('/:id/start', async (req, res) => {
     session.status = 'ACTIVE';
     session.startTime = session.startTime || new Date();
     await session.save();
+
+    emitDomainEvent({
+      type: 'teleconsultation.started',
+      resourceType: 'Teleconsultation',
+      resourceId: session._id,
+      patientId: session.patientId,
+      doctorId: session.doctorId,
+      facilityId: session.facilityId,
+      version: Date.now(),
+      data: session
+    });
 
     res.json(session);
   } catch (error) {
@@ -206,6 +251,17 @@ router.put('/:id/terminate', async (req, res) => {
     session.terminatedAt = new Date();
     session.terminatedBy = by || 'DOCTOR';
     await session.save();
+
+    emitDomainEvent({
+      type: 'teleconsultation.ended',
+      resourceType: 'Teleconsultation',
+      resourceId: session._id,
+      patientId: session.patientId,
+      doctorId: session.doctorId,
+      facilityId: session.facilityId,
+      version: Date.now(),
+      data: session
+    });
 
     res.json({
       message: 'Teleconsultation session terminated. Live video/audio ended. Patient allocated 10 post-session follow-up messages.',

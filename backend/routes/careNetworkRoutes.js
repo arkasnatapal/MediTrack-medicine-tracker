@@ -15,6 +15,7 @@ const TeleconsultationRequest = require('../models/TeleconsultationRequest');
 const facilitiesSeedData = require('../data/facilitiesData');
 const authMiddleware = require('../middleware/authMiddleware');
 const facilityContactService = require('../services/facilityContactService');
+const { emitDomainEvent } = require('../services/realtimeService');
 
 // Helper Haversine Distance Calculation
 const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
@@ -1373,6 +1374,16 @@ router.post('/appointments', authMiddleware, async (req, res) => {
       status: 'COMPLETED'
     });
 
+    emitDomainEvent({
+      type: 'appointment.created',
+      resourceType: 'Appointment',
+      resourceId: appointment._id,
+      patientId: req.user._id,
+      facilityId: facilityId,
+      version: Date.now(),
+      data: appointment
+    });
+
     return res.json({
       success: true,
       message: `Appointment booked successfully! Your ${department} Token Number is #${tokenNumber}`,
@@ -1495,6 +1506,15 @@ router.delete('/appointments/:id', authMiddleware, async (req, res) => {
       await mongoose.connection.collection('careappointments').deleteOne({ _id: objectId, patientId: req.user._id });
     } catch (e) {}
 
+    emitDomainEvent({
+      type: 'appointment.cancelled',
+      resourceType: 'Appointment',
+      resourceId: objectId,
+      patientId: req.user._id,
+      version: Date.now(),
+      data: { id: objectId, status: 'CANCELLED' }
+    });
+
     return res.json({ success: true, message: 'Appointment deleted successfully' });
   } catch (err) {
     console.error('Error deleting appointment:', err);
@@ -1519,6 +1539,15 @@ router.patch('/appointments/:id/status', authMiddleware, async (req, res) => {
     try {
       await mongoose.connection.collection('careappointments').updateOne({ _id: objectId }, { $set: { status: status || 'COMPLETED' } });
     } catch (e) {}
+
+    emitDomainEvent({
+      type: 'appointment.updated',
+      resourceType: 'Appointment',
+      resourceId: objectId,
+      patientId: req.user._id,
+      version: Date.now(),
+      data: { id: objectId, status: status || 'COMPLETED' }
+    });
 
     return res.json({ success: true, message: `Appointment status updated to ${status || 'COMPLETED'}` });
   } catch (err) {
@@ -1672,6 +1701,16 @@ router.post('/bed-bookings', authMiddleware, async (req, res) => {
     } catch (cjErr) {
       console.warn('Care journey event warning:', cjErr.message);
     }
+
+    emitDomainEvent({
+      type: 'appointment.created',
+      resourceType: 'BedBooking',
+      resourceId: insertRes.insertedId,
+      patientId: req.user._id,
+      facilityId: facilityId || 'FAC-DEFAULT',
+      version: Date.now(),
+      data: { _id: insertRes.insertedId, ...bookingRecord }
+    });
 
     return res.status(201).json({
       success: true,

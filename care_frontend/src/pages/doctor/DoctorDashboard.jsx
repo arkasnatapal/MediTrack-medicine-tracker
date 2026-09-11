@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
+import useRealtimeSync from '../../hooks/useRealtimeSync';
 
 
 export default function DoctorDashboard() {
@@ -263,6 +264,23 @@ export default function DoctorDashboard() {
   useEffect(() => {
     loadDoctorData();
   }, [user]);
+
+  // Real-Time Event Sync Hook for Doctor Dashboard
+  useRealtimeSync({
+    channels: [
+      'global',
+      doctorId ? `doctor:${doctorId}` : null,
+      user?._id ? `doctor:${user._id}` : null,
+      user?.facilityId ? `facility:${user.facilityId}` : null,
+    ].filter(Boolean),
+    onEvent: (eventPayload) => {
+      console.log('⚡ Realtime Event received in Doctor Dashboard:', eventPayload);
+      loadDoctorData();
+    },
+    onReconnectRefetch: () => {
+      loadDoctorData();
+    }
+  });
 
   // Fetch Patient Personal Health Record from MediTrack DB
   const fetchPatientHealth = async (targetId) => {

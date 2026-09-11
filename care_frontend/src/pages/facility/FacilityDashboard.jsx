@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
+import useRealtimeSync from '../../hooks/useRealtimeSync';
 import {
   Building2, Calendar, Users, ArrowUpRight, ArrowDownLeft, Stethoscope,
   Activity, Package, Bed, ShieldAlert, LogOut, CheckCircle, Clock, Plus, RefreshCw, Send, AlertTriangle, Layers, Edit3, Save, X, Video, UserCheck, Trash2, UserPlus, History, Printer, Menu
@@ -443,6 +444,27 @@ export default function FacilityDashboard() {
 
   useEffect(() => {
     loadDashboardData();
+  }, [user]);
+
+  // Real-Time Event Sync Hook for Facility Dashboard
+  useRealtimeSync({
+    channels: [
+      'global',
+      facilityId ? `facility:${facilityId}` : null,
+      user?.facility?.facilityId ? `facility:${user.facility.facilityId}` : null,
+      user?.facility?._id ? `facility:${user.facility._id}` : null,
+      user?.facilityId ? `facility:${user.facilityId}` : null,
+    ].filter(Boolean),
+    onEvent: (eventPayload) => {
+      console.log('⚡ Facility Dashboard Realtime Event received:', eventPayload);
+      loadDashboardData();
+    },
+    onReconnectRefetch: () => {
+      loadDashboardData();
+    }
+  });
+
+  useEffect(() => {
     pingApiLatency();
 
     const latencyInterval = setInterval(() => {

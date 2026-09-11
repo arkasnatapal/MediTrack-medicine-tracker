@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Send, CheckCircle2, Clock, AlertCircle, Building2, User, Mail, Phone, MessageSquare, Volume2, ShieldCheck, RefreshCw, Paperclip, Trash2, Radio, Calendar, Maximize2, Minimize2 } from 'lucide-react';
 import axios from 'axios';
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
+import useRealtimeSync from '../../hooks/useRealtimeSync';
 
 const CARE_BACKEND_URL = import.meta.env.VITE_CARE_BACKEND_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5001' : 'https://meditrack-careback-ult.vercel.app');
 const MAIN_API_BASE = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000/api' : 'https://meditrack-backendalpha.vercel.app/api');
@@ -133,6 +134,40 @@ export default function TeleconsultationPage() {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  const getUserIdFromToken = () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload._id || payload.id;
+    } catch (e) {
+      return null;
+    }
+  };
+  const currentUserId = getUserIdFromToken();
+
+  // Real-Time Event Sync Hook for Teleconsultation
+  useRealtimeSync({
+    channels: [
+      'global',
+      currentUserId ? `patient:${currentUserId}` : null,
+      selectedFacilityId ? `facility:${selectedFacilityId}` : null,
+      activeSession?.patientId ? `patient:${activeSession.patientId}` : null,
+    ].filter(Boolean),
+    onEvent: (eventPayload) => {
+      if (eventPayload.type && eventPayload.type.startsWith('teleconsultation.')) {
+        console.log('⚡ Realtime Teleconsultation Update received:', eventPayload);
+        loadInitialData();
+        if (eventPayload.data && activeSession && (String(eventPayload.resourceId) === String(activeSession._id) || String(eventPayload.resourceId) === String(activeSession.meetingIdentifier))) {
+          setActiveSession(prev => ({ ...prev, ...eventPayload.data }));
+        }
+      }
+    },
+    onReconnectRefetch: () => {
+      loadInitialData();
+    }
+  });
 
   // Timer for call duration
   useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Calendar, Clock, CheckCircle2, Building2, User, Ticket, ChevronRight, AlertCircle, RefreshCw, MapPin, Bed, PhoneCall, ShieldAlert, AlertTriangle, Trash2, History, Printer, X } from 'lucide-react';
 import { locationService } from '../../services/locationService';
+import useRealtimeSync from '../../hooks/useRealtimeSync';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -87,6 +88,43 @@ const AppointmentsPage = () => {
     fetchBedBookings();
     detectLocationAndFetchFacilities();
   }, []);
+
+  const getUserIdFromToken = () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload._id || payload.id;
+    } catch (e) {
+      return null;
+    }
+  };
+  const currentUserId = getUserIdFromToken();
+
+  // Real-Time Event Sync Hook
+  useRealtimeSync({
+    channels: [
+      'global',
+      currentUserId ? `patient:${currentUserId}` : null,
+      currentUserId ? `user:${currentUserId}` : null,
+      selectedFacilityId ? `facility:${selectedFacilityId}` : null,
+    ].filter(Boolean),
+    onEvent: (eventPayload) => {
+      console.log('⚡ Realtime Update received in AppointmentsPage:', eventPayload);
+      fetchAppointments();
+      fetchBedBookings();
+      if (selectedFacilityId) {
+        fetchQueueStatus(selectedFacilityId, department);
+      }
+    },
+    onReconnectRefetch: () => {
+      fetchAppointments();
+      fetchBedBookings();
+      if (selectedFacilityId) {
+        fetchQueueStatus(selectedFacilityId, department);
+      }
+    }
+  });
 
   useEffect(() => {
     fetchFacilitiesForCity(selectedCity, userLocation.latitude, userLocation.longitude);

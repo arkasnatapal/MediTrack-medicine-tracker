@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GitMerge, Building2, CheckCircle2, Clock, ArrowRight, ShieldAlert, Activity, User, FileText, Trash2, History, X } from 'lucide-react';
 import axios from 'axios';
+import useRealtimeSync from '../../hooks/useRealtimeSync';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -13,6 +14,33 @@ const ReferralTrackerPage = () => {
   useEffect(() => {
     fetchReferrals();
   }, []);
+
+  const getUserIdFromToken = () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload._id || payload.id;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const currentUserId = getUserIdFromToken();
+
+  // Real-Time Event Sync Hook for Referrals
+  useRealtimeSync({
+    channels: ['global', currentUserId ? `patient:${currentUserId}` : null].filter(Boolean),
+    onEvent: (eventPayload) => {
+      if (eventPayload.type && eventPayload.type.startsWith('referral.')) {
+        console.log('⚡ Realtime Referral Update received:', eventPayload);
+        fetchReferrals();
+      }
+    },
+    onReconnectRefetch: () => {
+      fetchReferrals();
+    }
+  });
 
   const fetchReferrals = async () => {
     setLoading(true);

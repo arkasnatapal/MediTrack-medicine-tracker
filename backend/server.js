@@ -17,11 +17,16 @@ const errorMiddleware = require('./middleware/errorMiddleware');
 // [REMOVED] cron job imports
 const connectDB = require('./config/db');
 
+const http = require('http');
+
 // Connect to database
 connectDB();
 
-
 const app = express();
+const server = http.createServer(app);
+
+const { initRealtimeService } = require('./services/realtimeService');
+initRealtimeService(server);
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -127,6 +132,15 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to MediTrack API' });
 });
 
+app.post('/api/realtime-relay/emit', (req, res) => {
+  const { eventPayload } = req.body;
+  if (eventPayload) {
+    const { emitLocalDomainEvent } = require('./services/realtimeService');
+    emitLocalDomainEvent(eventPayload);
+  }
+  res.json({ success: true });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 app.use("/api/auth/google", googleAuthRoutes);
@@ -187,7 +201,7 @@ app.use((req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
 

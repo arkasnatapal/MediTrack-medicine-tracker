@@ -8,6 +8,7 @@ const PatientRecord = require('../models/Patient');
 const Notification = require('../models/Notification');
 const { sendReferralNotificationEmail, sendReferralAdviceEmail, sendReferralCompletedEmail } = require('../services/emailService');
 const { protect, authorizeRoles, logAudit } = require('../middleware/authMiddleware');
+const { emitDomainEvent } = require('../services/realtimeService');
 
 // Get referrals for current facility or doctor (Incoming, Outgoing, Advice Requests)
 router.get('/', protect, async (req, res) => {
@@ -235,6 +236,17 @@ router.post('/', protect, authorizeRoles('DOCTOR', 'FACILITY_ADMIN'), async (req
 
     await logAudit(req.user._id, req.user.name, req.user.role, 'CREATE_REFERRAL', 'CareReferral', referral._id, `Referral/Consultation created`);
 
+    emitDomainEvent({
+      type: 'referral.created',
+      resourceType: 'Referral',
+      resourceId: referral._id,
+      patientId: validPatientId,
+      doctorId: refDocId || tDocId || null,
+      facilityId: recFacId || refFacId || null,
+      version: Date.now(),
+      data: referral
+    });
+
     res.status(201).json(referral);
   } catch (error) {
     console.error('POST /api/referrals 500 error:', error);
@@ -368,6 +380,17 @@ router.put('/:id/advice', protect, authorizeRoles('DOCTOR', 'SYSTEM_ADMIN'), asy
       await logAudit(req.user._id, req.user.name, req.user.role, 'SUBMIT_REFERRAL_ADVICE', 'CareReferral', referral._id, `Consultation advice provided`);
     } catch (eAudit) {}
 
+    emitDomainEvent({
+      type: 'referral.status_changed',
+      resourceType: 'Referral',
+      resourceId: referral._id,
+      patientId: patId,
+      doctorId: validDocObjId || referral.referringDoctorId?._id || referral.referringDoctorId,
+      facilityId: referral.receivingFacilityId?._id || referral.receivingFacilityId,
+      version: Date.now(),
+      data: referral
+    });
+
     res.json(referral);
   } catch (error) {
     console.error('PUT /api/referrals/:id/advice error:', error);
@@ -483,6 +506,23 @@ router.put('/:id/status', protect, async (req, res) => {
       await logAudit(req.user._id, req.user.name, req.user.role, 'UPDATE_REFERRAL_STATUS', 'CareReferral', referral._id, `Referral status set to ${status}`);
     } catch (eAudit) {}
 
+    let refEvtType = 'referral.status_changed';
+    if (status === 'ACCEPTED') refEvtType = 'referral.accepted';
+    else if (status === 'REJECTED') refEvtType = 'referral.rejected';
+    else if (status === 'SCHEDULED') refEvtType = 'referral.appointment_scheduled';
+    else if (status === 'COMPLETED') refEvtType = 'referral.completed';
+
+    emitDomainEvent({
+      type: refEvtType,
+      resourceType: 'Referral',
+      resourceId: referral._id,
+      patientId: patId,
+      doctorId: referral.targetDoctorId?._id || referral.referringDoctorId?._id || null,
+      facilityId: referral.receivingFacilityId?._id || referral.receivingFacilityId,
+      version: Date.now(),
+      data: referral
+    });
+
     res.json(referral);
   } catch (error) {
     console.error('PUT /api/referrals/:id/status error:', error);
@@ -585,6 +625,17 @@ router.put('/:id/complete', protect, async (req, res) => {
       await logAudit(req.user._id, req.user.name, req.user.role, 'COMPLETE_REFERRAL', 'CareReferral', referral._id, `Referral marked COMPLETED by doctor`);
     } catch (eAudit) {}
 
+    emitDomainEvent({
+      type: 'referral.completed',
+      resourceType: 'Referral',
+      resourceId: referral._id,
+      patientId: patId,
+      doctorId: referral.targetDoctorId?._id || referral.referringDoctorId?._id || null,
+      facilityId: referral.receivingFacilityId?._id || referral.receivingFacilityId,
+      version: Date.now(),
+      data: referral
+    });
+
     res.json(referral);
   } catch (error) {
     console.error('PUT /api/referrals/:id/complete error:', error);
@@ -607,6 +658,17 @@ router.delete('/:id', protect, async (req, res) => {
     }
 
     await logAudit(req.user._id, req.user.name, req.user.role, 'DELETE_REFERRAL', 'CareReferral', req.params.id, `Referral deleted`);
+
+    emitDomainEvent({
+      type: 'referral.cancelled',
+      resourceType: 'Referral',
+      resourceId: req.params.id,
+      patientId: referral.patientId?._id || referral.patientId,
+      doctorId: referral.referringDoctorId?._id || referral.referringDoctorId,
+      facilityId: referral.receivingFacilityId?._id || referral.receivingFacilityId,
+      version: Date.now(),
+      data: { id: req.params.id, status: 'CANCELLED' }
+    });
 
     res.json({ success: true, message: 'Referral record deleted successfully', id: req.params.id });
   } catch (error) {

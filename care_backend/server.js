@@ -34,6 +34,9 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+const { initRealtimeService } = require('./services/realtimeService');
+initRealtimeService(server);
+
 // Express CORS Configuration via Environment Variables & express cors package
 const allowedOriginsFromEnv = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
@@ -128,6 +131,15 @@ app.use(async (req, res, next) => {
 // API Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', service: 'MediTrack Care Network Provider Backend', timestamp: new Date() });
+});
+
+app.post('/api/realtime-relay/emit', (req, res) => {
+  const { eventPayload } = req.body;
+  if (eventPayload) {
+    const { emitLocalDomainEvent } = require('./services/realtimeService');
+    emitLocalDomainEvent(eventPayload);
+  }
+  res.json({ success: true });
 });
 
 app.use('/api/auth', authRoutes);

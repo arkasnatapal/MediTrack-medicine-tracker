@@ -10,7 +10,7 @@ import {
 import { useAppMode } from '../../context/AppModeContext';
 import { useTheme } from '../../context/ThemeContext';
 import { locationService } from '../../services/locationService';
-import axios from 'axios';
+import useRealtimeSync from '../../hooks/useRealtimeSync';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -27,6 +27,33 @@ const CareNetworkDashboard = () => {
   const [userAppointments, setUserAppointments] = useState([]);
   const [queueDataMap, setQueueDataMap] = useState({});
   const [loadingAppointments, setLoadingAppointments] = useState(false);
+
+  const getUserIdFromToken = () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload._id || payload.id;
+    } catch (e) {
+      return null;
+    }
+  };
+  const currentUserId = getUserIdFromToken();
+
+  useRealtimeSync({
+    channels: [
+      'global',
+      currentUserId ? `patient:${currentUserId}` : null,
+      currentUserId ? `user:${currentUserId}` : null,
+    ].filter(Boolean),
+    onEvent: (eventPayload) => {
+      console.log('⚡ Realtime Event in CareNetworkDashboard:', eventPayload);
+      fetchUserAppointments();
+    },
+    onReconnectRefetch: () => {
+      fetchUserAppointments();
+    }
+  });
 
   useEffect(() => {
     initLocationAndFacilities();

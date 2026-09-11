@@ -7,6 +7,7 @@ const Queue = require('../models/Queue');
 const Facility = require('../models/Facility');
 const Doctor = require('../models/Doctor');
 const { protect, authorizeRoles, logAudit } = require('../middleware/authMiddleware');
+const { emitDomainEvent } = require('../services/realtimeService');
 
 // Get appointments list for facility or doctor
 router.get('/', protect, async (req, res) => {
@@ -110,6 +111,17 @@ router.post('/', async (req, res) => {
       title: `${type === 'TELECONSULTATION' ? 'Teleconsultation' : 'Appointment'} Booked at ${facility ? facility.name : 'Facility'}`,
       description: `Department: ${department}. Symptoms: ${symptoms || 'None specified'}`,
       relatedAppointmentId: appointment._id,
+    });
+
+    emitDomainEvent({
+      type: 'appointment.created',
+      resourceType: 'Appointment',
+      resourceId: appointment._id,
+      patientId: patient._id,
+      doctorId: doctorId || null,
+      facilityId,
+      version: Date.now(),
+      data: appointment
     });
 
     res.status(201).json(appointment);
@@ -253,6 +265,23 @@ router.put('/:id/status', protect, async (req, res) => {
 
     await logAudit(req.user._id, req.user.name, req.user.role, 'UPDATE_APPOINTMENT_STATUS', 'CareAppointment', appointment._id, `Changed status to ${status}`);
 
+    let eventType = 'appointment.updated';
+    if (status === 'CHECKED_IN') eventType = 'appointment.check_in';
+    else if (status === 'IN_CONSULTATION') eventType = 'appointment.consultation_started';
+    else if (status === 'COMPLETED') eventType = 'appointment.consultation_completed';
+    else if (status === 'CANCELLED') eventType = 'appointment.cancelled';
+
+    emitDomainEvent({
+      type: eventType,
+      resourceType: 'Appointment',
+      resourceId: appointment._id,
+      patientId: appointment.patientId?._id || appointment.patientId,
+      doctorId: appointment.doctorId?._id || appointment.doctorId,
+      facilityId: appointment.facilityId?._id || appointment.facilityId,
+      version: Date.now(),
+      data: appointment
+    });
+
     res.json(appointment);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -371,6 +400,17 @@ router.put('/:id/assign-doctor', protect, async (req, res) => {
       .populate('facilityId')
       .populate('doctorId');
 
+    emitDomainEvent({
+      type: 'appointment.confirmed',
+      resourceType: 'Appointment',
+      resourceId: updatedApp._id,
+      patientId: updatedApp.patientId?._id || updatedApp.patientId,
+      doctorId: updatedApp.doctorId?._id || updatedApp.doctorId,
+      facilityId: updatedApp.facilityId?._id || updatedApp.facilityId,
+      version: Date.now(),
+      data: updatedApp
+    });
+
     res.json(updatedApp);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -484,6 +524,17 @@ router.put('/:id/delay', protect, async (req, res) => {
     });
 
     await logAudit(req.user._id, req.user.name, req.user.role, 'DELAY_APPOINTMENT', 'CareAppointment', appointment._id, `Delayed appointment to ${formattedDate} ${timeStr}`);
+
+    emitDomainEvent({
+      type: 'appointment.rescheduled',
+      resourceType: 'Appointment',
+      resourceId: appointment._id,
+      patientId: appointment.patientId?._id || appointment.patientId,
+      doctorId: appointment.doctorId?._id || appointment.doctorId,
+      facilityId: appointment.facilityId?._id || appointment.facilityId,
+      version: Date.now(),
+      data: appointment
+    });
 
     res.json(appointment);
   } catch (error) {
@@ -627,6 +678,16 @@ router.put('/bed-bookings/:id/approve', protect, async (req, res) => {
       console.warn('Bed approval email dispatch warning:', eErr.message);
     }
 
+    emitDomainEvent({
+      type: 'appointment.updated',
+      resourceType: 'BedBooking',
+      resourceId: booking._id,
+      patientId: booking.patientId,
+      facilityId: booking.facilityId,
+      version: Date.now(),
+      data: booking
+    });
+
     res.json({
       success: true,
       message: `Bed ${bedNo} successfully allotted. Available bed count occupied by 1. Email and in-app notifications dispatched.`,
@@ -744,6 +805,16 @@ router.put('/bed-bookings/:id/dispatch', protect, async (req, res) => {
       console.warn('Discharge email warning:', eErr.message);
     }
 
+    emitDomainEvent({
+      type: 'appointment.updated',
+      resourceType: 'BedBooking',
+      resourceId: booking._id,
+      patientId: booking.patientId,
+      facilityId: booking.facilityId,
+      version: Date.now(),
+      data: booking
+    });
+
     res.json({ success: true, message: `Patient discharged. Reserved bed released (+1 available bed).` });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -844,6 +915,16 @@ router.put('/bed-bookings/:id/shift-ward', protect, async (req, res) => {
       console.warn('Ward shift email warning:', eErr.message);
     }
 
+    emitDomainEvent({
+      type: 'appointment.updated',
+      resourceType: 'BedBooking',
+      resourceId: booking._id,
+      patientId: booking.patientId,
+      facilityId: booking.facilityId,
+      version: Date.now(),
+      data: booking
+    });
+
     res.json({ success: true, message: `Patient shifted to General Ward Bed #${wardBedNo}. Notifications dispatched.`, allottedBedNumber: wardBedNo });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -857,6 +938,14 @@ router.delete('/bed-bookings/:id', protect, async (req, res) => {
     const mongoose = require('mongoose');
     let objectId;
     try { objectId = new mongoose.Types.ObjectId(id); } catch(e) { objectId = id; }
+
+    emitDomainEvent({
+      type: 'appointment.cancelled',
+      resourceType: 'BedBooking',
+      resourceId: id,
+      version: Date.now(),
+      data: { id }
+    });
 
     await mongoose.connection.collection('bedadmissions').deleteOne({ _id: objectId });
     res.json({ success: true, message: 'Bed admission record permanently deleted from database.' });
@@ -872,6 +961,14 @@ router.delete('/:id', protect, async (req, res) => {
     const mongoose = require('mongoose');
     let objectId;
     try { objectId = new mongoose.Types.ObjectId(id); } catch(e) { objectId = id; }
+
+    emitDomainEvent({
+      type: 'appointment.cancelled',
+      resourceType: 'Appointment',
+      resourceId: id,
+      version: Date.now(),
+      data: { id }
+    });
 
     await Appointment.deleteOne({ _id: objectId });
     res.json({ success: true, message: 'Appointment record permanently deleted from database.' });
