@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const axios = require('axios');
 
@@ -911,22 +912,70 @@ router.get('/facilities', async (req, res) => {
 
 router.get('/facilities/:id', async (req, res) => {
   try {
-    let facility = await HealthcareFacility.findOne({ facilityId: req.params.id }).lean();
+    const { id } = req.params;
+    let facility = null;
 
-    if (!facility && (req.params.id.startsWith('FAC-DYN') || req.params.id.startsWith('DIAG-DYN') || req.params.id.startsWith('OSM-DIAG'))) {
-      const parts = req.params.id.split('-');
-      const userLat = parseFloat(parts[3]) / 100 || 26.54;
-      const userLng = parseFloat(parts[4]) / 100 || 88.71;
+    // 1. Try finding by ObjectId or facilityId in HealthcareFacility DB model
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      facility = await HealthcareFacility.findById(id).lean();
+    }
+    if (!facility) {
+      facility = await HealthcareFacility.findOne({ facilityId: id }).lean();
+    }
+
+    // 2. Try finding in raw facilities MongoDB collection directly
+    if (!facility) {
+      try {
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          facility = await mongoose.connection.collection('facilities').findOne({ _id: new mongoose.Types.ObjectId(id) });
+        }
+        if (!facility) {
+          facility = await mongoose.connection.collection('facilities').findOne({ facilityId: id });
+        }
+      } catch (eDb) {
+        // ignore
+      }
+    }
+
+    // 3. Try finding in facilitiesSeedData
+    if (!facility && Array.isArray(facilitiesSeedData)) {
+      const seedFac = facilitiesSeedData.find(f => f.facilityId === id || String(f._id) === String(id));
+      if (seedFac) {
+        facility = { ...seedFac };
+      }
+    }
+
+    // 4. Try dynamic local generated facilities or OSM centers
+    if (!facility) {
+      let userLat = 26.54;
+      let userLng = 88.71;
+
+      if (id.includes('-')) {
+        const parts = id.split('-');
+        if (parts.length >= 4) {
+          const latCandidate = parseFloat(parts[parts.length - 2]) / 100;
+          const lngCandidate = parseFloat(parts[parts.length - 1]) / 100;
+          if (!isNaN(latCandidate) && !isNaN(lngCandidate)) {
+            userLat = latCandidate;
+            userLng = lngCandidate;
+          }
+        }
+      }
 
       let localList = [];
-      if (req.params.id.startsWith('DIAG-DYN')) {
+      if (id.startsWith('DIAG-DYN')) {
         localList = generateLocalDiagnosticCentersForCoordinates(userLat, userLng);
-      } else if (req.params.id.startsWith('OSM-DIAG')) {
-        localList = await fetchRealOSMDiagnosticCenters(userLat, userLng);
+      } else if (id.startsWith('OSM-DIAG')) {
+        try {
+          localList = await fetchRealOSMDiagnosticCenters(userLat, userLng);
+        } catch (eOsm) {
+          localList = [];
+        }
       } else {
         localList = generateLocalFacilitiesForCoordinates(userLat, userLng);
       }
-      facility = localList.find(f => f.facilityId === req.params.id) || localList[0];
+
+      facility = localList.find(f => f.facilityId === id || f._id === id || String(f._id) === String(id)) || localList[0];
     }
 
     if (!facility) {
@@ -934,7 +983,7 @@ router.get('/facilities/:id', async (req, res) => {
     }
 
     const facilityObj = facility.toObject ? facility.toObject() : facility;
-    const contactInfo = await facilityContactService.getVerifiedContactInfo(req.params.id, facilityObj);
+    const contactInfo = await facilityContactService.getVerifiedContactInfo(id, facilityObj);
 
     return res.json({
       success: true,
@@ -1450,6 +1499,31 @@ router.delete('/appointments/:id', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Error deleting appointment:', err);
     return res.status(500).json({ success: false, message: 'Failed to delete appointment' });
+  }
+});
+
+// Update an Appointment status by ID (e.g. COMPLETED)
+router.patch('/appointments/:id/status', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const mongoose = require('mongoose');
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(id);
+    } catch (e) {
+      objectId = id;
+    }
+
+    await Appointment.updateOne({ _id: objectId }, { $set: { status: status || 'COMPLETED' } });
+    try {
+      await mongoose.connection.collection('careappointments').updateOne({ _id: objectId }, { $set: { status: status || 'COMPLETED' } });
+    } catch (e) {}
+
+    return res.json({ success: true, message: `Appointment status updated to ${status || 'COMPLETED'}` });
+  } catch (err) {
+    console.error('Error updating appointment status:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update appointment status' });
   }
 });
 

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { fetchNearbyHospitals, getAIRecommendation, broadcastEmergency } from './emergency.service';
 import EmergencyMap from './EmergencyMap';
 // import EmergencyDialog from './EmergencyDialog'; // Removed
 // import './emergency.css'; // Removed
-import { AlertTriangle, MapPin, Activity, ShieldAlert, Bot, Stethoscope, ChevronRight, Navigation, Clock, Info, Send } from 'lucide-react';
+import { AlertTriangle, MapPin, Activity, ShieldAlert, Bot, Stethoscope, ChevronRight, Navigation, Clock, Info, Send, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +29,50 @@ const EmergencyPage = () => {
     
     // Info State
     const [showInfoDialog, setShowInfoDialog] = useState(false);
+    const [isMapCollapsed, setIsMapCollapsed] = useState(false);
+    const [maxDistanceRadius, setMaxDistanceRadius] = useState('5');
+    const [customRadiusInput, setCustomRadiusInput] = useState('');
+
+    const effectiveMaxKm = useMemo(() => {
+        if (maxDistanceRadius === 'ALL') return Infinity;
+        if (maxDistanceRadius === 'CUSTOM') {
+            const val = parseFloat(customRadiusInput);
+            return isNaN(val) || val <= 0 ? Infinity : val;
+        }
+        return parseFloat(maxDistanceRadius);
+    }, [maxDistanceRadius, customRadiusInput]);
+
+    const displayedHospitals = useMemo(() => {
+        return hospitals.filter(h => {
+            const dist = typeof h.distance === 'number' ? h.distance : parseFloat(h.distance) || 0;
+            return dist <= effectiveMaxKm;
+        });
+    }, [hospitals, effectiveMaxKm]);
+
+    // Auto-expand radius if initial 5km radius has 0 hospitals
+    useEffect(() => {
+        if (hospitals && hospitals.length > 0) {
+            const currentCount = hospitals.filter(h => {
+                const d = typeof h.distance === 'number' ? h.distance : parseFloat(h.distance) || 0;
+                return maxDistanceRadius === 'ALL' || (maxDistanceRadius === 'CUSTOM' ? d <= (parseFloat(customRadiusInput) || Infinity) : d <= parseFloat(maxDistanceRadius));
+            }).length;
+
+            if (currentCount === 0) {
+                const thresholds = [5, 10, 20, 30];
+                for (const t of thresholds) {
+                    const count = hospitals.filter(h => {
+                        const d = typeof h.distance === 'number' ? h.distance : parseFloat(h.distance) || 0;
+                        return d <= t;
+                    }).length;
+                    if (count > 0) {
+                        setMaxDistanceRadius(String(t));
+                        return;
+                    }
+                }
+                setMaxDistanceRadius('ALL');
+            }
+        }
+    }, [hospitals]);
 
     const handleBroadcastEmergency = async () => {
         if (!userLocation) {
@@ -635,31 +679,142 @@ const EmergencyPage = () => {
 
                     {/* Right Column: Map (8/12 columns) */}
                     <div className="lg:col-span-8">
-                         <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-2 shadow-xl h-[600px] flex flex-col relative transition-colors duration-300">
-                             <div className="flex-1 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 relative z-0">
-                                 {userLocation ? (
-                                     <EmergencyMap 
-                                        userLocation={userLocation} 
-                                        hospitals={hospitals}
-                                        selectedHospital={selectedHospital} 
-                                        onHospitalClick={handleHospitalClick}
-                                     />
-                                 ) : (
-                                     <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm text-slate-500 dark:text-slate-400 gap-6">
-                                         <div className="relative">
-                                             <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full animate-pulse"></div>
-                                             <MapPin size={48} className="relative z-10 text-blue-500 animate-bounce" />
-                                         </div>
-                                         <p className="text-lg font-medium">{errorMsg || "Locating your position..."}</p>
-                                         <button 
-                                            onClick={getLocation}
-                                            className="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium shadow-sm hover:bg-slate-50"
-                                         >
-                                            Retry Location
-                                         </button>
+                         <div className={`bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-2 shadow-xl flex flex-col relative transition-all duration-300 ${isMapCollapsed ? 'h-14 lg:h-[600px]' : 'h-64 sm:h-80 lg:h-[600px]'}`}>
+                             {/* Header Bar with Distance Filter */}
+                             <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-slate-100/90 dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 z-10 shrink-0 mb-1">
+                               <div className="flex flex-wrap items-center gap-1.5">
+                                 <span className="flex items-center gap-1 text-[11px] font-extrabold text-red-600 dark:text-red-400">
+                                   <span>🚨 Radius:</span>
+                                 </span>
+
+                                 {/* Phone Dropdown Select */}
+                                 <div className="sm:hidden flex items-center gap-1">
+                                   <select
+                                     value={maxDistanceRadius}
+                                     onChange={(e) => setMaxDistanceRadius(e.target.value)}
+                                     className="px-2 py-1 bg-white dark:bg-slate-900 border border-red-300 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-800 dark:text-slate-200 focus:outline-none shadow-sm cursor-pointer"
+                                   >
+                                     <option value="5">5 km (Default)</option>
+                                     <option value="10">10 km</option>
+                                     <option value="20">20 km</option>
+                                     <option value="30">30 km</option>
+                                     <option value="ALL">All Distances</option>
+                                     <option value="CUSTOM">Custom...</option>
+                                   </select>
+
+                                   {maxDistanceRadius === 'CUSTOM' && (
+                                     <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-red-400 rounded-lg px-1.5 py-0.5">
+                                       <input
+                                         type="number"
+                                         min="0.1"
+                                         step="0.5"
+                                         value={customRadiusInput}
+                                         onChange={(e) => setCustomRadiusInput(e.target.value)}
+                                         placeholder="e.g. 15"
+                                         className="w-10 bg-transparent text-[10px] font-bold text-slate-900 dark:text-white focus:outline-none"
+                                         autoFocus
+                                       />
+                                       <span className="text-[9px] text-slate-500">km</span>
                                      </div>
+                                   )}
+                                 </div>
+
+                                 {/* Desktop Buttons */}
+                                 <div className="hidden sm:flex items-center gap-1">
+                                   {[
+                                     { label: '5 km', value: '5' },
+                                     { label: '10 km', value: '10' },
+                                     { label: '20 km', value: '20' },
+                                     { label: '30 km', value: '30' },
+                                     { label: 'All', value: 'ALL' },
+                                   ].map(preset => (
+                                     <button
+                                       key={preset.value}
+                                       type="button"
+                                       onClick={() => setMaxDistanceRadius(preset.value)}
+                                       className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all shadow-sm ${
+                                         maxDistanceRadius === preset.value
+                                           ? 'bg-red-600 text-white'
+                                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                       }`}
+                                     >
+                                       {preset.label}
+                                     </button>
+                                   ))}
+                                   <button
+                                     type="button"
+                                     onClick={() => setMaxDistanceRadius('CUSTOM')}
+                                     className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all shadow-sm ${
+                                       maxDistanceRadius === 'CUSTOM'
+                                         ? 'bg-red-600 text-white'
+                                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                     }`}
+                                   >
+                                     Custom
+                                   </button>
+                                   {maxDistanceRadius === 'CUSTOM' && (
+                                     <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-red-400 rounded-lg px-1.5 py-0.5">
+                                       <input
+                                         type="number"
+                                         min="0.1"
+                                         step="0.5"
+                                         value={customRadiusInput}
+                                         onChange={(e) => setCustomRadiusInput(e.target.value)}
+                                         placeholder="e.g. 15"
+                                         className="w-12 bg-transparent text-[10px] font-bold text-slate-900 dark:text-white focus:outline-none"
+                                         autoFocus
+                                       />
+                                       <span className="text-[9px] text-slate-500">km</span>
+                                     </div>
+                                   )}
+                                 </div>
+                               </div>
+
+                               <button
+                                 type="button"
+                                 onClick={() => setIsMapCollapsed(!isMapCollapsed)}
+                                 className="lg:hidden flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 text-[11px] font-bold shadow-sm active:scale-95 transition-all text-blue-600 dark:text-blue-400"
+                               >
+                                 {isMapCollapsed ? (
+                                   <>
+                                     <Eye className="w-3.5 h-3.5" />
+                                     <span>Show Map</span>
+                                   </>
+                                 ) : (
+                                   <>
+                                     <EyeOff className="w-3.5 h-3.5" />
+                                     <span>Minimize Map</span>
+                                   </>
                                  )}
+                               </button>
                              </div>
+
+                             {!isMapCollapsed && (
+                               <div className="flex-1 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 relative z-0 min-h-0">
+                                   {userLocation ? (
+                                       <EmergencyMap 
+                                          userLocation={userLocation} 
+                                          hospitals={displayedHospitals}
+                                          selectedHospital={selectedHospital} 
+                                          onHospitalClick={handleHospitalClick}
+                                       />
+                                   ) : (
+                                       <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm text-slate-500 dark:text-slate-400 gap-6">
+                                           <div className="relative">
+                                               <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full animate-pulse"></div>
+                                               <MapPin size={48} className="relative z-10 text-blue-500 animate-bounce" />
+                                           </div>
+                                           <p className="text-lg font-medium">{errorMsg || "Locating your position..."}</p>
+                                           <button 
+                                              onClick={getLocation}
+                                              className="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium shadow-sm hover:bg-slate-50"
+                                           >
+                                              Retry Location
+                                           </button>
+                                       </div>
+                                   )}
+                               </div>
+                             )}
                          </div>
                     </div>
                 </div>

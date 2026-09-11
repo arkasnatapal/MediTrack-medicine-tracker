@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Building2, MapPin, Phone, Clock, ShieldAlert, CheckCircle2, Navigation, 
   Calendar, Activity, Pill, ChevronLeft, Mail, Globe, ShieldCheck, AlertCircle, PhoneCall, GitMerge
@@ -12,8 +12,9 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const FacilityDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [facility, setFacility] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const [facility, setFacility] = useState(location.state?.facility || null);
+  const [loading, setLoading] = useState(!location.state?.facility);
 
   useEffect(() => {
     const fetchFacility = async () => {

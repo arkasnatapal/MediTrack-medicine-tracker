@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Filter, Navigation, Building2, Stethoscope, CheckCircle2, ChevronRight, Activity, Clock, ShieldAlert, Sparkles } from 'lucide-react';
+import { Search, MapPin, Filter, Navigation, Building2, Stethoscope, CheckCircle2, ChevronRight, Activity, Clock, ShieldAlert, Sparkles, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -46,6 +46,50 @@ const FindCarePage = () => {
   const [loading, setLoading] = useState(() => !(locationService.getCachedFacilities('findcare')?.length > 0));
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [isMapCollapsed, setIsMapCollapsed] = useState(false);
+  const [maxDistanceRadius, setMaxDistanceRadius] = useState('5');
+  const [customRadiusInput, setCustomRadiusInput] = useState('');
+
+  const effectiveMaxKm = useMemo(() => {
+    if (maxDistanceRadius === 'ALL') return Infinity;
+    if (maxDistanceRadius === 'CUSTOM') {
+      const val = parseFloat(customRadiusInput);
+      return isNaN(val) || val <= 0 ? Infinity : val;
+    }
+    return parseFloat(maxDistanceRadius);
+  }, [maxDistanceRadius, customRadiusInput]);
+
+  const displayedFacilities = useMemo(() => {
+    return facilities.filter(f => {
+      const dist = typeof f.distanceKm === 'number' ? f.distanceKm : parseFloat(f.distanceKm) || 0;
+      return dist <= effectiveMaxKm;
+    });
+  }, [facilities, effectiveMaxKm]);
+
+  // Auto-expand radius if initial 5km radius has 0 facilities
+  useEffect(() => {
+    if (facilities && facilities.length > 0) {
+      const currentCount = facilities.filter(f => {
+        const d = typeof f.distanceKm === 'number' ? f.distanceKm : parseFloat(f.distanceKm) || 0;
+        return maxDistanceRadius === 'ALL' || (maxDistanceRadius === 'CUSTOM' ? d <= (parseFloat(customRadiusInput) || Infinity) : d <= parseFloat(maxDistanceRadius));
+      }).length;
+
+      if (currentCount === 0) {
+        const thresholds = [5, 10, 20, 30];
+        for (const t of thresholds) {
+          const count = facilities.filter(f => {
+            const d = typeof f.distanceKm === 'number' ? f.distanceKm : parseFloat(f.distanceKm) || 0;
+            return d <= t;
+          }).length;
+          if (count > 0) {
+            setMaxDistanceRadius(String(t));
+            return;
+          }
+        }
+        setMaxDistanceRadius('ALL');
+      }
+    }
+  }, [facilities]);
 
   useEffect(() => {
     fetchLocationAndFacilities();
@@ -201,102 +245,233 @@ const FindCarePage = () => {
             <span>Find Suitable Care</span>
           </button>
         </form>
+
+        {/* DISTANCE RADIUS FILTER: PHONE DROPDOWN SELECT + DESKTOP PILLS */}
+        <div className="pt-3 border-t border-blue-200/60 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Distance Filter:</span>
+            </span>
+
+            {/* Mobile Dropdown Select (Visible on Phone Screens) */}
+            <div className="sm:hidden flex items-center gap-2">
+              <select
+                value={maxDistanceRadius}
+                onChange={(e) => setMaxDistanceRadius(e.target.value)}
+                className="px-3 py-2 bg-white dark:bg-slate-900 border border-blue-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer"
+              >
+                <option value="5">Within 5 km (Default)</option>
+                <option value="10">Within 10 km</option>
+                <option value="20">Within 20 km</option>
+                <option value="30">Within 30 km</option>
+                <option value="ALL">All Distances</option>
+                <option value="CUSTOM">Custom Range...</option>
+              </select>
+
+              {maxDistanceRadius === 'CUSTOM' && (
+                <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-blue-400 dark:border-blue-500 rounded-xl px-2 py-1 shadow-inner">
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={customRadiusInput}
+                    onChange={(e) => setCustomRadiusInput(e.target.value)}
+                    placeholder="e.g. 15"
+                    className="w-14 bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+                    autoFocus
+                  />
+                  <span className="text-[10px] font-bold text-slate-500">km</span>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Preset Buttons (Hidden on Phone, Visible on sm and up) */}
+            <div className="hidden sm:flex flex-wrap items-center gap-1.5">
+              {[
+                { label: 'Within 5 km', value: '5' },
+                { label: 'Within 10 km', value: '10' },
+                { label: 'Within 20 km', value: '20' },
+                { label: 'Within 30 km', value: '30' },
+                { label: 'All Distances', value: 'ALL' },
+              ].map(preset => {
+                const isActive = maxDistanceRadius === preset.value;
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setMaxDistanceRadius(preset.value)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 ${
+                      isActive
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-400 shadow-blue-500/20'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+
+              {/* Custom Distance Button & Input Field */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setMaxDistanceRadius('CUSTOM')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 ${
+                    maxDistanceRadius === 'CUSTOM'
+                      ? 'bg-blue-600 text-white ring-2 ring-blue-400 shadow-blue-500/20'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Custom Range
+                </button>
+
+                {maxDistanceRadius === 'CUSTOM' && (
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-blue-400 dark:border-blue-500 rounded-xl px-2 py-1 shadow-inner">
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.5"
+                      value={customRadiusInput}
+                      onChange={(e) => setCustomRadiusInput(e.target.value)}
+                      placeholder="e.g. 15"
+                      className="w-16 bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+                      autoFocus
+                    />
+                    <span className="text-[10px] font-bold text-slate-500">km</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 self-start sm:self-auto">
+            Filtered: ≤ {effectiveMaxKm === Infinity ? 'Any' : `${effectiveMaxKm} km`} ({displayedFacilities.length} found)
+          </span>
+        </div>
       </div>
 
       {/* MAP & RANKED LIST SPLIT VIEW */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEAFLET MAP VIEW */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden h-[480px] relative">
-          {userLocation && (
-            <MapContainer
-              center={[userLocation.latitude, userLocation.longitude]}
-              zoom={10}
-              scrollWheelZoom={true}
-              style={{ height: '100%', width: '100%' }}
+        <div className={`lg:col-span-7 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden relative transition-all duration-300 flex flex-col ${isMapCollapsed ? 'h-14 lg:h-[480px]' : 'h-64 sm:h-80 lg:h-[480px]'}`}>
+          {/* Mobile Collapse Header */}
+          <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 z-10 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <span>🗺️ Interactive Map</span>
+              <span className="text-[10px] font-normal text-slate-500">(Tap to minimize/scroll)</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsMapCollapsed(!isMapCollapsed)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-600 text-[11px] font-bold shadow-sm active:scale-95 transition-all text-blue-600 dark:text-blue-400"
             >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+              {isMapCollapsed ? (
+                <>
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Show Map</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>Minimize Map</span>
+                </>
+              )}
+            </button>
+          </div>
 
-              <MapController center={userLocation} facilities={facilities} />
-
-              {/* User Location Marker */}
-              <Marker
-                position={[userLocation.latitude, userLocation.longitude]}
-                icon={mapService.getUserLocationIcon()}
+          {!isMapCollapsed && userLocation && (
+            <div className="flex-1 w-full relative min-h-0">
+              <MapContainer
+                center={[userLocation.latitude, userLocation.longitude]}
+                zoom={10}
+                scrollWheelZoom={false}
+                style={{ height: '100%', width: '100%' }}
               >
-                <Popup>📍 You Are Here</Popup>
-              </Marker>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
 
-              {/* Facility Markers */}
-              {facilities.map(f => {
-                const isVerified = f.isMediTrackVerified !== false && f.canSelect !== false;
-                return (
-                  <Marker
-                    key={f.facilityId}
-                    position={[f.latitude, f.longitude]}
-                    icon={mapService.getFacilityIcon(f.facilityType, f.emergencyAvailable)}
-                    eventHandlers={{
-                      click: () => handleSelectFacility(f)
-                    }}
-                  >
-                    <Popup>
-                      <div className="p-1 space-y-1 text-xs">
-                        <div className="flex items-center gap-1 mb-1">
+                <MapController center={userLocation} facilities={displayedFacilities} />
+
+                {/* User Location Marker */}
+                <Marker
+                  position={[userLocation.latitude, userLocation.longitude]}
+                  icon={mapService.getUserLocationIcon()}
+                >
+                  <Popup>📍 You Are Here</Popup>
+                </Marker>
+
+                {/* Facility Markers */}
+                {displayedFacilities.map(f => {
+                  const isVerified = f.isMediTrackVerified !== false && f.canSelect !== false;
+                  return (
+                    <Marker
+                      key={f.facilityId}
+                      position={[f.latitude, f.longitude]}
+                      icon={mapService.getFacilityIcon(f.facilityType, f.emergencyAvailable)}
+                      eventHandlers={{
+                        click: () => handleSelectFacility(f)
+                      }}
+                    >
+                      <Popup>
+                        <div className="p-1 space-y-1 text-xs">
+                          <div className="flex items-center gap-1 mb-1">
+                            {isVerified ? (
+                              <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
+                                ✓ MediTrack Verified
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-black uppercase">
+                                ⚠️ Unverified / Not on MediTrack
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-bold text-slate-900">{f.name}</p>
+                          <p className="text-slate-500">{f.facilityType} • {f.distanceKm} km</p>
                           {isVerified ? (
-                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
-                              ✓ MediTrack Verified
-                            </span>
+                            <button
+                              onClick={() => navigate('/care-network/appointments', {
+                                state: {
+                                  facilityId: f.facilityId || f._id,
+                                  facilityName: f.name,
+                                  city: f.city || userLocation?.city || 'Jalpaiguri'
+                                }
+                              })}
+                              className="mt-1 px-2.5 py-1 bg-blue-600 text-white font-bold rounded text-[10px] w-full"
+                            >
+                              View & Book
+                            </button>
                           ) : (
-                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-black uppercase">
-                              ⚠️ Unverified / Not on MediTrack
-                            </span>
+                            <div className="mt-1 text-[9px] text-slate-500 bg-slate-100 p-1 rounded">
+                              Visit offline. Online booking disabled.
+                            </div>
                           )}
                         </div>
-                        <p className="font-bold text-slate-900">{f.name}</p>
-                        <p className="text-slate-500">{f.facilityType} • {f.distanceKm} km</p>
-                        {isVerified ? (
-                          <button
-                            onClick={() => navigate('/care-network/appointments', {
-                              state: {
-                                facilityId: f.facilityId || f._id,
-                                facilityName: f.name,
-                                city: f.city || userLocation?.city || 'Jalpaiguri'
-                              }
-                            })}
-                            className="mt-1 px-2.5 py-1 bg-blue-600 text-white font-bold rounded text-[10px] w-full"
-                          >
-                            View & Book
-                          </button>
-                        ) : (
-                          <div className="mt-1 text-[9px] text-slate-500 bg-slate-100 p-1 rounded">
-                            Visit offline. Online booking disabled.
-                          </div>
-                        )}
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
 
-              {/* OSRM Route Line */}
-              {routeCoordinates.length > 0 && (
-                <Polyline
-                  positions={routeCoordinates}
-                  color="#2563eb"
-                  weight={5}
-                  opacity={0.8}
-                />
-              )}
-            </MapContainer>
+                {/* OSRM Route Line */}
+                {routeCoordinates.length > 0 && (
+                  <Polyline
+                    positions={routeCoordinates}
+                    color="#2563eb"
+                    weight={5}
+                    opacity={0.8}
+                  />
+                )}
+              </MapContainer>
+
+              <div className="absolute bottom-3 left-3 z-[400] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-2 max-w-[90%] shadow-sm">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-600 rounded-full inline-block"></span> User</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-600 rounded-full inline-block"></span> Verified</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-amber-500 rounded-full inline-block"></span> Unverified</span>
+              </div>
+            </div>
           )}
-
-          <div className="absolute bottom-4 left-4 z-[400] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-blue-600 rounded-full inline-block"></span> User</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-600 rounded-full inline-block"></span> MediTrack Verified</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-amber-500 rounded-full inline-block"></span> Unverified Locality</span>
-          </div>
         </div>
 
         {/* RANKED FACILITIES LIST */}
@@ -304,13 +479,27 @@ const FindCarePage = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>Locality Facilities ({facilities.length})</span>
+              <span>Locality Facilities ({displayedFacilities.length})</span>
             </h2>
             <span className="text-xs text-slate-500">Verified & Locality Hospitals</span>
           </div>
 
           <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-            {facilities.map((f, index) => {
+            {displayedFacilities.length === 0 ? (
+              <div className="p-6 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                  No hospitals found within {effectiveMaxKm === Infinity ? 'selected' : `${effectiveMaxKm} km`}.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMaxDistanceRadius('ALL')}
+                  className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold shadow hover:bg-blue-700 transition-all"
+                >
+                  Show All Distances
+                </button>
+              </div>
+            ) : (
+              displayedFacilities.map((f, index) => {
               const isSelected = selectedFacility?.facilityId === f.facilityId;
               const isClosest = f.isNearest || index === 0;
               const isVerified = f.isMediTrackVerified !== false && f.canSelect !== false;
@@ -416,7 +605,8 @@ const FindCarePage = () => {
                   </div>
                 </div>
               );
-            })}
+            })
+          )}
           </div>
         </div>
       </div>

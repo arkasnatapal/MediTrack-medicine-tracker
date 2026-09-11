@@ -126,6 +126,60 @@ const AppointmentsPage = () => {
     fetchFacilitiesForCity(validCity, loc.latitude, loc.longitude);
   };
 
+  // Helper to ensure target facility from location.state or URL params is selected & present in dropdown list
+  const applyTargetFacilitySelection = async (facList) => {
+    const searchParams = new URLSearchParams(location.search);
+    const targetId = location.state?.facilityId || searchParams.get('facilityId');
+    const targetName = location.state?.facilityName || searchParams.get('facilityName');
+
+    if (!targetId && !targetName) {
+      if (facList && facList.length > 0) {
+        setSelectedFacilityId(prev => prev || facList[0].facilityId || facList[0]._id);
+      }
+      return facList;
+    }
+
+    let updatedList = Array.isArray(facList) ? [...facList] : [];
+    let match = updatedList.find(f => 
+      (targetId && (f.facilityId === targetId || String(f._id) === String(targetId) || f._id === targetId)) ||
+      (targetName && f.name && f.name.toLowerCase() === targetName.toLowerCase())
+    );
+
+    if (!match && targetId) {
+      try {
+        const res = await axios.get(`${API_BASE}/care-network/facilities/${targetId}`);
+        if (res.data && res.data.facility) {
+          const targetFac = res.data.facility;
+          updatedList = [targetFac, ...updatedList];
+          match = targetFac;
+        }
+      } catch (err) {
+        console.warn('Could not fetch target facility for pre-selection:', err);
+      }
+    }
+
+    if (!match && targetName) {
+      const fallbackFac = {
+        facilityId: targetId || `FAC-SEL-${Date.now()}`,
+        _id: targetId || `FAC-SEL-${Date.now()}`,
+        name: targetName,
+        facilityType: 'HOSPITAL',
+        district: selectedCity
+      };
+      updatedList = [fallbackFac, ...updatedList];
+      match = fallbackFac;
+    }
+
+    setFacilities(updatedList);
+    if (match) {
+      const selectedId = match.facilityId || match._id;
+      setSelectedFacilityId(selectedId);
+    } else if (updatedList.length > 0) {
+      setSelectedFacilityId(updatedList[0].facilityId || updatedList[0]._id);
+    }
+    return updatedList;
+  };
+
   const fetchFacilitiesForCity = async (cityName, lat, lng) => {
     const cachedFacs = locationService.getCachedFacilities('appointments');
     const cachedLoc = locationService.getCachedLocation();
@@ -139,7 +193,7 @@ const AppointmentsPage = () => {
     if (!locChanged && cachedFacs && cachedFacs.length > 0) {
       console.log('⚡ AppointmentsPage serving cached facilities (location delta < 0.5km).');
       setFacilities(cachedFacs);
-      setSelectedFacilityId(prev => prev || cachedFacs[0].facilityId || cachedFacs[0]._id);
+      await applyTargetFacilitySelection(cachedFacs);
       setLoading(false);
       return;
     }
@@ -165,26 +219,7 @@ const AppointmentsPage = () => {
 
       if (fetchedFacs.length > 0) {
         locationService.saveCachedFacilities(fetchedFacs, { latitude: queryLat, longitude: queryLng, city: cityName }, 'appointments');
-      }
-
-      if (fetchedFacs.length > 0) {
-        const targetFacId = location.state?.facilityId;
-        let preSelectedId = '';
-        if (targetFacId) {
-          const match = fetchedFacs.find(
-            f => f.facilityId === targetFacId || f._id === targetFacId || String(f._id) === String(targetFacId)
-          );
-          if (match) {
-            preSelectedId = match.facilityId || match._id;
-          }
-        }
-
-        if (!preSelectedId) {
-          preSelectedId = fetchedFacs[0].facilityId || fetchedFacs[0]._id;
-        }
-
-        setFacilities(fetchedFacs);
-        setSelectedFacilityId(preSelectedId);
+        await applyTargetFacilitySelection(fetchedFacs);
       } else {
         setFacilities([]);
         setSelectedFacilityId('');
@@ -373,6 +408,20 @@ const AppointmentsPage = () => {
     }
   };
 
+  const handleMarkCompleteAppointment = async (id) => {
+    if (!id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const cleanId = String(id).startsWith('CARE-') ? String(id).replace('CARE-', '') : id;
+      await axios.patch(`${API_BASE}/care-network/appointments/${cleanId}/status`, { status: 'COMPLETED' }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchAppointments();
+    } catch (err) {
+      alert('Failed to update appointment status.');
+    }
+  };
+
   const handleSimulateQueueStep = async () => {
     if (!selectedFacilityId) return;
     try {
@@ -398,13 +447,6 @@ const AppointmentsPage = () => {
             <h1 className="text-xl sm:text-2xl font-black mt-1 text-slate-900 dark:text-white">LIVE OPD TOKEN QUEUE ({department.toUpperCase()})</h1>
           </div>
 
-          <button
-            onClick={handleSimulateQueueStep}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Simulate Queue Advance (+1)</span>
-          </button>
         </div>
 
         {/* OPD SECTION SELECTOR PILLS */}
@@ -764,157 +806,175 @@ const AppointmentsPage = () => {
 
         {/* RIGHT COLUMN: MY APPOINTMENTS & MY BED BOOKINGS */}
         <div className="lg:col-span-7 space-y-6">
-          
-          {/* SECTION 1: MY BED ADMISSION REQUESTS */}
-          {bedBookings.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Bed className="w-5 h-5 text-emerald-600" />
-                  <span>My Hospital Bed & Admission Passes ({bedBookings.length})</span>
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => { setHistoryTab('BED'); setShowHistoryModal(true); }}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800/50 transition shadow-sm"
-                    title="View Discharged Bed Passes History"
-                  >
-                    <History className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>History ({bedBookings.filter(b => b.status === 'DISCHARGED').length})</span>
-                  </button>
-                  <button
-                    onClick={fetchBedBookings}
-                    className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
-                  >
-                    <RefreshCw className="w-3 h-3" /> Refresh
-                  </button>
-                </div>
-              </h2>
+          {(() => {
+            const activeAppointments = appointments.filter(a => a.status !== 'COMPLETED' && a.status !== 'CANCELLED');
+            const activeBedBookings = bedBookings.filter(b => b.status !== 'DISCHARGED' && b.status !== 'CANCELLED');
 
-              <div className="space-y-3">
-                {bedBookings.map((b, bIdx) => {
-                  const isApproved = b.status === 'APPROVED_BED_ALLOTTED' || b.status === 'ADMITTED';
-                  const isShifted = b.status === 'SHIFTED_TO_GENERAL_WARD';
-                  const isDischarged = b.status === 'DISCHARGED';
-                  const isWaitlisted = b.status === 'WAITLISTED';
-
-                  return (
-                    <div
-                      key={b._id || bIdx}
-                      className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md space-y-3 transition hover:border-emerald-500/50"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase">
-                              PASS #{b.admissionPassNumber}
-                            </span>
-                            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                              isDischarged
-                                ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
-                                : isShifted
-                                ? 'bg-purple-600 text-white'
-                                : isApproved
-                                ? 'bg-emerald-500 text-white animate-pulse'
-                                : isWaitlisted
-                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                            }`}>
-                              {isDischarged
-                                ? '🏁 DISCHARGED FROM HOSPITAL (BED FREED)'
-                                : isShifted
-                                ? `🛏️ SHIFTED TO GENERAL WARD: #${b.allottedBedNumber}`
-                                : isApproved
-                                ? `🟢 BED ALLOTTED: #${b.allottedBedNumber}`
-                                : isWaitlisted
-                                ? '🟡 WAITLISTED (BEDS FULL)'
-                                : '⏳ PENDING HOSPITAL ALLOCATION'}
-                            </span>
-                          </div>
-                          <h3 className="font-bold text-base text-slate-900 dark:text-white">{b.facilityName}</h3>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                            Department: <strong className="text-emerald-600 dark:text-emerald-400">{b.department}</strong> • Requested Category: <strong className="text-slate-800 dark:text-white">{(b.requestedBedType || 'GENERAL_WARD').replace('_', ' ')}</strong>
-                          </p>
-                        </div>
-
+            return (
+              <>
+                {/* SECTION 1: MY BED ADMISSION REQUESTS */}
+                {activeBedBookings.length > 0 && (
+                  <div className="space-y-3">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Bed className="w-5 h-5 text-emerald-600" />
+                        <span>My Active Bed Admission Passes ({activeBedBookings.length})</span>
+                      </span>
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleCancelBedBooking(b._id)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
-                          title={isDischarged ? "Delete Discharged Pass Record" : "Cancel / Delete Bed Request"}
+                          onClick={() => { setHistoryTab('BED'); setShowHistoryModal(true); }}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800/50 transition shadow-sm"
+                          title="View Discharged Bed Passes History"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <History className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>History ({bedBookings.filter(b => b.status === 'DISCHARGED' || b.status === 'CANCELLED').length})</span>
+                        </button>
+                        <button
+                          onClick={fetchBedBookings}
+                          className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
+                        >
+                          <RefreshCw className="w-3 h-3" /> Refresh
                         </button>
                       </div>
+                    </h2>
 
-                      {/* Allotted / Shifted / Discharged Bed Details Box */}
-                      {isDischarged ? (
-                        <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs space-y-1">
-                          <div className="flex items-center justify-between font-black text-slate-800 dark:text-slate-200">
-                            <span>Status: Hospital Inpatient Discharge Completed</span>
-                            <span className="text-xs bg-slate-600 text-white px-2.5 py-0.5 rounded-lg">Discharged</span>
+                    <div className="space-y-3">
+                      {activeBedBookings.map((b, bIdx) => {
+                        const isApproved = b.status === 'APPROVED_BED_ALLOTTED' || b.status === 'ADMITTED';
+                        const isShifted = b.status === 'SHIFTED_TO_GENERAL_WARD';
+                        const isDischarged = b.status === 'DISCHARGED';
+                        const isWaitlisted = b.status === 'WAITLISTED';
+
+                        return (
+                          <div
+                            key={b._id || bIdx}
+                            className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md space-y-3 transition hover:border-emerald-500/50"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase">
+                                    PASS #{b.admissionPassNumber}
+                                  </span>
+                                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                                    isDischarged
+                                      ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
+                                      : isShifted
+                                      ? 'bg-purple-600 text-white'
+                                      : isApproved
+                                      ? 'bg-emerald-500 text-white animate-pulse'
+                                      : isWaitlisted
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                                  }`}>
+                                    {isDischarged
+                                      ? '🏁 DISCHARGED FROM HOSPITAL (BED FREED)'
+                                      : isShifted
+                                      ? `🛏️ SHIFTED TO GENERAL WARD: #${b.allottedBedNumber}`
+                                      : isApproved
+                                      ? `🟢 BED ALLOTTED: #${b.allottedBedNumber}`
+                                      : isWaitlisted
+                                      ? '🟡 WAITLISTED (BEDS FULL)'
+                                      : '⏳ PENDING HOSPITAL ALLOCATION'}
+                                  </span>
+                                </div>
+                                <h3 className="font-bold text-base text-slate-900 dark:text-white">{b.facilityName}</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                  Department: <strong className="text-emerald-600 dark:text-emerald-400">{b.department}</strong> • Requested Category: <strong className="text-slate-800 dark:text-white">{(b.requestedBedType || 'GENERAL_WARD').replace('_', ' ')}</strong>
+                                </p>
+                              </div>
+
+                              <button
+                                onClick={() => handleCancelBedBooking(b._id)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
+                                title={isDischarged ? "Delete Discharged Pass Record" : "Cancel / Delete Bed Request"}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {/* Allotted / Shifted / Discharged Bed Details Box */}
+                            {isDischarged ? (
+                              <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs space-y-1">
+                                <div className="flex items-center justify-between font-black text-slate-800 dark:text-slate-200">
+                                  <span>Status: Hospital Inpatient Discharge Completed</span>
+                                  <span className="text-xs bg-slate-600 text-white px-2.5 py-0.5 rounded-lg">Discharged</span>
+                                </div>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                                  {b.dischargeNotes || 'Patient officially discharged in stable condition. Bed tag released.'}
+                                </p>
+                              </div>
+                            ) : isShifted ? (
+                              <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 text-xs space-y-1">
+                                <div className="flex items-center justify-between font-black text-purple-900 dark:text-purple-300">
+                                  <span>Bed Location: General Medicine Ward</span>
+                                  <span className="text-sm bg-purple-600 text-white px-2.5 py-0.5 rounded-lg">Bed #{b.allottedBedNumber}</span>
+                                </div>
+                                <p className="text-[11px] text-purple-800 dark:text-purple-300 font-medium">
+                                  {b.hospitalNotes || 'Patient transferred to General Medicine Ward for continued recovery.'}
+                                </p>
+                              </div>
+                            ) : isApproved ? (
+                              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-xs space-y-1">
+                                <div className="flex items-center justify-between font-black text-emerald-800 dark:text-emerald-300">
+                                  <span>Bed Allotted: {b.allottedBedType ? b.allottedBedType.replace('_', ' ') : 'General Bed'}</span>
+                                  <span className="text-sm bg-emerald-600 text-white px-2.5 py-0.5 rounded-lg">Bed #{b.allottedBedNumber}</span>
+                                </div>
+                                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                                  {b.hospitalNotes || 'Hospital admission Desk confirmed bed allocation. Please present Admission Pass at emergency reception.'}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-0.5">
+                                <span className="font-bold block text-slate-800 dark:text-slate-200">Hospital Desk Note:</span>
+                                <p className="text-[11px] italic">{b.hospitalNotes || 'Request submitted to facility desk. Bed number will be allotted upon availability verification.'}</p>
+                              </div>
+                            )}
                           </div>
-                          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-                            {b.dischargeNotes || 'Patient officially discharged in stable condition. Bed tag released.'}
-                          </p>
-                        </div>
-                      ) : isShifted ? (
-                        <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 text-xs space-y-1">
-                          <div className="flex items-center justify-between font-black text-purple-900 dark:text-purple-300">
-                            <span>Bed Location: General Medicine Ward</span>
-                            <span className="text-sm bg-purple-600 text-white px-2.5 py-0.5 rounded-lg">Bed #{b.allottedBedNumber}</span>
-                          </div>
-                          <p className="text-[11px] text-purple-800 dark:text-purple-300 font-medium">
-                            {b.hospitalNotes || 'Patient transferred to General Medicine Ward for continued recovery.'}
-                          </p>
-                        </div>
-                      ) : isApproved ? (
-                        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-xs space-y-1">
-                          <div className="flex items-center justify-between font-black text-emerald-800 dark:text-emerald-300">
-                            <span>Bed Allotted: {b.allottedBedType ? b.allottedBedType.replace('_', ' ') : 'General Bed'}</span>
-                            <span className="text-sm bg-emerald-600 text-white px-2.5 py-0.5 rounded-lg">Bed #{b.allottedBedNumber}</span>
-                          </div>
-                          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
-                            {b.hospitalNotes || 'Hospital admission Desk confirmed bed allocation. Please present Admission Pass at emergency reception.'}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-0.5">
-                          <span className="font-bold block text-slate-800 dark:text-slate-200">Hospital Desk Note:</span>
-                          <p className="text-[11px] italic">{b.hospitalNotes || 'Request submitted to facility desk. Bed number will be allotted upon availability verification.'}</p>
-                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* SECTION 2: MY OPD APPOINTMENTS LIST */}
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Ticket className="w-5 h-5 text-indigo-600" />
+                      <span>My OPD Healthcare Appointments ({activeAppointments.length})</span>
+                    </span>
+                    <button
+                      onClick={() => { setHistoryTab('OPD'); setShowHistoryModal(true); }}
+                      className="px-3.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800/50 transition shadow-sm"
+                      title="View Completed OPD Appointments History"
+                    >
+                      <History className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>History ({appointments.filter(a => a.status === 'COMPLETED' || a.status === 'CANCELLED').length})</span>
+                    </button>
+                  </h2>
+
+                  {activeAppointments.length === 0 ? (
+                    <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 text-center text-slate-500 text-xs space-y-2">
+                      <p className="font-medium text-slate-700 dark:text-slate-300">
+                        {appointments.some(a => a.status === 'COMPLETED' || a.status === 'CANCELLED')
+                          ? 'No active upcoming OPD appointments. Your completed appointments have been moved to History.'
+                          : 'No active appointments booked yet. Select a facility on the left to book your OPD slot.'}
+                      </p>
+                      {appointments.some(a => a.status === 'COMPLETED' || a.status === 'CANCELLED') && (
+                        <button
+                          type="button"
+                          onClick={() => { setHistoryTab('OPD'); setShowHistoryModal(true); }}
+                          className="px-3.5 py-1.5 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow hover:bg-indigo-700 transition"
+                        >
+                          View Completed Appointments History
+                        </button>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* SECTION 2: MY OPD APPOINTMENTS LIST */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Ticket className="w-5 h-5 text-indigo-600" />
-                <span>My OPD Healthcare Appointments ({appointments.length})</span>
-              </span>
-              <button
-                onClick={() => { setHistoryTab('OPD'); setShowHistoryModal(true); }}
-                className="px-3.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800/50 transition shadow-sm"
-                title="View Completed OPD Appointments History"
-              >
-                <History className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>History ({appointments.filter(a => a.status === 'COMPLETED' || a.status === 'CANCELLED').length})</span>
-              </button>
-            </h2>
-
-            {appointments.length === 0 ? (
-              <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 text-center text-slate-500 text-xs">
-                No appointments booked yet. Select a facility on the left to book your OPD slot.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {appointments.map(apt => {
-                  const isDelayed = apt.isDelayed || apt.status === 'RESCHEDULED';
+                  ) : (
+                    <div className="space-y-3">
+                      {activeAppointments.map(apt => {
+                        const isDelayed = apt.isDelayed || apt.status === 'RESCHEDULED';
                   return (
                     <div
                       key={apt.appointmentId || apt._id}
@@ -939,6 +999,14 @@ const AppointmentsPage = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleMarkCompleteAppointment(apt.appointmentId || apt._id)}
+                            className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/50 transition shadow-xs"
+                            title="Mark appointment as completed & move to History"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Done</span>
+                          </button>
                           <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
                             apt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' :
                             apt.status === 'RESCHEDULED' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' :
@@ -996,8 +1064,11 @@ const AppointmentsPage = () => {
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </>
+      );
+    })()}
+  </div>
+</div>
 
       {/* ----------------- PATIENT CLINICAL & PASS HISTORY MODAL ----------------- */}
       {showHistoryModal && (

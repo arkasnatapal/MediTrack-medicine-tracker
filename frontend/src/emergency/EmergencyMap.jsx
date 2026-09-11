@@ -89,7 +89,7 @@ const EmergencyMap = ({ userLocation, hospitals, selectedHospital, onHospitalCli
     const center = userLocation ? [userLocation.latitude, userLocation.longitude] : defaultCenter;
 
     return (
-        <MapContainer center={center} zoom={13} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
+        <MapContainer center={center} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
              <LayersControl position="topright">
                 <LayersControl.BaseLayer checked name="Street View">
                     <TileLayer

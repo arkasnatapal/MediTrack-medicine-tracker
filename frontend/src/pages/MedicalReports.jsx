@@ -272,34 +272,34 @@ const MedicalReports = () => {
         </div>
 
         {/* Section Navigation Tabs: Medical Reports vs Prescriptions */}
-        <div className="flex items-center gap-2 bg-slate-200/70 dark:bg-slate-800/70 p-1.5 rounded-2xl border border-slate-300/60 dark:border-slate-700/60 w-full sm:w-auto self-start shadow-sm">
+        <div className="grid grid-cols-2 gap-1.5 bg-slate-200/70 dark:bg-slate-800/70 p-1.5 rounded-2xl border border-slate-300/60 dark:border-slate-700/60 w-full sm:w-auto self-start shadow-sm">
           <button
             onClick={() => handleTabChange('reports')}
-            className={`px-6 py-3 rounded-xl font-extrabold text-sm flex items-center gap-2.5 transition-all ${
+            className={`px-2.5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2.5 transition-all text-center ${
               activeTab === 'reports'
                 ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-md ring-1 ring-black/5 dark:ring-white/10'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Folder className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>Medical Reports & Lab Files</span>
+            <Folder className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+            <span className="truncate">Medical Reports & Lab Files</span>
           </button>
 
           <button
             onClick={() => handleTabChange('prescriptions')}
-            className={`px-6 py-3 rounded-xl font-extrabold text-sm flex items-center gap-2.5 transition-all ${
+            className={`px-2.5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2.5 transition-all text-center ${
               activeTab === 'prescriptions'
                 ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 shadow-md ring-1 ring-black/5 dark:ring-white/10'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Pill className="w-4 h-4 text-emerald-500" />
-            <span>Prescriptions & OPD Records</span>
+            <Pill className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span className="truncate">Prescriptions & OPD Records</span>
           </button>
         </div>
 
         {activeTab === 'prescriptions' ? (
-          <div className="bg-white dark:bg-slate-800/60 p-4 sm:p-6 rounded-3xl border border-gray-100 dark:border-slate-700/80 shadow-sm">
+          <div className="bg-white dark:bg-slate-800/60 p-2 sm:p-6 rounded-3xl border border-gray-100 dark:border-slate-700/80 shadow-sm">
             <PrescriptionsPage />
           </div>
         ) : (

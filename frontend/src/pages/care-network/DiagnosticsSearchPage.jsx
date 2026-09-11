@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Activity, Search, MapPin, Clock, Building2, ChevronRight, CheckCircle2, 
-  XCircle, Navigation, PhoneCall, RefreshCw, Sun, Moon, Sparkles, Filter, SlidersHorizontal, Phone
+  XCircle, Navigation, PhoneCall, RefreshCw, Sun, Moon, Sparkles, Filter, SlidersHorizontal, Phone, Eye, EyeOff
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -46,6 +46,43 @@ const DiagnosticsSearchPage = () => {
   const [diagnosticsList, setDiagnosticsList] = useState(() => locationService.getCachedFacilities('diagnostics') || []);
   const [loading, setLoading] = useState(() => !(locationService.getCachedFacilities('diagnostics')?.length > 0));
   const [selectedItem, setSelectedItem] = useState(null);
+  const [isMapCollapsed, setIsMapCollapsed] = useState(false);
+  const [maxDistanceRadius, setMaxDistanceRadius] = useState('5');
+  const [customRadiusInput, setCustomRadiusInput] = useState('');
+
+  const effectiveMaxKm = useMemo(() => {
+    if (maxDistanceRadius === 'ALL') return Infinity;
+    if (maxDistanceRadius === 'CUSTOM') {
+      const val = parseFloat(customRadiusInput);
+      return isNaN(val) || val <= 0 ? Infinity : val;
+    }
+    return parseFloat(maxDistanceRadius);
+  }, [maxDistanceRadius, customRadiusInput]);
+
+  // Auto-expand radius if initial 5km radius has 0 facilities
+  useEffect(() => {
+    if (diagnosticsList && diagnosticsList.length > 0) {
+      const currentCount = diagnosticsList.filter(item => {
+        const d = typeof item.distanceKm === 'number' ? item.distanceKm : parseFloat(item.distanceKm) || 0;
+        return maxDistanceRadius === 'ALL' || (maxDistanceRadius === 'CUSTOM' ? d <= (parseFloat(customRadiusInput) || Infinity) : d <= parseFloat(maxDistanceRadius));
+      }).length;
+
+      if (currentCount === 0) {
+        const thresholds = [5, 10, 20, 30];
+        for (const t of thresholds) {
+          const count = diagnosticsList.filter(item => {
+            const d = typeof item.distanceKm === 'number' ? item.distanceKm : parseFloat(item.distanceKm) || 0;
+            return d <= t;
+          }).length;
+          if (count > 0) {
+            setMaxDistanceRadius(String(t));
+            return;
+          }
+        }
+        setMaxDistanceRadius('ALL');
+      }
+    }
+  }, [diagnosticsList]);
 
   useEffect(() => {
     initUserLocation();
@@ -165,16 +202,20 @@ const DiagnosticsSearchPage = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  // Filter list by keyword or test tag
-  const filteredDiagnostics = diagnosticsList.filter(item => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      item.facilityName.toLowerCase().includes(q) ||
-      item.district.toLowerCase().includes(q) ||
-      (item.availableDiagnostics && item.availableDiagnostics.some(d => d.toLowerCase().includes(q)))
-    );
-  });
+  // Filter list by keyword, test tag, and distance radius
+  const filteredDiagnostics = useMemo(() => {
+    return diagnosticsList.filter(item => {
+      const dist = typeof item.distanceKm === 'number' ? item.distanceKm : parseFloat(item.distanceKm) || 0;
+      if (dist > effectiveMaxKm) return false;
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        item.facilityName.toLowerCase().includes(q) ||
+        item.district.toLowerCase().includes(q) ||
+        (item.availableDiagnostics && item.availableDiagnostics.some(d => d.toLowerCase().includes(q)))
+      );
+    });
+  }, [diagnosticsList, effectiveMaxKm, searchQuery]);
 
   const mapCenter = selectedItem 
     ? [selectedItem.latitude, selectedItem.longitude] 
@@ -297,100 +338,231 @@ const DiagnosticsSearchPage = () => {
           })}
         </div>
 
+        {/* DISTANCE RADIUS FILTER: PHONE DROPDOWN SELECT + DESKTOP PILLS */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-rose-200/50 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>Distance Filter:</span>
+            </span>
+
+            {/* Mobile Dropdown Select (Visible on Phone Screens) */}
+            <div className="sm:hidden flex items-center gap-2">
+              <select
+                value={maxDistanceRadius}
+                onChange={(e) => setMaxDistanceRadius(e.target.value)}
+                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-rose-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm cursor-pointer"
+              >
+                <option value="5">Within 5 km (Default)</option>
+                <option value="10">Within 10 km</option>
+                <option value="20">Within 20 km</option>
+                <option value="30">Within 30 km</option>
+                <option value="ALL">All Distances</option>
+                <option value="CUSTOM">Custom Range...</option>
+              </select>
+
+              {maxDistanceRadius === 'CUSTOM' && (
+                <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-rose-400 dark:border-rose-500 rounded-xl px-2 py-0.5 shadow-inner">
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={customRadiusInput}
+                    onChange={(e) => setCustomRadiusInput(e.target.value)}
+                    placeholder="e.g. 15"
+                    className="w-14 bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+                    autoFocus
+                  />
+                  <span className="text-[10px] font-bold text-slate-500">km</span>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Preset Buttons (Hidden on Phone, Visible on sm and up) */}
+            <div className="hidden sm:flex flex-wrap items-center gap-1.5">
+              {[
+                { label: 'Within 5 km', value: '5' },
+                { label: 'Within 10 km', value: '10' },
+                { label: 'Within 20 km', value: '20' },
+                { label: 'Within 30 km', value: '30' },
+                { label: 'All Distances', value: 'ALL' },
+              ].map(preset => {
+                const isActive = maxDistanceRadius === preset.value;
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setMaxDistanceRadius(preset.value)}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 ${
+                      isActive
+                        ? 'bg-rose-600 text-white ring-2 ring-rose-400 shadow-rose-500/20'
+                        : 'bg-white/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+
+              {/* Custom Distance Button & Input Field */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setMaxDistanceRadius('CUSTOM')}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 ${
+                    maxDistanceRadius === 'CUSTOM'
+                      ? 'bg-rose-600 text-white ring-2 ring-rose-400 shadow-rose-500/20'
+                      : 'bg-white/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Custom Range
+                </button>
+
+                {maxDistanceRadius === 'CUSTOM' && (
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-rose-400 dark:border-rose-500 rounded-xl px-2 py-0.5 shadow-inner">
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.5"
+                      value={customRadiusInput}
+                      onChange={(e) => setCustomRadiusInput(e.target.value)}
+                      placeholder="e.g. 15"
+                      className="w-16 bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+                      autoFocus
+                    />
+                    <span className="text-[10px] font-bold text-slate-500">km</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-100/70 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-lg border border-rose-200 dark:border-rose-800 self-start sm:self-auto">
+            Filtered: ≤ {effectiveMaxKm === Infinity ? 'Any' : `${effectiveMaxKm} km`} ({filteredDiagnostics.length} found)
+          </span>
+        </div>
+
       </div>
 
       {/* SPLIT VIEW: LEAFLET INTERACTIVE MAP & SINGLE CARD DIAGNOSTIC LIST */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEAFLET INTERACTIVE DIAGNOSTIC MAP */}
-        <div className="lg:col-span-7 bg-white/40 dark:bg-slate-900/40 rounded-3xl border border-white/60 dark:border-slate-800/80 shadow-xl overflow-hidden h-[560px] relative backdrop-blur-xl">
-          {userLocation ? (
-            <MapContainer
-              center={[userLocation.latitude, userLocation.longitude]}
-              zoom={12}
-              scrollWheelZoom={true}
-              style={{ height: '100%', width: '100%' }}
+        <div className={`lg:col-span-7 bg-white/40 dark:bg-slate-900/40 rounded-3xl border border-white/60 dark:border-slate-800/80 shadow-xl overflow-hidden relative backdrop-blur-xl transition-all duration-300 flex flex-col ${isMapCollapsed ? 'h-14 lg:h-[560px]' : 'h-64 sm:h-80 lg:h-[560px]'}`}>
+          {/* Mobile Collapse Header */}
+          <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 z-10 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <span>🧪 Diagnostic Map</span>
+              <span className="text-[10px] font-normal text-slate-500">(Tap to minimize/scroll)</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsMapCollapsed(!isMapCollapsed)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 text-[11px] font-bold shadow-sm active:scale-95 transition-all text-blue-600 dark:text-blue-400"
             >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
+              {isMapCollapsed ? (
+                <>
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Show Map</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>Minimize Map</span>
+                </>
+              )}
+            </button>
+          </div>
 
-              <MapRecenter center={mapCenter} />
-
-              {/* USER LOCATION MARKER */}
-              <Marker
-                position={[userLocation.latitude, userLocation.longitude]}
-                icon={mapService.getUserLocationIcon()}
+          {!isMapCollapsed && userLocation ? (
+            <div className="flex-1 w-full relative min-h-0">
+              <MapContainer
+                center={[userLocation.latitude, userLocation.longitude]}
+                zoom={12}
+                scrollWheelZoom={false}
+                style={{ height: '100%', width: '100%' }}
               >
-                <Popup>
-                  <div className="p-2 space-y-1 text-slate-900">
-                    <div className="font-black text-xs text-blue-600">👤 Your Location</div>
-                    <div className="text-[11px] font-semibold">{userLocation.city || 'Jalpaiguri'}</div>
-                  </div>
-                </Popup>
-              </Marker>
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
 
-              {/* DIAGNOSTIC CENTER MARKERS */}
-              {filteredDiagnostics.map((item, index) => {
-                return (
-                  <Marker
-                    key={`${item.facilityId}-${index}`}
-                    position={[item.latitude, item.longitude]}
-                    icon={mapService.getFacilityIcon(item.facilityType, false)}
-                    eventHandlers={{
-                      click: () => setSelectedItem(item)
-                    }}
-                  >
-                    <Popup>
-                      <div className="p-2.5 space-y-2 max-w-xs text-slate-900">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 uppercase">
-                            {item.facilityType.replace('_', ' ')}
-                          </span>
-                          <span className="text-[10px] font-bold text-blue-600">
-                            {item.distanceKm} km away
-                          </span>
-                        </div>
+                <MapRecenter center={mapCenter} />
 
-                        <h4 className="font-bold text-xs leading-snug">{item.facilityName}</h4>
-                        <p className="text-[11px] text-slate-600 truncate">{item.address}</p>
+                {/* USER LOCATION MARKER */}
+                <Marker
+                  position={[userLocation.latitude, userLocation.longitude]}
+                  icon={mapService.getUserLocationIcon()}
+                >
+                  <Popup>
+                    <div className="p-2 space-y-1 text-slate-900">
+                      <div className="font-black text-xs text-blue-600">👤 Your Location</div>
+                      <div className="text-[11px] font-semibold">{userLocation.city || 'Jalpaiguri'}</div>
+                    </div>
+                  </Popup>
+                </Marker>
 
-                        <div className="flex flex-wrap gap-1 py-1">
-                          {item.availableDiagnostics?.slice(0, 4).map(t => (
-                            <span key={t} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
-                              ⚡ {t}
+                {/* DIAGNOSTIC CENTER MARKERS */}
+                {filteredDiagnostics.map((item, index) => {
+                  return (
+                    <Marker
+                      key={`${item.facilityId}-${index}`}
+                      position={[item.latitude, item.longitude]}
+                      icon={mapService.getFacilityIcon(item.facilityType, false)}
+                      eventHandlers={{
+                        click: () => setSelectedItem(item)
+                      }}
+                    >
+                      <Popup>
+                        <div className="p-2.5 space-y-2 max-w-xs text-slate-900">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 uppercase">
+                              {item.facilityType.replace('_', ' ')}
                             </span>
-                          ))}
-                        </div>
+                            <span className="text-[10px] font-bold text-blue-600">
+                              {item.distanceKm} km away
+                            </span>
+                          </div>
 
-                        <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                          <a href={`tel:${item.phone}`} className="font-bold text-emerald-600 flex items-center gap-1">
-                            <PhoneCall className="w-3 h-3" /> {item.phone}
-                          </a>
-                          <button
-                            onClick={() => mapService.openExternalNavigation(item.latitude, item.longitude, item.facilityName)}
-                            className="px-2.5 py-1 rounded bg-blue-600 text-white font-bold text-[10px] flex items-center gap-1"
-                          >
-                            <Navigation className="w-3 h-3" /> Maps
-                          </button>
+                          <h4 className="font-bold text-xs leading-snug">{item.facilityName}</h4>
+                          <p className="text-[11px] text-slate-600 truncate">{item.address}</p>
+
+                          <div className="flex flex-wrap gap-1 py-1">
+                            {item.availableDiagnostics?.slice(0, 4).map(t => (
+                              <span key={t} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
+                                ⚡ {t}
+                              </span>
+                            ))}
+                          </div>
+
+                          <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                            <a href={`tel:${item.phone}`} className="font-bold text-emerald-600 flex items-center gap-1">
+                              <PhoneCall className="w-3 h-3" /> {item.phone}
+                            </a>
+                            <button
+                              onClick={() => mapService.openExternalNavigation(item.latitude, item.longitude, item.facilityName)}
+                              className="px-2.5 py-1 rounded bg-blue-600 text-white font-bold text-[10px] flex items-center gap-1"
+                            >
+                              <Navigation className="w-3 h-3" /> Maps
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
-            </MapContainer>
-          ) : (
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </MapContainer>
+
+              {/* Map Overlay Badge */}
+              <div className="absolute top-3 left-3 z-[400] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-2xl border border-white/60 dark:border-slate-700 text-[10px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 shadow-md">
+                {filteredDiagnostics.length} Diagnostic Centers in {userLocation?.city || 'Jalpaiguri'}
+              </div>
+            </div>
+          ) : !isMapCollapsed ? (
             <div className="flex items-center justify-center h-full text-slate-400 font-bold">
               Loading Diagnostic Map & Location...
             </div>
-          )}
-
-          {/* Map Overlay Badge */}
-          <div className="absolute top-4 left-4 z-[1000] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/60 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 shadow-md">
-            {filteredDiagnostics.length} Diagnostic Centers in {userLocation?.city || 'Jalpaiguri'}
-          </div>
+          ) : null}
         </div>
 
         {/* DIAGNOSTIC RESULTS CARDS LIST - SINGLE CARD PER CENTER WITH ALL TAGS */}

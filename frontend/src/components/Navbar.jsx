@@ -2,20 +2,23 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import HealthIntelligencePanel from './HealthIntelligencePanel';
 import LanguageSelector from './LanguageSelector';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAppMode } from '../context/AppModeContext';
-import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert, Leaf, HeartPulse, Building2, Globe, Stethoscope, ShieldCheck, QrCode } from 'lucide-react';
+import { Menu, X, Pill, User, LogOut, LayoutDashboard, Settings, Moon, Sun, Users, AlertTriangle, ChevronRight, Bot, Bell, Group, UsersRound, Files, Folder, Folders, Utensils, Plus, Network, FilesIcon, File, Activity, Sparkles, ShieldAlert, Leaf, HeartPulse, Building2, Globe, Stethoscope, ShieldCheck, QrCode, Search, Calendar, GitMerge, Video, Milestone, Building } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from './NotificationBell';
 import UserAvatar from './UserAvatar';
+
+import api from '../api/api';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { activeMode, setActiveMode, language, setLanguage, t } = useAppMode();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -24,6 +27,61 @@ const Navbar = () => {
   const [intelligenceData, setIntelligenceData] = useState(null);
   const [isHealthPanelOpen, setIsHealthPanelOpen] = useState(false);
   const [isPillExpanded, setIsPillExpanded] = useState(false);
+  const [hasCareNotification, setHasCareNotification] = useState(false);
+
+  // Check for Care Journey / Care Network notifications
+  useEffect(() => {
+    const fetchCareNotifications = async () => {
+      if (!user) {
+        setHasCareNotification(false);
+        return;
+      }
+
+      try {
+        const res = await api.get('/notifications?unreadOnly=true');
+        if (res.data?.success && Array.isArray(res.data.notifications)) {
+          const careNotifExists = res.data.notifications.some((n) => {
+            if (n.read) return false;
+            const typeStr = String(n.type || '').toLowerCase();
+            const titleStr = String(n.title || '').toLowerCase();
+            const msgStr = String(n.message || '').toLowerCase();
+            const linkStr = String(n.actionLink || n.meta?.link || '').toLowerCase();
+
+            return (
+              typeStr.includes('care') ||
+              typeStr.includes('referral') ||
+              typeStr.includes('triage') ||
+              typeStr.includes('hospital') ||
+              typeStr.includes('appointment') ||
+              linkStr.includes('care-') ||
+              titleStr.includes('care journey') ||
+              titleStr.includes('care network') ||
+              titleStr.includes('referral') ||
+              titleStr.includes('triage') ||
+              titleStr.includes('hospital') ||
+              titleStr.includes('appointment') ||
+              msgStr.includes('care journey') ||
+              msgStr.includes('care network') ||
+              msgStr.includes('referral') ||
+              msgStr.includes('hospital')
+            );
+          });
+          setHasCareNotification(careNotifExists);
+        }
+      } catch (err) {
+        // Silent fail
+      }
+    };
+
+    fetchCareNotifications();
+    const interval = setInterval(fetchCareNotifications, 15000);
+    window.addEventListener('notification-updated', fetchCareNotifications);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notification-updated', fetchCareNotifications);
+    };
+  }, [user]);
 
   // Auto-collapse timer for prediction pill
   useEffect(() => {
@@ -87,16 +145,36 @@ const Navbar = () => {
     setIsOpen(false);
   };
 
-  const navLinks = !user ? [
-    // { name: 'Home', path: '/' },
-    // { name: 'Contact', path: '/contact' },
-  ] :[];
+  const myHealthMobileLinks = [
+    { name: t('dashboard') || 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Ayurvedic Treatment', path: '/natural-healing', icon: Leaf, highlight: true },
+    { name: t('myMedicines') || 'Medicines', path: '/medicines', icon: Pill },
+    { name: t('addMedicine') || 'Add Medicines', path: '/add-medicine', icon: Plus },
+    { name: 'AI Health Assistant', path: '/ai-assistant', icon: Bot },
+    { name: t('folders') || 'Medicine Folders', path: '/medicine-folders', icon: Folders },
+    { name: t('foodRoutine') || 'Food Routine', path: '/food', icon: Utensils },
+    { name: t('reminders') || 'Reminders', path: '/reminders', icon: Bell },
+    { name: t('family') || 'Family Caregivers', path: '/family', icon: UsersRound },
+    { name: t('reports') || 'Medical Reports', path: '/reports', icon: FilesIcon },
+    { name: t('healthReview') || 'Health Review', path: '/health-review', icon: Network },
+    { name: 'Contact Us', path: '/contact', icon: User },
+    { name: 'Emergency Assist', path: '/emergency', icon: ShieldAlert, alert: true },
+  ];
 
-  const authLinks = user ? [
-    // { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    // { name: 'Medicines', path: '/medicines', icon: Pill },
-    
-  ] : [];
+  const careNetworkMobileLinks = [
+    { name: 'Care Network Overview', path: '/care-network', icon: Building2 },
+    { name: t('careJourney') || 'My Care Journey', path: '/care-network/care-journey', icon: Milestone, highlight: true },
+    { name: t('findPublicHealthcare') || 'Find Healthcare Facilities', path: '/care-network/find-care', icon: Search },
+    { name: t('digitalTriage') || 'AI Digital Triage', path: '/care-network/triage', icon: Stethoscope },
+    { name: t('appointments') || 'Appointments & OPD', path: '/care-network/appointments', icon: Calendar },
+    { name: t('referralTracking') || 'Referral Tracking', path: '/care-network/referrals', icon: GitMerge },
+    { name: t('diagnosticAvailability') || 'Diagnostics & Beds', path: '/care-network/diagnostics', icon: Activity },
+    { name: t('medicineAvailability') || 'Medicine Inventory', path: '/care-network/medicines', icon: Pill },
+    { name: t('teleconsultation') || 'Live Teleconsultation', path: '/care-network/teleconsultation', icon: Video },
+    { name: 'Emergency 112 / 108', path: '/care-network/emergency', icon: ShieldAlert, alert: true },
+  ];
+
+  const mobileNavLinks = activeMode === 'CARE_NETWORK' ? careNetworkMobileLinks : myHealthMobileLinks;
 
   // Helper for dynamic styles
   const getSeverityConfig = (severity) => {
@@ -150,14 +228,16 @@ const Navbar = () => {
                     setActiveMode('MY_HEALTH');
                     navigate('/dashboard');
                   }}
-                  className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 ${
+                  title="MY HEALTH"
+                  aria-label="MY HEALTH"
+                  className={`px-2.5 sm:px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 ${
                     activeMode === 'MY_HEALTH'
                       ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
                       : 'text-slate-600 dark:text-slate-300 hover:text-emerald-600'
                   }`}
                 >
-                  <HeartPulse className="w-3.5 h-3.5" />
-                  <span>MY HEALTH</span>
+                  <HeartPulse className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden sm:inline">MY HEALTH</span>
                 </button>
 
                 <button
@@ -166,15 +246,19 @@ const Navbar = () => {
                     setActiveMode('CARE_NETWORK');
                     navigate('/care-network');
                   }}
-                  className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 ${
+                  title="CARE NETWORK"
+                  aria-label="CARE NETWORK"
+                  className={`px-2.5 sm:px-3 py-1.5 text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 ${
                     activeMode === 'CARE_NETWORK'
                       ? 'bg-gradient-to-r from-blue-600 via-teal-600 to-cyan-600 text-white shadow-md'
                       : 'text-slate-600 dark:text-slate-300 hover:text-blue-600'
                   }`}
                 >
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span>CARE NETWORK</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+                  <Building2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden sm:inline">CARE NETWORK</span>
+                  {hasCareNotification && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" title="Care Journey Notification" />
+                  )}
                 </button>
               </div>
             )}
@@ -460,7 +544,9 @@ const Navbar = () => {
               className="fixed top-0 right-0 h-full w-80 bg-white dark:bg-slate-900 shadow-2xl z-50 border-l border-gray-200 dark:border-slate-700 flex flex-col md:hidden"
             >
               <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
-                <span className="font-bold text-lg text-gray-900 dark:text-white">Menu</span>
+                <span className="font-bold text-lg text-gray-900 dark:text-white">
+                  {activeMode === 'CARE_NETWORK' ? 'Care Network' : 'My Health'}
+                </span>
                 <div className="flex items-center gap-2">
                   <LanguageSelector />
                   <button
@@ -510,111 +596,29 @@ const Navbar = () => {
                )}
 
               <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-
-                <Link
-                  to="/dashboard"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <LayoutDashboard className="h-5 w-5 mr-3" />
-                  Dashboard
-                </Link>
-                <Link
-                to='/natural-healing'
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/10 hover:text-emerald-700 transition-colors"
-                >
-                  <Leaf className="h-5 w-5 mr-3" />
-                  Ayurvedic Treatment
-                </Link>
-                <Link
-                  to="/medicines"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <Pill className="h-5 w-5 mr-3" />
-                  Medicines
-                </Link>
-                <Link
-                  to="/add-medicine"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <Plus className="h-5 w-5 mr-3" />
-                  Add Medicines
-                </Link>
-                <Link
-                  to="/ai-assistant"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <Bot className="h-5 w-5 mr-3" />
-                  AI Assistant
-                </Link>
-                <Link
-                  to="/medicine-folders"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <Folders className="h-5 w-5 mr-3" />
-                  Medicine Folders
-                </Link>
-                <Link
-                  to="/food"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <Utensils className="h-5 w-5 mr-3" />
-                    Food
-                </Link>
-                <Link
-                  to="/reminders"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <Bell className="h-5 w-5 mr-3" />
-                  Reminders
-                </Link>
-                 <Link
-                  to="/family"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <UsersRound className="h-5 w-5 mr-3" />
-                  Family
-                </Link>
-                <Link
-                  to="/reports"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <FilesIcon className="h-5 w-5 mr-3" />
-                  Reports
-                </Link>
-                 <Link
-                  to="/health-review"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <Network className="h-5 w-5 mr-3" />
-                  Health Review
-                </Link>
-                <Link
-                  to="/contact"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  <User className="h-5 w-5 mr-3" />
-                  Contact Us
-                </Link>
-                <Link
-                  to="/emergency"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 text-base font-medium text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 transition-colors"
-                >
-                  <ShieldAlert className="h-5 w-5 mr-3" />
-                  Emergency Assist
-                </Link>
+                {mobileNavLinks.map((link) => {
+                  const Icon = link.icon;
+                  const isActive = location.pathname === link.path;
+                  return (
+                    <Link
+                      key={link.name}
+                      to={link.path}
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
+                        link.alert
+                          ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600'
+                          : link.highlight
+                          ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 hover:text-emerald-700 font-semibold'
+                          : isActive
+                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'
+                          : 'text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600 dark:hover:text-primary-400'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
+                      <span>{link.name}</span>
+                    </Link>
+                  );
+                })}
               </div>
 
               <div className="p-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">

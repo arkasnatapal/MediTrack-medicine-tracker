@@ -155,6 +155,7 @@ const NotificationBell = () => {
       await api.post("/notifications/read-all");
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
+      window.dispatchEvent(new Event('notification-updated'));
     } catch (error) {
       console.error("Failed to mark all as read:", error);
     }
@@ -168,6 +169,7 @@ const NotificationBell = () => {
         prev.map((n) => n._id === id ? { ...n, read: true } : n)
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
+      window.dispatchEvent(new Event('notification-updated'));
     } catch (error) {
       console.error("Failed to mark read:", error);
     }

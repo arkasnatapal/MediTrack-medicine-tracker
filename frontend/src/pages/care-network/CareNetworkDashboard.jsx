@@ -327,16 +327,16 @@ const CareNetworkDashboard = () => {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-3xl bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 dark:from-rose-600 dark:via-red-600 dark:to-rose-700 text-slate-900 dark:text-white p-6 sm:p-7 shadow-xl border border-rose-200/80 dark:border-rose-400/30 relative overflow-hidden backdrop-blur-md"
+        className="rounded-3xl bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 dark:from-rose-600 dark:via-red-600 dark:to-rose-700 text-slate-900 dark:text-white p-5 sm:p-7 shadow-xl border border-rose-200/80 dark:border-rose-400/30 relative overflow-hidden backdrop-blur-md"
       >
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 relative z-10">
           <div className="space-y-2 max-w-xl">
             <div className="flex items-center gap-2">
               <span className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 dark:bg-white opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600 dark:bg-white"></span>
               </span>
-              <h2 className="text-lg sm:text-xl font-black uppercase tracking-wide flex items-center gap-2 text-rose-950 dark:text-white">
+              <h2 className="text-base sm:text-xl font-black uppercase tracking-wide flex items-center gap-2 text-rose-950 dark:text-white">
                 🚨 {t('needImmediateHelp') || 'Emergency Trauma & Cardiac Medical Response'}
               </h2>
             </div>
@@ -345,28 +345,28 @@ const CareNetworkDashboard = () => {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto shrink-0">
             <a
               href="tel:112"
-              className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white dark:bg-white dark:text-rose-700 font-black text-center shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm"
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white dark:bg-white dark:text-rose-700 font-black text-center shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm whitespace-nowrap"
             >
-              <PhoneCall className="w-4 h-4 text-white dark:text-rose-600" />
+              <PhoneCall className="w-4 h-4 text-white dark:text-rose-600 shrink-0" />
               <span>DIAL 112</span>
             </a>
 
             <a
               href="tel:108"
-              className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-white/90 hover:bg-white text-rose-900 border border-rose-300 dark:bg-black/30 dark:hover:bg-black/40 dark:text-white dark:border-white/30 font-bold text-center backdrop-blur-md transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm shadow-sm"
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-white/90 hover:bg-white text-rose-900 border border-rose-300 dark:bg-black/30 dark:hover:bg-black/40 dark:text-white dark:border-white/30 font-bold text-center backdrop-blur-md transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm shadow-sm whitespace-nowrap"
             >
-              <PhoneCall className="w-4 h-4 text-rose-600 dark:text-amber-300" />
+              <PhoneCall className="w-4 h-4 text-rose-600 dark:text-amber-300 shrink-0" />
               <span>DIAL 108 (AMBULANCE)</span>
             </a>
 
             <button
               onClick={() => navigate('/care-network/emergency')}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white/90 hover:bg-white text-rose-900 border border-rose-300 dark:bg-black/40 dark:hover:bg-black/50 dark:text-white dark:border-white/30 font-bold text-center backdrop-blur-md transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm shadow-sm"
+              className="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-white/90 hover:bg-white text-rose-900 border border-rose-300 dark:bg-black/40 dark:hover:bg-black/50 dark:text-white dark:border-white/30 font-bold text-center backdrop-blur-md transition-all flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm shadow-sm"
             >
-              <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-amber-300" />
+              <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-amber-300 shrink-0" />
               <span>{t('findImmediateCare') || 'Nearest Emergency Center'}</span>
             </button>
           </div>
@@ -502,64 +502,64 @@ const CareNetworkDashboard = () => {
       )}
 
       {/* DASHBOARD LIVE NETWORK STATS GRID */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* STAT CARD 1 */}
-        <div className="bg-white/50 dark:bg-slate-900/50 rounded-3xl p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
-            <Building2 className="w-6 h-6" />
+        <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-4 min-w-0">
+          <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
+            <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">
-              {nearbyFacilities.length > 0 ? nearbyFacilities.length : '12+'}
+          <div className="min-w-0 flex-1 w-full">
+            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
+              {nearbyFacilities.length > 0 ? `${nearbyFacilities.length} Facilities` : '12+ Facilities'}
             </div>
-            <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
-              Local Healthcare Facilities
+            <div className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
+              Local Healthcare
             </div>
           </div>
         </div>
 
         {/* STAT CARD 2 */}
-        <div className="bg-white/50 dark:bg-slate-900/50 rounded-3xl p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <Clock className="w-6 h-6" />
+        <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-4 min-w-0">
+          <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+            <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">
+          <div className="min-w-0 flex-1 w-full">
+            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
               {userAppointments.length > 0 ? `Token #${userAppointments[0].tokenNumber}` : 'No Tokens'}
             </div>
-            <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
-              Live OPD Queue Token
+            <div className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
+              Live OPD Queue
             </div>
           </div>
         </div>
 
         {/* STAT CARD 3 */}
-        <div className="bg-white/50 dark:bg-slate-900/50 rounded-3xl p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 shrink-0">
-            <Activity className="w-6 h-6" />
+        <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-4 min-w-0">
+          <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 shrink-0">
+            <Activity className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">
+          <div className="min-w-0 flex-1 w-full">
+            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
               7 Diagnostics
             </div>
-            <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
               ECG, X-Ray, CT, MRI
             </div>
           </div>
         </div>
 
         {/* STAT CARD 4 */}
-        <div className="bg-white/50 dark:bg-slate-900/50 rounded-3xl p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
-            <Bed className="w-6 h-6" />
+        <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-4 min-w-0">
+          <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
+            <Bed className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">
-              62 OPD / ICU Beds
+          <div className="min-w-0 flex-1 w-full">
+            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
+              62 Open Beds
             </div>
-            <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
-              Available Beds in Tier
+            <div className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
+              OPD / ICU Available
             </div>
           </div>
         </div>
