@@ -18,7 +18,7 @@ const genAI = process.env.GEMINI_API_INTELLIGENT_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_INTELLIGENT_KEY)
   : null;
 
-const MODEL_NAME = "gemini-2.5-flash-lite"; // Use lighter model for dashboard efficiency
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash"; // Configurable via GEMINI_MODEL env var
 
 // --- Helper: Generate Data Version Hash (Global Change Detection) ---
 async function generateDataVersion(userId) {

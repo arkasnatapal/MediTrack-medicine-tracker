@@ -25,7 +25,7 @@ const genAI = process.env.GEMINI_API_CHAT_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_CHAT_KEY)
   : null;
 
-const MODEL_NAME = "gemini-2.5-flash-lite";
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 // --- Helper: Fuzzy Medicine Search ---
 async function findMedicineFuzzy(userId, medicineName) {
@@ -1186,7 +1186,7 @@ router.post("/health-review", auth, async (req, res) => {
     `;
 
     // 4. Call Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Use flash for speed/cost
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME }); // Use configurable model
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -1319,7 +1319,7 @@ router.post("/check-interaction", auth, async (req, res) => {
       🤖 _This is an AI-generated analysis based on general pharmaceutical patterns. It is NOT a substitute for professional medical advice. Please consult your doctor or pharmacist for a definitive answer._
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -1417,7 +1417,7 @@ router.post("/global-analysis", auth, async (req, res) => {
       ${context}
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
     const result = await model.generateContent(prompt);
     let text = result.response.text();
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();

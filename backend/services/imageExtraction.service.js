@@ -8,7 +8,7 @@ const genAI = process.env.GEMINI_API_CHAT_KEY
   : null;
 
 // Use a stable model version as default, allows fallback
-const MODEL_NAME = "gemini-2.5-flash-lite"; 
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 /**
  * 1. Ask Gemini for a valid, stable image URL (e.g. Wikimedia)

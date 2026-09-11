@@ -13,7 +13,7 @@ const genAI = process.env.GEMINI_API_FAMILY_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_FAMILY_KEY)
   : null;
 
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 // Helper to get AI Suggestion
 async function generateAyurvedicInsight(user, medicines, reports, feedback, cycleData, intelligence) {
@@ -287,7 +287,7 @@ exports.scheduleReminders = async (req, res) => {
         ]
         `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const model = genAI.getGenerativeModel({ model: MODEL_NAME });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();

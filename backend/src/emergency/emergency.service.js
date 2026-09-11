@@ -39,7 +39,7 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
 
 exports.getAIRecommendation = async (problemDescription, userLocation, hospitals, userId) => {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-2.5-flash" });
 
         // Provide more context to the AI
         const hospitalList = hospitals

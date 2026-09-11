@@ -43,7 +43,7 @@ exports.getDailyInsight = async (req, res) => {
 
     if (genAI) {
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
         const userHealthContext = snapshot ? snapshot.summary : "New user starting their journey.";
         const prompt = `
           You are an expert AI doctor. Generate a highly personalized daily health insight for a patient.

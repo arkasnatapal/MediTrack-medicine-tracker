@@ -7,7 +7,7 @@ const genAI = process.env.GEMINI_API_FAMILY_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_FAMILY_KEY)
   : null;
 
-const MODEL_NAME = "gemini-2.5-flash-lite";
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 /**
  * Local Lookup: Search medicine in the local catalog (Exact Match)

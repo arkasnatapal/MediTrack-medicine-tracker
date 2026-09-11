@@ -50,7 +50,7 @@ async function analyzeMedicineImage(imageBuffer, mimeType = "image/jpeg") {
 
   try {
     const model = geminiClient.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     });
 
     const prompt = `

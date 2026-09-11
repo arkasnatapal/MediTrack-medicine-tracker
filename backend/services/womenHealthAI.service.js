@@ -9,7 +9,7 @@ const genAI = process.env.GEMINI_API_CHAT_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_CHAT_KEY)
   : null;
 
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 /**
  * Strict Rule-Based Logic for Status Flagging

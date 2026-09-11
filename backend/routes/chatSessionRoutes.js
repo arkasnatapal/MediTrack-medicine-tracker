@@ -92,7 +92,7 @@ router.post("/:id/message", auth, async (req, res) => {
     if (session.messages.filter(m => m.role === 'user').length === 1 && role === "user") {
       try {
         if (genAI) {
-          const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+          const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-2.5-flash" });
           
           // Retry logic for title generation
           let retries = 0;

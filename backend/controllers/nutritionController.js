@@ -88,7 +88,7 @@ exports.analyzeWeeklyNutrition = async (req, res) => {
     `;
 
     // 4. Call AI
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let text = response.text();

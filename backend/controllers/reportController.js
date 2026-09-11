@@ -134,7 +134,7 @@ exports.analyzeReport = async (req, res) => {
       return res.status(404).json({ message: 'Report not found' });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-2.5-flash" });
 
     // Prepare prompt
     // Prepare prompt

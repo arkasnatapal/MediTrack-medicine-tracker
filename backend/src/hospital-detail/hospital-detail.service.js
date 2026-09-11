@@ -3,7 +3,7 @@ const HospitalDetail = require('./hospital-detail.model');
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 exports.getHospitalDetails = async (hospitalId, name, locationData) => {
     // 1. Check Database first

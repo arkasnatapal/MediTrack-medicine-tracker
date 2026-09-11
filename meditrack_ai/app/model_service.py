@@ -77,7 +77,7 @@ class GeminiModelProvider(MedicalModelProvider):
     """
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY", "")
-        self.model_name = "gemini-3.1-flash-lite"
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         if self.api_key:
             logger.info(f"Initialized Google {self.model_name} Medical Model Provider.")
         else:
@@ -87,8 +87,11 @@ class GeminiModelProvider(MedicalModelProvider):
         if not self.api_key:
             return None
         
-        # Try primary model gemini-3.1-flash-lite, fallback to gemini-2.5-flash
-        models_to_try = ["gemini-3.1-flash-lite", "gemini-2.5-flash"]
+        # Try primary model from env, fallback to gemini-2.5-flash and gemini-1.5-flash
+        primary_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        models_to_try = [primary_model, "gemini-2.5-flash", "gemini-1.5-flash"]
+        # Remove duplicates while preserving order
+        models_to_try = list(dict.fromkeys(models_to_try))
         for model in models_to_try:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
