@@ -59,24 +59,58 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col md:flex-row relative font-sans">
-      {/* Mobile Top Header */}
-      <div className="md:hidden bg-slate-950/95 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
-        <div className="flex items-center space-x-2.5">
-          <img src="/logo.png" alt="MediTrack Logo" className="w-7 h-7 object-contain rounded-lg" />
-          <span className="font-display text-xs font-bold text-white">Care Admin Console</span>
+    <div className="h-screen w-full bg-[#060913] text-slate-100 flex flex-col md:flex-row relative font-sans">
+      {/* Mobile Top Header - Fixed on phone */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-950/95 border-b border-slate-800 px-4 py-3 flex items-center justify-between backdrop-blur-xl shadow-md">
+        <div className="flex items-center space-x-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shrink-0">
+            <ShieldCheck className="w-4 h-4 text-amber-400" />
+          </div>
+          <span className="font-display text-xs font-bold text-white truncate max-w-[200px]">Care Admin Console</span>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+          className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5"
+          aria-label="Toggle mobile navigation menu"
         >
-          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {isMobileMenuOpen ? <X className="w-4 h-4 text-amber-400" /> : <Menu className="w-4 h-4 text-amber-400" />}
+          <span className="text-xs font-mono font-bold text-amber-300">{isMobileMenuOpen ? 'Close' : 'Menu'}</span>
         </button>
       </div>
 
+      {/* Mobile Backdrop Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className={`w-full md:w-64 bg-slate-950 border-r border-slate-800 p-6 flex flex-col justify-between shrink-0 relative z-30 backdrop-blur-2xl transition-all duration-300 ${isMobileMenuOpen ? 'flex' : 'hidden md:flex'}`}>
+      <aside className={`
+        fixed md:sticky top-0 right-0 md:left-0 h-full md:h-screen w-[85vw] max-w-[320px] md:w-64 
+        bg-slate-950 md:border-r border-slate-800 p-6 flex flex-col justify-between shrink-0 z-50 md:z-30 
+        backdrop-blur-2xl shadow-2xl overflow-y-auto transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+        ${isMobileMenuOpen ? 'flex' : 'hidden md:flex'}
+      `}>
         <div>
+          {/* Mobile Drawer Header */}
+          <div className="flex md:hidden items-center justify-between pb-4 mb-4 border-b border-slate-800">
+            <div className="flex items-center space-x-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+              </div>
+              <span className="text-xs font-bold text-white font-display uppercase tracking-wider">Admin Menu</span>
+            </div>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+            >
+              <X className="w-4 h-4 text-amber-400" />
+            </button>
+          </div>
+
           <div className="flex items-center space-x-3 mb-8">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md shadow-amber-500/10">
               <ShieldCheck className="w-6 h-6" />
@@ -120,7 +154,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Administrative Screen */}
-      <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
+      <main className="flex-1 h-full overflow-y-auto pt-16 sm:pt-6 md:pt-8 p-4 sm:p-8">
         <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
           <div>
             <h1 className="text-2xl font-bold text-white capitalize">{activeTab} Console</h1>

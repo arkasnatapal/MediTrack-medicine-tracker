@@ -758,7 +758,7 @@ export default function DoctorDashboard() {
   const doctorReg = user?.doctor?.medicalRegistrationNumber || 'MCI-WB-2015-8891';
 
   return (
-    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col md:flex-row relative overflow-hidden selection:bg-cyan-500 selection:text-slate-950 font-sans">
+    <div className="h-screen w-full bg-[#060913] text-slate-100 flex flex-col md:flex-row relative overflow-hidden selection:bg-cyan-500 selection:text-slate-950 font-sans">
       {/* Grainy Texture Overlay */}
       <div className="grainy-overlay" />
 
@@ -766,27 +766,59 @@ export default function DoctorDashboard() {
       <div className="ambient-orb-cyan -top-20 -left-20 animate-float-slow" />
       <div className="ambient-orb-teal bottom-10 right-10 animate-float-reverse" />
 
-      {/* Mobile Top Header */}
-      <div className="md:hidden bg-slate-950/95 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
-        <div className="flex items-center space-x-2.5">
-          <img src="/logo.png" alt="MediTrack Logo" className="w-7 h-7 object-contain rounded-lg" />
-          <span className="font-display text-xs font-bold text-white truncate max-w-[180px]">
+      {/* Mobile Top Header - Fixed on phone */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-950/95 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between backdrop-blur-xl shadow-md">
+        <div className="flex items-center space-x-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shrink-0">
+            <Stethoscope className="w-4 h-4 text-cyan-400" />
+          </div>
+          <span className="font-display text-xs font-bold text-white truncate max-w-[200px]">
             {doctorName.startsWith('Dr.') ? doctorName : `Dr. ${doctorName}`}
           </span>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+          className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5"
+          aria-label="Toggle mobile navigation menu"
         >
-          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {isMobileMenuOpen ? <X className="w-4 h-4 text-cyan-400" /> : <Menu className="w-4 h-4 text-cyan-400" />}
+          <span className="text-xs font-mono font-bold text-cyan-300">{isMobileMenuOpen ? 'Close' : 'Menu'}</span>
         </button>
       </div>
 
+      {/* Mobile Backdrop Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className={`w-full md:w-64 liquid-glass border-r border-white/10 p-6 flex flex-col justify-between shrink-0 relative z-30 backdrop-blur-2xl transition-all duration-300 ${
-        isMobileMenuOpen ? 'flex' : 'hidden md:flex'
-      }`}>
+      <aside className={`
+        fixed md:sticky top-0 right-0 md:left-0 h-full md:h-screen w-[85vw] max-w-[320px] md:w-64 
+        liquid-glass md:border-r border-white/10 p-6 flex flex-col justify-between shrink-0 z-50 md:z-30 
+        backdrop-blur-2xl shadow-2xl overflow-y-auto transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+        ${isMobileMenuOpen ? 'flex' : 'hidden md:flex'}
+      `}>
         <div>
+          {/* Mobile Drawer Header */}
+          <div className="flex md:hidden items-center justify-between pb-4 mb-4 border-b border-white/10">
+            <div className="flex items-center space-x-2">
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300">
+                <Stethoscope className="w-4 h-4 text-cyan-400" />
+              </div>
+              <span className="text-xs font-bold text-white font-display uppercase tracking-wider">Clinical Menu</span>
+            </div>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+            >
+              <X className="w-4 h-4 text-cyan-400" />
+            </button>
+          </div>
+
           <div className="flex items-center space-x-3 mb-8">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-teal-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-lg shadow-cyan-500/20">
               <Stethoscope className="w-6 h-6" />
@@ -845,23 +877,25 @@ export default function DoctorDashboard() {
       </aside>
 
       {/* Main Clinical Console */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+      <main className="flex-1 h-full overflow-y-auto pt-16 sm:pt-6 md:pt-8 p-3.5 sm:p-6 md:p-8 min-w-0 max-w-full overflow-x-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 pb-4 border-b border-slate-800 gap-4 min-w-0">
           <div>
-            <h1 className="text-2xl font-bold text-white capitalize">{activeTab.replace('-', ' ')} Console</h1>
-            <p className="text-xs text-slate-400">
-              Doctor License Reg: <strong className="text-slate-200">{doctorReg}</strong> • Specialization: <strong className="text-cyan-400">{doctorSpec}</strong>
-            </p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white capitalize">{activeTab.replace('-', ' ')} Console</h1>
+            <div className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>Doctor License Reg: <strong className="text-slate-200 font-mono">{doctorReg}</strong></span>
+              <span className="text-slate-600 hidden sm:inline">•</span>
+              <span>Specialization: <strong className="text-cyan-400">{doctorSpec}</strong></span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
             <button
               onClick={() => setShowDoctorHistoryModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-teal-300 text-xs font-semibold flex items-center gap-2 border border-teal-500/30 transition shadow-sm"
+              className="flex-1 sm:flex-none justify-center px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-teal-300 text-xs font-semibold flex items-center gap-2 border border-teal-500/30 transition shadow-sm"
               title="Open Clinical History Archive Modal"
             >
               <History className="w-3.5 h-3.5 text-teal-400" /> History ({teleSessions.filter(s => s.status === 'CLOSED' || s.status === 'COMPLETED').length + referrals.filter(r => r.status === 'COMPLETED').length})
             </button>
-            <button onClick={loadDoctorData} className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-800 transition">
+            <button onClick={loadDoctorData} className="flex-1 sm:flex-none justify-center px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-800 transition">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
             </button>
           </div>
@@ -869,29 +903,29 @@ export default function DoctorDashboard() {
 
         {/* ----------------- TAB 1: CLINICAL QUEUE ----------------- */}
         {activeTab === 'queue' && (
-          <div className="space-y-6">
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-6 min-w-0 max-w-full">
+            <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 max-w-full">
               <div>
                 <span className="text-xs text-slate-400 font-semibold block mb-1">CURRENTLY SERVING OPD TOKEN</span>
-                <div className="text-4xl font-extrabold text-cyan-400">{queue?.servingToken ? `Token #${queue.servingToken}` : 'No active consult'}</div>
+                <div className="text-3xl sm:text-4xl font-extrabold text-cyan-400">{queue?.servingToken ? `Token #${queue.servingToken}` : 'No active consult'}</div>
                 <p className="text-xs text-slate-400 mt-1">Department: <strong className="text-white">{queue?.department || 'General Medicine'}</strong></p>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <button onClick={() => handleQueueAction('NEXT')} className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 transition active:scale-95">
+              <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                <button onClick={() => handleQueueAction('NEXT')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-cyan-500/20 transition active:scale-95">
                   Call Next Patient
                 </button>
-                <button onClick={() => handleQueueAction('COMPLETE')} className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition active:scale-95">
+                <button onClick={() => handleQueueAction('COMPLETE')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition active:scale-95">
                   Complete Consultation
                 </button>
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid lg:grid-cols-2 gap-6 min-w-0 max-w-full">
               {/* Left Column: Waiting Queue List + Patient Personal Health Record Widget */}
-              <div className="space-y-6">
+              <div className="space-y-6 min-w-0 max-w-full">
                 {/* Waiting Queue List */}
-                <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                <div className="p-3.5 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 max-w-full overflow-hidden">
                   <h3 className="text-base font-bold text-white flex items-center justify-between">
                     <span>Waiting Queue Entries</span>
                     <span className="text-xs text-slate-400 font-normal">Total: {queue?.entries?.length || 0}</span>
@@ -904,28 +938,49 @@ export default function DoctorDashboard() {
                         <p className="text-slate-400">OPD Queue is currently empty.</p>
                       </div>
                     ) : (
-                      queue?.entries?.map(e => (
-                        <div
-                          key={e._id}
-                          onClick={() => fetchPatientHealth(e.patientId?._id || e.patientId)}
-                          className="p-3.5 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer transition"
-                          title="Click to view Patient Personal Health Record"
-                        >
-                          <div>
-                            <div className="font-bold text-white text-sm">Token #{e.tokenNumber} - <span className="text-cyan-400">{e.patientName}</span></div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">Est. Wait: {e.estimatedWaitMinutes || 0} mins • Checked in: {new Date(e.checkInTime).toLocaleTimeString()}</div>
+                      queue?.entries?.map(e => {
+                        const targetId = e.patientId?._id || e.patientId;
+                        const isSelected = selectedPatientHealth?.patient?._id === targetId || selectedPatientHealth?.patient?.id === targetId;
+
+                        return (
+                          <div
+                            key={e._id}
+                            onClick={() => fetchPatientHealth(targetId)}
+                            className={`p-3 sm:p-3.5 rounded-xl border flex items-center justify-between gap-2.5 cursor-pointer transition ${
+                              isSelected
+                                ? 'bg-cyan-500/10 border-cyan-500/50 shadow-md shadow-cyan-500/10'
+                                : 'bg-slate-950 hover:bg-slate-900 border-slate-800'
+                            }`}
+                            title="Click to view Patient Personal Health Record"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="font-bold text-white text-xs sm:text-sm truncate">
+                                Token #{e.tokenNumber} - <span className="text-cyan-400">{e.patientName}</span>
+                              </div>
+                              <div className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 leading-snug">
+                                <span className="whitespace-nowrap">Est. Wait: {e.estimatedWaitMinutes || 0} mins</span>
+                                <span className="hidden sm:inline text-slate-600">•</span>
+                                <span className="whitespace-nowrap">Checked in: {new Date(e.checkInTime).toLocaleTimeString()}</span>
+                              </div>
+                            </div>
+                            <span className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] shrink-0 whitespace-nowrap ${
+                              e.status === 'IN_CONSULTATION'
+                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                : e.status === 'COMPLETED'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}>
+                              {e.status}
+                            </span>
                           </div>
-                          <span className={`px-2.5 py-1 rounded-lg font-bold text-[10px] ${e.status === 'IN_CONSULTATION' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800 text-slate-400'}`}>
-                            {e.status}
-                          </span>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
 
                 {/* ----------------- MEDITRACK PATIENT PERSONAL HEALTH RECORD WIDGET ----------------- */}
-                <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+                <div className="p-3.5 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl max-w-full overflow-hidden">
                   {/* Header */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
                     <div className="flex items-center gap-2.5">
@@ -957,53 +1012,53 @@ export default function DoctorDashboard() {
                       <p className="text-xs text-slate-400">Querying MediTrack Health Database for Patient Vitals & Records...</p>
                     </div>
                   ) : selectedPatientHealth ? (
-                    <div className="space-y-4">
+                    <div className="space-y-4 max-w-full overflow-hidden">
                       {/* Patient Health Overview Banner */}
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800/90 flex flex-wrap items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
+                      <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 max-w-full overflow-hidden">
+                        <div className="flex items-start sm:items-center gap-3 min-w-0 w-full sm:w-auto">
                           {selectedPatientHealth.patient?.profilePictureUrl || selectedPatientHealth.mediTrackUser?.profilePictureUrl ? (
                             <img
                               src={selectedPatientHealth.patient?.profilePictureUrl || selectedPatientHealth.mediTrackUser?.profilePictureUrl}
                               alt={selectedPatientHealth.patient?.name || 'Patient'}
-                              className="w-12 h-12 rounded-xl object-cover border border-cyan-500/40 shadow-sm shrink-0"
+                              className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-cover border border-cyan-500/40 shadow-sm shrink-0"
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-extrabold text-lg flex items-center justify-center shrink-0">
+                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-extrabold text-base sm:text-lg flex items-center justify-center shrink-0">
                               {selectedPatientHealth.patient?.name?.charAt(0) || 'P'}
                             </div>
                           )}
-                          <div>
-                            <div className="text-sm font-extrabold text-white flex items-center gap-2">
-                              {selectedPatientHealth.patient?.name}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-extrabold text-white flex flex-wrap items-center gap-2">
+                              <span className="truncate">{selectedPatientHealth.patient?.name}</span>
                               {selectedPatientHealth.mediTrackUser?.isLinked && (
-                                <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold">
+                                <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold whitespace-nowrap shrink-0">
                                   VERIFIED PATIENT
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
-                              <span>ABHA: <strong className="text-slate-200">{selectedPatientHealth.mediTrackUser?.abhaNumber || 'N/A'}</strong></span>
-                              <span>•</span>
-                              <span>Blood Group: <strong className="text-rose-400">{selectedPatientHealth.patient?.bloodGroup || 'N/A'}</strong></span>
-                              <span>•</span>
-                              <span>Age/Gender: <strong className="text-slate-200">{selectedPatientHealth.patient?.age ? `${selectedPatientHealth.patient.age}Y` : 'N/A'} / {selectedPatientHealth.patient?.gender || 'N/A'}</strong></span>
+                            <div className="text-[10px] sm:text-[11px] text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 leading-snug break-words">
+                              <span className="inline-block">ABHA: <strong className="text-slate-200">{selectedPatientHealth.mediTrackUser?.abhaNumber || 'N/A'}</strong></span>
+                              <span className="hidden sm:inline text-slate-600">•</span>
+                              <span className="inline-block">Blood Group: <strong className="text-rose-400">{selectedPatientHealth.patient?.bloodGroup || 'N/A'}</strong></span>
+                              <span className="hidden sm:inline text-slate-600">•</span>
+                              <span className="inline-block">Age/Gender: <strong className="text-slate-200">{selectedPatientHealth.patient?.age ? `${selectedPatientHealth.patient.age}Y` : 'N/A'} / {selectedPatientHealth.patient?.gender || 'N/A'}</strong></span>
                             </div>
                           </div>
                         </div>
 
                         {/* Health Score & Vitals */}
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="text-[10px] text-slate-400 font-medium">HEALTH SCORE</div>
-                            <div className="text-2xl font-black text-emerald-400 flex items-center justify-end gap-1">
+                        <div className="grid grid-cols-3 gap-1.5 sm:gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+                          <div className="text-center sm:text-right p-1 sm:p-0 rounded-lg sm:rounded-xl bg-slate-950 sm:bg-transparent border sm:border-0 border-slate-800 flex flex-col justify-center min-w-0">
+                            <div className="text-[9px] sm:text-[10px] text-slate-400 font-medium">HEALTH SCORE</div>
+                            <div className="text-base sm:text-2xl font-black text-emerald-400 flex items-center justify-center sm:justify-end gap-0.5 sm:gap-1">
                               {selectedPatientHealth.mediTrackUser?.healthScore || 90}
-                              <span className="text-xs font-semibold text-slate-500">/100</span>
+                              <span className="text-[9px] sm:text-xs font-semibold text-slate-500">/100</span>
                             </div>
                           </div>
 
-                          <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                            <div className="text-[10px] text-slate-400 font-medium">STATUS</div>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold block mt-0.5 ${
+                          <div className="px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-slate-950 border border-slate-800 text-center flex flex-col justify-center min-w-0">
+                            <div className="text-[9px] sm:text-[10px] text-slate-400 font-medium">STATUS</div>
+                            <span className={`px-1 py-0.5 rounded text-[9px] sm:text-[10px] font-bold block mt-0.5 truncate ${
                               selectedPatientHealth.mediTrackUser?.healthState === 'GREEN' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
                               selectedPatientHealth.mediTrackUser?.healthState === 'YELLOW' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
                               'bg-rose-500/20 text-rose-300 border border-rose-500/30'
@@ -1012,19 +1067,19 @@ export default function DoctorDashboard() {
                             </span>
                           </div>
 
-                          <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                            <div className="text-[10px] text-slate-400 font-medium">BMI INDEX</div>
+                          <div className="px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-slate-950 border border-slate-800 text-center flex flex-col justify-center min-w-0">
+                            <div className="text-[9px] sm:text-[10px] text-slate-400 font-medium">BMI INDEX</div>
                             <div className="text-xs font-bold text-cyan-300 mt-0.5">{selectedPatientHealth.mediTrackUser?.bmi || 23.5}</div>
                           </div>
                         </div>
                       </div>
 
                       {/* Tabs */}
-                      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800 overflow-x-auto">
+                      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800 overflow-x-auto scrollbar-none no-scrollbar max-w-full">
                         <button
                           type="button"
                           onClick={() => setPatientHealthTab('MEDS')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition ${
                             patientHealthTab === 'MEDS' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-white'
                           }`}
                         >
@@ -1034,7 +1089,7 @@ export default function DoctorDashboard() {
                         <button
                           type="button"
                           onClick={() => setPatientHealthTab('REPORTS')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition ${
                             patientHealthTab === 'REPORTS' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-white'
                           }`}
                         >
@@ -1044,7 +1099,7 @@ export default function DoctorDashboard() {
                         <button
                           type="button"
                           onClick={() => setPatientHealthTab('GENETICS')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition ${
                             patientHealthTab === 'GENETICS' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-white'
                           }`}
                         >
@@ -1054,7 +1109,7 @@ export default function DoctorDashboard() {
                         <button
                           type="button"
                           onClick={() => setPatientHealthTab('HEALTH')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition ${
                             patientHealthTab === 'HEALTH' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-white'
                           }`}
                         >
@@ -1064,7 +1119,7 @@ export default function DoctorDashboard() {
                         <button
                           type="button"
                           onClick={() => setPatientHealthTab('VITALS')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition ${
                             patientHealthTab === 'VITALS' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-white'
                           }`}
                         >
@@ -1075,13 +1130,13 @@ export default function DoctorDashboard() {
                       {/* TAB CONTENT 1: ACTIVE MEDICATIONS */}
                       {patientHealthTab === 'MEDS' && (
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <span className="text-xs font-semibold text-slate-400">Current Active User Medications</span>
                             {selectedPatientHealth.activeMedications?.length > 0 && (
                               <button
                                 type="button"
                                 onClick={handleImportActiveMeds}
-                                className="px-2.5 py-1 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 font-bold text-[11px] border border-teal-500/30 transition flex items-center gap-1"
+                                className="px-2.5 py-1 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 font-bold text-[11px] border border-teal-500/30 transition flex items-center gap-1 self-start sm:self-auto"
                               >
                                 <Plus className="w-3.5 h-3.5" /> Import All to Prescription Writer
                               </button>
@@ -1095,18 +1150,18 @@ export default function DoctorDashboard() {
                           ) : (
                             <div className="space-y-2 max-h-56 overflow-y-auto pr-1 text-xs">
                               {selectedPatientHealth.activeMedications.map((m, idx) => (
-                                <div key={m._id || idx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start justify-between gap-3">
+                                <div key={m._id || idx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                   <div className="space-y-1">
                                     <div className="font-extrabold text-white text-xs flex items-center gap-2">
-                                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
                                       {m.name} <span className="text-cyan-400 font-semibold">({m.dosage})</span>
                                     </div>
-                                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
-                                      <span>Generic: <strong className="text-slate-300">{m.genericName || m.name}</strong></span>
-                                      <span>•</span>
-                                      <span>Form: <strong className="text-slate-300">{m.form || 'Tablet'}</strong></span>
-                                      <span>•</span>
-                                      <span>Qty: <strong className="text-emerald-400">{m.quantity} remaining</strong></span>
+                                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                      <span className="whitespace-nowrap">Generic: <strong className="text-slate-300">{m.genericName || m.name}</strong></span>
+                                      <span className="hidden sm:inline">•</span>
+                                      <span className="whitespace-nowrap">Form: <strong className="text-slate-300">{m.form || 'Tablet'}</strong></span>
+                                      <span className="hidden sm:inline">•</span>
+                                      <span className="whitespace-nowrap">Qty: <strong className="text-emerald-400">{m.quantity} remaining</strong></span>
                                     </div>
                                     {m.aiInsights?.recommendation && (
                                       <div className="text-[10px] text-amber-300 bg-amber-500/10 p-1.5 rounded border border-amber-500/20">
@@ -1123,7 +1178,7 @@ export default function DoctorDashboard() {
                                         medicines: [...prev.medicines, { name: m.name, dosage: m.dosage || '500mg', frequency: '1-0-1', duration: '5 days' }]
                                       }));
                                     }}
-                                    className="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 font-bold text-[10px] border border-cyan-500/30 transition shrink-0"
+                                    className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 font-bold text-[10px] border border-cyan-500/30 transition shrink-0 self-end sm:self-auto"
                                   >
                                     + Add to Rx
                                   </button>
@@ -1146,18 +1201,20 @@ export default function DoctorDashboard() {
                             <div className="space-y-3 max-h-60 overflow-y-auto pr-1 text-xs">
                               {selectedPatientHealth.previousReports.map((r, idx) => (
                                 <div key={r._id || idx} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                                  <div className="flex items-center justify-between">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                     <div>
                                       <div className="font-extrabold text-white text-xs flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-cyan-400" />
-                                        {r.folderName}
+                                        <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
+                                        <span className="break-all">{r.folderName}</span>
                                       </div>
-                                      <div className="text-[10px] text-slate-400 mt-0.5">
-                                        Domain: <strong className="text-cyan-300">{r.domain}</strong> • Date: <strong className="text-slate-300">{new Date(r.reportDate).toLocaleDateString()}</strong>
+                                      <div className="text-[10px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                        <span>Domain: <strong className="text-cyan-300">{r.domain}</strong></span>
+                                        <span className="hidden sm:inline">•</span>
+                                        <span>Date: <strong className="text-slate-300">{new Date(r.reportDate).toLocaleDateString()}</strong></span>
                                       </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 shrink-0">
                                       <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-[10px]">
                                         AI Score: {r.aiAnalysis?.healthScore || 90}
                                       </span>
@@ -1174,7 +1231,7 @@ export default function DoctorDashboard() {
                                   </div>
 
                                   {r.aiAnalysis?.summary && (
-                                    <p className="text-[11px] text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800 leading-relaxed">
+                                    <p className="text-[11px] text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 leading-relaxed overflow-hidden break-words">
                                       <strong className="text-cyan-400">AI Diagnostic Summary:</strong> {r.aiAnalysis.summary}
                                     </p>
                                   )}
@@ -1184,7 +1241,7 @@ export default function DoctorDashboard() {
                                       <div className="text-[10px] font-bold text-slate-400">KEY BIOMARKER FINDINGS:</div>
                                       <div className="flex flex-wrap gap-1.5">
                                         {r.aiAnalysis.keyFindings.map((kf, kIdx) => (
-                                          <span key={kIdx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 text-[10px] border border-slate-800">
+                                          <span key={kIdx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 text-[10px] border border-slate-800 break-all">
                                             • {kf}
                                           </span>
                                         ))}
@@ -1440,7 +1497,7 @@ export default function DoctorDashboard() {
 
                     {prescriptionForm.medicines.map((m, idx) => (
                       <div key={idx} className="flex items-center gap-2 mb-2">
-                        <div className="grid grid-cols-4 gap-2 flex-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
                           <input
                             type="text"
                             placeholder="Medicine Name"
@@ -2925,90 +2982,103 @@ export default function DoctorDashboard() {
 
         {/* ----------------- FULL MEDITRACK EHR DOSSIER MODAL ----------------- */}
         {showFullEhrModal && selectedPatientHealth && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200">
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                <div className="flex items-center gap-3">
+              <div className="flex items-start justify-between pb-3.5 sm:pb-4 border-b border-slate-800 gap-2">
+                <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0">
                   {selectedPatientHealth.patient?.profilePictureUrl || selectedPatientHealth.mediTrackUser?.profilePictureUrl ? (
                     <img
                       src={selectedPatientHealth.patient?.profilePictureUrl || selectedPatientHealth.mediTrackUser?.profilePictureUrl}
                       alt={selectedPatientHealth.patient?.name || 'Patient'}
-                      className="w-12 h-12 rounded-2xl object-cover border border-cyan-500/40 shadow-sm shrink-0"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl object-cover border border-cyan-500/40 shadow-sm shrink-0 mt-0.5 sm:mt-0"
                     />
                   ) : (
-                    <div className="p-3 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                      <Heart className="w-6 h-6 animate-pulse" />
+                    <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shrink-0">
+                      <Heart className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
                     </div>
                   )}
-                  <div>
-                    <h2 className="text-xl font-extrabold text-white flex items-center gap-3">
-                      MediTrack Patient Health Dossier
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h2 className="text-base sm:text-xl font-extrabold text-white leading-tight">
+                        MediTrack Patient Health Dossier
+                      </h2>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] sm:text-xs font-bold shrink-0">
                         ABDM Verified
                       </span>
-                    </h2>
-                    <p className="text-xs text-slate-400">Comprehensive Personal Health Database & Clinical History</p>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-slate-400 truncate sm:whitespace-normal mt-0.5">Comprehensive Personal Health Database & Clinical History</p>
                   </div>
                 </div>
 
                 <button
                   onClick={() => setShowFullEhrModal(false)}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                  className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition shrink-0"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
               {/* Vitals Summary Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                  <div className="text-xs text-slate-400 font-medium">PATIENT NAME</div>
-                  <div className="text-base font-extrabold text-white mt-1">{selectedPatientHealth.patient?.name}</div>
-                  <div className="text-[11px] text-cyan-400 mt-0.5">{selectedPatientHealth.patient?.age}Y • {selectedPatientHealth.patient?.gender}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+                <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950 border border-slate-800 min-w-0">
+                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold tracking-wide uppercase truncate">PATIENT NAME</div>
+                  <div className="text-xs sm:text-base font-extrabold text-white mt-0.5 truncate">{selectedPatientHealth.patient?.name}</div>
+                  <div className="text-[10px] sm:text-[11px] text-cyan-400 mt-0.5 truncate">{selectedPatientHealth.patient?.age}Y • {selectedPatientHealth.patient?.gender}</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                  <div className="text-xs text-slate-400 font-medium">ABHA NUMBER</div>
-                  <div className="text-base font-extrabold text-cyan-300 mt-1">{selectedPatientHealth.mediTrackUser?.abhaNumber || '91-8812-9904'}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{selectedPatientHealth.mediTrackUser?.abhaAddress || 'arka@abdm'}</div>
+                <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950 border border-slate-800 min-w-0">
+                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold tracking-wide uppercase truncate">ABHA NUMBER</div>
+                  <div className="text-xs sm:text-base font-extrabold text-cyan-300 mt-0.5 truncate">{selectedPatientHealth.mediTrackUser?.abhaNumber || '91-8812-9904'}</div>
+                  <div className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">{selectedPatientHealth.mediTrackUser?.abhaAddress || 'arka@abdm'}</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                  <div className="text-xs text-slate-400 font-medium">HEALTH SCORE & STATE</div>
-                  <div className="text-2xl font-black text-emerald-400 mt-1 flex items-center gap-2">
+                <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950 border border-slate-800 min-w-0">
+                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold tracking-wide uppercase truncate">HEALTH SCORE & STATE</div>
+                  <div className="text-base sm:text-2xl font-black text-emerald-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                     {selectedPatientHealth.mediTrackUser?.healthScore || 92}/100
-                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
                       {selectedPatientHealth.mediTrackUser?.healthState || 'GREEN'}
                     </span>
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                  <div className="text-xs text-slate-400 font-medium">BLOOD GROUP & BMI</div>
-                  <div className="text-base font-extrabold text-rose-400 mt-1">{selectedPatientHealth.patient?.bloodGroup || 'O+'}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">BMI: {selectedPatientHealth.mediTrackUser?.bmi || 23.5}</div>
+                <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950 border border-slate-800 min-w-0">
+                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold tracking-wide uppercase truncate">BLOOD GROUP & BMI</div>
+                  <div className="text-xs sm:text-base font-extrabold text-rose-400 mt-0.5 truncate">{selectedPatientHealth.patient?.bloodGroup || 'O+'}</div>
+                  <div className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">BMI: {selectedPatientHealth.mediTrackUser?.bmi || 23.5}</div>
                 </div>
               </div>
 
               {/* Grid: Meds & Reports */}
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                 {/* Active Meds */}
-                <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Pill className="w-4 h-4 text-cyan-400" /> Active Prescribed Medications ({selectedPatientHealth.activeMedications?.length})
+                <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                  <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                    <Pill className="w-4 h-4 text-cyan-400 shrink-0" /> Active Prescribed Medications ({selectedPatientHealth.activeMedications?.length})
                   </h4>
 
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1 text-xs">
                     {selectedPatientHealth.activeMedications?.map((m, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                        <div className="font-extrabold text-white text-xs flex items-center justify-between">
-                          <span>{m.name} ({m.dosage})</span>
-                          <span className="text-emerald-400 font-semibold">{m.quantity} Qty Left</span>
+                      <div key={idx} className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-extrabold text-white text-xs leading-tight">
+                            {m.name}
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold shrink-0">
+                            {m.quantity} Qty Left
+                          </span>
                         </div>
-                        <div className="text-[11px] text-slate-400">Generic: {m.genericName} • Category: {m.category}</div>
+                        {m.dosage && (
+                          <div className="text-[11px] text-slate-300 font-normal leading-relaxed">
+                            {m.dosage}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-slate-400">Generic: {m.genericName || 'N/A'} • Category: {m.category || 'N/A'}</div>
                         {m.aiInsights?.recommendation && (
-                          <div className="text-[10px] text-amber-300 mt-1">💡 {m.aiInsights.recommendation}</div>
+                          <div className="text-[10px] text-amber-300 mt-1 bg-amber-500/10 border border-amber-500/20 p-1.5 rounded-lg">
+                            💡 {m.aiInsights.recommendation}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -3016,17 +3086,17 @@ export default function DoctorDashboard() {
                 </div>
 
                 {/* Previous Lab Reports */}
-                <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-cyan-400" /> Diagnostic Reports & AI Findings ({selectedPatientHealth.previousReports?.length})
+                <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                  <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-cyan-400 shrink-0" /> Diagnostic Reports & AI Findings ({selectedPatientHealth.previousReports?.length})
                   </h4>
 
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1 text-xs">
                     {selectedPatientHealth.previousReports?.map((r, idx) => (
                       <div key={idx} className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="font-bold text-white text-xs">{r.folderName}</div>
-                          <span className="text-[10px] text-cyan-400 font-semibold">{new Date(r.reportDate).toLocaleDateString()}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-bold text-white text-xs truncate">{r.folderName}</div>
+                          <span className="text-[10px] text-cyan-400 font-semibold shrink-0">{new Date(r.reportDate).toLocaleDateString()}</span>
                         </div>
                         {r.aiAnalysis?.summary && (
                           <p className="text-[11px] text-slate-300">{r.aiAnalysis.summary}</p>
@@ -3038,9 +3108,9 @@ export default function DoctorDashboard() {
               </div>
 
               {/* Genetic Predispositions & Inborn Diseases */}
-              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Dna className="w-4 h-4 text-amber-400" /> Genetic Risk Markers & Inborn Condition Analysis
+              <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                  <Dna className="w-4 h-4 text-amber-400 shrink-0" /> Genetic Risk Markers & Inborn Condition Analysis
                 </h4>
 
                 <div className="grid md:grid-cols-2 gap-3 text-xs">
@@ -3056,7 +3126,7 @@ export default function DoctorDashboard() {
               <div className="flex justify-end pt-2">
                 <button
                   onClick={() => setShowFullEhrModal(false)}
-                  className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 transition"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 transition text-center"
                 >
                   Close Health Dossier
                 </button>

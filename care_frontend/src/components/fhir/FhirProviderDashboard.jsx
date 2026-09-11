@@ -289,15 +289,15 @@ const FhirProviderDashboard = ({ facilityId: propFacilityId, doctorId: propDocto
           </div>
 
           {/* View Mode & Results Header */}
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-slate-300 font-bold">Bundle Results: {searchResults?.total || 0} entries</span>
               <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/30">
                 HTTP 200 OK
               </span>
             </div>
 
-            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 font-bold">
+            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 font-bold self-start sm:self-auto">
               <button
                 onClick={() => setViewMode('CARDS')}
                 className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 ${
@@ -340,24 +340,24 @@ const FhirProviderDashboard = ({ facilityId: propFacilityId, doctorId: propDocto
                 // Visual Formatted Card View
                 return (
                   <div key={idx} className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800/80 hover:border-slate-700 transition-all space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-500/30 uppercase">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/60 pb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-500/30 uppercase shrink-0">
                           {res.resourceType}
                         </span>
-                        <span className="font-mono text-slate-300 font-bold text-xs">#{res.id}</span>
+                        <span className="font-mono text-slate-300 font-bold text-xs truncate max-w-[150px] sm:max-w-none" title={`#${res.id}`}>#{res.id}</span>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {res.resourceType === 'Patient' && (
                           <button
                             onClick={() => handleExportPatientEverything(res.id)}
-                            className="px-2.5 py-1 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-[11px] font-bold transition flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-[11px] font-bold transition flex items-center gap-1 shrink-0"
                           >
                             <Download className="w-3 h-3" /> Export $everything
                           </button>
                         )}
-                        <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                        <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 shrink-0">
                           {res.status || res.active ? 'Active' : 'Recorded'}
                         </span>
                       </div>
