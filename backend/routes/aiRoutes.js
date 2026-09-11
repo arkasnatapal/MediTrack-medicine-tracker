@@ -343,6 +343,76 @@ MANDATORY FOOTER:
    - Do NOT include the footer.
 `;
 
+// GET /api/ai/user-references - Fetch user's medicines, family members, reports, and prescriptions for AI mention flags
+router.get("/user-references", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const [medicines, connections, reports, healthReports] = await Promise.all([
+      Medicine.find({ userId }).select("name genericName category dosage quantity expiryDate description").sort({ name: 1 }).lean(),
+      FamilyConnection.find({
+        status: "active",
+        $or: [{ inviter: userId }, { invitee: userId }],
+      }).populate("inviter invitee").lean(),
+      Report.find({ userId }).select("folderName reportDate aiAnalysis").sort({ reportDate: -1 }).lean(),
+      HealthReport.find({ userId }).select("title type reportDate summary").sort({ reportDate: -1 }).lean(),
+    ]);
+
+    const family = connections.map((c) => {
+      if (!c.inviter || !c.invitee) return null;
+      const isInviter = c.inviter._id.toString() === userId;
+      const member = isInviter ? c.invitee : c.inviter;
+      const relation = isInviter ? c.relationshipFromInviter : c.relationshipFromInvitee;
+      return {
+        _id: member._id,
+        name: member.name,
+        email: member.email,
+        relation: relation || "Family Member",
+      };
+    }).filter(Boolean);
+
+    // Format prescriptions from health reports or reports categorized as prescription
+    const prescriptions = [
+      ...healthReports.map((hr) => ({
+        _id: hr._id,
+        title: hr.title || "Prescription / Medical Doc",
+        type: hr.type || "Prescription",
+        date: hr.reportDate ? new Date(hr.reportDate).toLocaleDateString() : "Recent",
+      })),
+      ...reports.filter(r => (r.folderName || "").toLowerCase().includes("prescription")).map(r => ({
+        _id: r._id,
+        title: r.folderName || "Prescription Report",
+        type: "Prescription",
+        date: r.reportDate ? new Date(r.reportDate).toLocaleDateString() : "Recent",
+      }))
+    ];
+
+    res.json({
+      success: true,
+      medicines: medicines.map((m) => ({
+        _id: m._id,
+        name: m.name,
+        genericName: m.genericName,
+        category: m.category,
+        dosage: m.dosage,
+        quantity: m.quantity,
+        expiryDate: m.expiryDate ? new Date(m.expiryDate).toLocaleDateString() : null,
+      })),
+      family,
+      reports: reports.map((r) => ({
+        _id: r._id,
+        title: r.folderName || "Medical Report",
+        date: r.reportDate ? new Date(r.reportDate).toLocaleDateString() : "Recent",
+        summary: r.aiAnalysis?.summary || "",
+      })),
+      prescriptions,
+    });
+  } catch (error) {
+    console.error("Error fetching user references for AI chat:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch user references" });
+  }
+});
+
 router.post("/health-chat", auth, async (req, res) => {
   try {
     if (!genAI) {
@@ -373,6 +443,41 @@ router.post("/health-chat", auth, async (req, res) => {
     // Clean history
     while (historyMessages.length > 0 && historyMessages[0].role === "model") {
       historyMessages.shift();
+    }
+
+    // --- Full Medicine Inventory Context Integration ---
+    const userMedicines = await Medicine.find({ userId: userId }).sort({ name: 1 });
+    let medicineInventoryContext = "";
+    if (userMedicines && userMedicines.length > 0) {
+      medicineInventoryContext = userMedicines.map(m => {
+        const gen = m.genericName ? ` (Generic: ${m.genericName})` : "";
+        const dose = m.dosage ? `, Dosage: ${m.dosage}` : "";
+        const qty = m.quantity !== undefined ? `, Stock: ${m.quantity}` : "";
+        const exp = m.expiryDate ? `, Expiry: ${new Date(m.expiryDate).toISOString().split('T')[0]}` : "";
+        const cat = m.category ? ` [Category: ${m.category}]` : "";
+        return `- ${m.name}${gen}${cat}${dose}${qty}${exp}`;
+      }).join("\n");
+    } else {
+      medicineInventoryContext = "No medicines currently added in the user's inventory.";
+    }
+
+    // --- Family Context Integration ---
+    const activeFamily = await FamilyConnection.find({
+      status: "active",
+      $or: [{ inviter: userId }, { invitee: userId }],
+    }).populate("inviter invitee");
+
+    let familyContext = "";
+    if (activeFamily && activeFamily.length > 0) {
+      familyContext = activeFamily.map(c => {
+        if (!c.inviter || !c.invitee) return null;
+        const isInviter = c.inviter._id.toString() === userId;
+        const member = isInviter ? c.invitee : c.inviter;
+        const relation = isInviter ? c.relationshipFromInviter : c.relationshipFromInvitee;
+        return `- ${member.name} (${relation || 'Family Member'}) - Email: ${member.email}`;
+      }).filter(Boolean).join("\n");
+    } else {
+      familyContext = "No active connected family members found.";
     }
 
     // --- Food Context Integration ---
@@ -469,6 +574,12 @@ router.post("/health-chat", auth, async (req, res) => {
     finalSystemInstruction += `
 
 ---
+### 💊 USER'S FULL MEDICINE INVENTORY (Context - COMPLETE USER DATABASE)
+${medicineInventoryContext}
+
+### 👨‍👩‍👧 USER'S CONNECTED FAMILY MEMBERS (Context)
+${familyContext}
+
 ### 🍎 USER'S FOOD ROUTINE DATA (Context)
 ${foodSummary ? foodSummary : "No food routine data available yet."}
 
@@ -554,7 +665,16 @@ If the user asks for a health overview, analysis of reports, or "tell me about m
      - **Score Logic**: Assign a "Health Score" (0-100) for each report based on your analysis (100 = Perfect, <50 = Critical). If the report has a score, use it.
      - **Label**: Use the report title or a short summary.
 
-#### 6. 🌟 PERSONA
+#### 6. 💊 MEDICINE INVENTORY, SUPPLEMENT & HEALTH INQUIRIES (CRITICAL PROTOCOL)
+If the user asks ANY question directly or indirectly linked to their medicine inventory or supplements (e.g., "based on my medicine inventory should i take creatine or not?", "can I take protein powder with my meds?", "is there any conflict in my medicines?"):
+   - **FULL ACCESS ACKNOWLEDGMENT**: You HAVE complete access to their medicine inventory (listed in "USER'S FULL MEDICINE INVENTORY" above). Never say you don't know their inventory or cannot check their database!
+   - **CROSS-REFERENCE INVENTORY**: Explicitly check each medicine in their active inventory (or state if inventory is currently empty).
+   - **DETAILED CLINICAL ANALYSIS**:
+     - Evaluate potential drug-drug and drug-supplement interactions (e.g. Creatine impact on hydration/kidney filtration vs ACE inhibitors, diuretics, or NSAIDs).
+     - Give clear, structured advice detailing benefits, precautions, dosage considerations, and timing.
+   - **DO NOT REFUSE**: Never refuse to answer or give a blanket cop-out statement. Provide a complete, helpful, and empowering breakdown.
+
+#### 7. 🌟 PERSONA
    - You are the **World's Best Medicine & Health Tracker Assistant**.
    - Be proactive, caring, and extremely knowledgeable.
    - Empower the user with knowledge (side effects, nutrition facts) rather than just restricting them.

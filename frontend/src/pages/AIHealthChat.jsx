@@ -12,6 +12,13 @@ import {
   Sparkles,
   Menu,
   Utensils,
+  Pill,
+  Users,
+  FileText,
+  ClipboardList,
+  AtSign,
+  ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 import {
   LineChart,
@@ -86,6 +93,160 @@ const AIHealthChat = () => {
   const messagesEndRef = useRef(null);
   const location = useLocation();
   const [includeFood, setIncludeFood] = useState(false);
+  const [userReferences, setUserReferences] = useState({
+    medicines: [],
+    family: [],
+    reports: [],
+    prescriptions: [],
+  });
+  const [showMentionPopup, setShowMentionPopup] = useState(false);
+  const [mentionCategory, setMentionCategory] = useState(null); // 'Medicine' | 'Family' | 'Report' | 'Prescription' | null
+  const [mentionQuery, setMentionQuery] = useState("");
+  const inputRef = useRef(null);
+  const mentionPopupRef = useRef(null);
+
+  // Fetch user reference options for @ mention tags
+  useEffect(() => {
+    const fetchReferences = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_URL}/ai/user-references`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success) {
+          setUserReferences({
+            medicines: data.medicines || [],
+            family: data.family || [],
+            reports: data.reports || [],
+            prescriptions: data.prescriptions || [],
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching user references for chat mentions:", error);
+      }
+    };
+
+    fetchReferences();
+  }, []);
+
+  // Handle typing inside input box to show @ mention popup
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setInput(value);
+
+    const cursorPos = e.target.selectionStart || value.length;
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+
+    if (lastAtIndex !== -1) {
+      const queryAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
+      if (!queryAfterAt.includes(" ") && !queryAfterAt.includes("\n")) {
+        setShowMentionPopup(true);
+        const lower = queryAfterAt.toLowerCase();
+
+        if (lower.startsWith("med")) {
+          setMentionCategory("Medicine");
+          setMentionQuery(queryAfterAt.replace(/^medicine:?/i, ""));
+        } else if (lower.startsWith("fam")) {
+          setMentionCategory("Family");
+          setMentionQuery(queryAfterAt.replace(/^family:?/i, ""));
+        } else if (lower.startsWith("rep")) {
+          setMentionCategory("Report");
+          setMentionQuery(queryAfterAt.replace(/^report:?/i, ""));
+        } else if (lower.startsWith("pre") || lower.startsWith("rx")) {
+          setMentionCategory("Prescription");
+          setMentionQuery(queryAfterAt.replace(/^prescription:?/i, ""));
+        } else {
+          setMentionCategory(null);
+          setMentionQuery(queryAfterAt);
+        }
+        return;
+      }
+    }
+    setShowMentionPopup(false);
+  };
+
+  // Insert mention tag into input field
+  const insertMentionTag = (category, itemTitle) => {
+    const tag = itemTitle ? `@${category}: ${itemTitle}` : `@${category}`;
+    const value = input;
+    const cursorPos = inputRef.current?.selectionStart || value.length;
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+
+    let newText = "";
+    if (lastAtIndex !== -1) {
+      newText = value.slice(0, lastAtIndex) + `${tag} ` + value.slice(cursorPos);
+    } else {
+      newText = value ? `${value} ${tag} ` : `${tag} `;
+    }
+
+    setInput(newText);
+    setShowMentionPopup(false);
+    setMentionCategory(null);
+    setMentionQuery("");
+
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 50);
+  };
+
+  // Get matching reference items based on category and search query
+  const getFilteredReferences = () => {
+    const q = mentionQuery.toLowerCase().trim();
+
+    if (mentionCategory === "Medicine") {
+      return userReferences.medicines
+        .filter((m) => m.name.toLowerCase().includes(q) || (m.genericName && m.genericName.toLowerCase().includes(q)))
+        .map((m) => ({ category: "Medicine", label: m.name, sub: `${m.dosage ? m.dosage + ' • ' : ''}Stock: ${m.quantity}` }));
+    }
+    if (mentionCategory === "Family") {
+      return userReferences.family
+        .filter((f) => f.name.toLowerCase().includes(q) || (f.relation && f.relation.toLowerCase().includes(q)))
+        .map((f) => ({ category: "Family", label: `${f.relation ? f.relation + ' (' + f.name + ')' : f.name}`, sub: f.email || "Connected profile" }));
+    }
+    if (mentionCategory === "Report") {
+      return userReferences.reports
+        .filter((r) => r.title.toLowerCase().includes(q) || (r.summary && r.summary.toLowerCase().includes(q)))
+        .map((r) => ({ category: "Report", label: r.title, sub: `Date: ${r.date}` }));
+    }
+    if (mentionCategory === "Prescription") {
+      return userReferences.prescriptions
+        .filter((p) => p.title.toLowerCase().includes(q))
+        .map((p) => ({ category: "Prescription", label: p.title, sub: `Date: ${p.date}` }));
+    }
+
+    // Global search if query typed directly after @
+    if (q) {
+      const results = [];
+      userReferences.medicines.forEach((m) => {
+        if (m.name.toLowerCase().includes(q) || (m.genericName && m.genericName.toLowerCase().includes(q))) {
+          results.push({ category: "Medicine", label: m.name, sub: `${m.dosage ? m.dosage + ' • ' : ''}Stock: ${m.quantity}` });
+        }
+      });
+      userReferences.family.forEach((f) => {
+        if (f.name.toLowerCase().includes(q) || (f.relation && f.relation.toLowerCase().includes(q))) {
+          results.push({ category: "Family", label: `${f.relation ? f.relation + ' (' + f.name + ')' : f.name}`, sub: f.email || "Connected profile" });
+        }
+      });
+      userReferences.reports.forEach((r) => {
+        if (r.title.toLowerCase().includes(q)) {
+          results.push({ category: "Report", label: r.title, sub: `Date: ${r.date}` });
+        }
+      });
+      userReferences.prescriptions.forEach((p) => {
+        if (p.title.toLowerCase().includes(q)) {
+          results.push({ category: "Prescription", label: p.title, sub: `Date: ${p.date}` });
+        }
+      });
+      return results;
+    }
+
+    return [];
+  };
 
   // Handle location state for prefill and food context
   useEffect(() => {
@@ -567,7 +728,152 @@ const AIHealthChat = () => {
 
         {/* Floating Input Area */}
         <div className="absolute bottom-0 left-0 w-full p-4 md:p-6 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent dark:from-[#0B0F17] dark:via-[#0B0F17] dark:to-transparent z-40">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto relative">
+            
+            {/* Quick Mention Reference Toolbar (Shown only before conversation starts) */}
+            {messages.length === 0 && (
+              <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1 scrollbar-none">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 mr-1">
+                  <AtSign className="w-3.5 h-3.5 text-emerald-500" /> Reference:
+                </span>
+                {[
+                  { label: "Medicine", icon: Pill, color: "hover:border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 bg-white/80 dark:bg-slate-800/80" },
+                  { label: "Family", icon: Users, color: "hover:border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 bg-white/80 dark:bg-slate-800/80" },
+                  { label: "Report", icon: FileText, color: "hover:border-purple-500/50 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 bg-white/80 dark:bg-slate-800/80" },
+                  { label: "Prescription", icon: ClipboardList, color: "hover:border-amber-500/50 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 bg-white/80 dark:bg-slate-800/80" },
+                ].map(({ label, icon: Icon, color }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => {
+                      setMentionCategory(label);
+                      setShowMentionPopup(true);
+                      if (!input.endsWith("@")) {
+                        setInput((prev) => (prev ? `${prev.trim()} @${label}` : `@${label}`));
+                      }
+                      if (inputRef.current) inputRef.current.focus();
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700/60 shadow-sm text-xs font-medium transition-all duration-200 hover:scale-105 ${color}`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>@{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Mention Autocomplete Popover Dropdown */}
+            <AnimatePresence>
+              {showMentionPopup && (
+                <motion.div
+                  ref={mentionPopupRef}
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute bottom-full mb-3 left-0 right-0 z-50 bg-white dark:bg-[#131823] border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden max-h-72 flex flex-col"
+                >
+                  {/* Popup Header */}
+                  <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {mentionCategory && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMentionCategory(null);
+                            setMentionQuery("");
+                          }}
+                          className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md text-slate-500 transition-colors"
+                          title="Back to categories"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
+                        <AtSign className="w-3.5 h-3.5 text-emerald-500" />
+                        {mentionCategory ? `Reference ${mentionCategory}` : "Select Reference Type"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowMentionPopup(false)}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Popup Content */}
+                  <div className="overflow-y-auto p-2 space-y-1">
+                    {!mentionCategory && !mentionQuery && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                        {[
+                          { category: "Medicine", icon: Pill, desc: `${userReferences.medicines.length} items in inventory`, color: "text-emerald-500 bg-emerald-500/10" },
+                          { category: "Family", icon: Users, desc: `${userReferences.family.length} connected profiles`, color: "text-blue-500 bg-blue-500/10" },
+                          { category: "Report", icon: FileText, desc: `${userReferences.reports.length} lab & medical reports`, color: "text-purple-500 bg-purple-500/10" },
+                          { category: "Prescription", icon: ClipboardList, desc: `${userReferences.prescriptions.length} prescriptions & rx`, color: "text-amber-500 bg-amber-500/10" },
+                        ].map(({ category, icon: Icon, desc, color }) => (
+                          <button
+                            key={category}
+                            type="button"
+                            onClick={() => setMentionCategory(category)}
+                            className="w-full text-left p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors flex items-center justify-between group border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-emerald-500 transition-colors">
+                                  @{category}
+                                </div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500">{desc}</div>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {(mentionCategory || mentionQuery) && (() => {
+                      const filtered = getFilteredReferences();
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                            No {mentionCategory || "reference"} items found matching "{mentionQuery}".
+                          </div>
+                        );
+                      }
+                      return filtered.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => insertMentionTag(item.category, item.label)}
+                          className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors flex items-center justify-between group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                              @{item.category}
+                            </div>
+                            <div className="truncate">
+                              <div className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate group-hover:text-emerald-500 transition-colors">
+                                {item.label}
+                              </div>
+                              <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{item.sub}</div>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap ml-2">
+                            Select ↵
+                          </span>
+                        </button>
+                      ));
+                    })()}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-full blur opacity-50 group-hover:opacity-75 transition duration-500" />
               <form
@@ -575,10 +881,11 @@ const AIHealthChat = () => {
                 className="relative flex items-center gap-2 bg-white dark:bg-[#131823] rounded-full p-2 pl-6 border border-slate-200 dark:border-slate-700/50 shadow-xl dark:shadow-black/50"
               >
                 <input
+                  ref={inputRef}
                   type="text"
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask anything..."
+                  onChange={handleInputChange}
+                  placeholder="Ask anything or type @ to mention medicine, family, report..."
                   className="flex-1 bg-transparent text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none text-base py-2"
                 />
                 <button
