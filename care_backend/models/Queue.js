@@ -37,6 +37,18 @@ const queueSchema = new mongoose.Schema(
     }],
     entries: [queueEntrySchema],
     isPaused: { type: Boolean, default: false },
+    queueMode: { type: String, enum: ['SHARED_QUEUE', 'DOCTOR_SPECIFIC_QUEUE'], default: 'SHARED_QUEUE' },
+    opdStatus: {
+      type: String,
+      enum: ['SCHEDULED', 'OPEN', 'PAUSED', 'BREAK', 'CLOSING_SOON', 'REGISTRATION_CLOSED', 'CLOSED', 'HOLIDAY'],
+      default: 'OPEN',
+    },
+    manualOverrideStatus: {
+      type: String,
+      enum: ['NONE', 'OPEN', 'PAUSED', 'REGISTRATION_CLOSED', 'CLOSED'],
+      default: 'NONE',
+    },
+    timezone: { type: String, default: 'Asia/Kolkata' },
   },
   { timestamps: true }
 );

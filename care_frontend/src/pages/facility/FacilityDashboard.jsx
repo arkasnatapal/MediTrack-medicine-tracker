@@ -87,6 +87,98 @@ export default function FacilityDashboard() {
     }
   };
 
+  // OPD Timetable Schedule, Doctor Attendance & Operations Control State
+  const [selectedOpdScheduleDept, setSelectedOpdScheduleDept] = useState('General Medicine');
+  const [opdScheduleDetails, setOpdScheduleDetails] = useState({
+    openTime: '09:00',
+    closeTime: '13:00',
+    breakStart: '11:30',
+    breakEnd: '12:00',
+    lastTokenTime: '12:30',
+    closingWarningMinutes: 30,
+    queueMode: 'SHARED_QUEUE',
+  });
+  const [opdEngineStatus, setOpdEngineStatus] = useState(null);
+  const [doctorShiftLogs, setDoctorShiftLogs] = useState([]);
+
+  const getFacilityIdStr = () => {
+    if (user?.facility?._id) return String(user.facility._id);
+    if (user?.facilityId?._id) return String(user.facilityId._id);
+    if (typeof user?.facilityId === 'string') return user.facilityId;
+    if (typeof user?.facility === 'string') return user.facility;
+    if (user?.facilityId?.id) return String(user.facilityId.id);
+    return facilityId ? String(facilityId) : '';
+  };
+
+  const fetchOpdScheduleForFacility = async (dept) => {
+    try {
+      const facId = getFacilityIdStr();
+      if (!facId) return;
+      const res = await api.get('/queues/opd-schedule', { params: { facilityId: facId, department: dept } });
+      if (res.data?.schedule) {
+        setOpdScheduleDetails({
+          openTime: res.data.schedule.openTime || '09:00',
+          closeTime: res.data.schedule.closeTime || '13:00',
+          breakStart: res.data.schedule.breakStart || '11:30',
+          breakEnd: res.data.schedule.breakEnd || '12:00',
+          lastTokenTime: res.data.schedule.lastTokenTime || '12:30',
+          closingWarningMinutes: res.data.schedule.closingWarningMinutes || 30,
+          queueMode: res.data.schedule.queueMode || 'SHARED_QUEUE',
+        });
+      }
+      if (res.data?.opdStatusObj) setOpdEngineStatus(res.data.opdStatusObj);
+    } catch (e) {}
+  };
+
+  const fetchDoctorShiftAttendance = async () => {
+    try {
+      const facId = getFacilityIdStr();
+      if (!facId) return;
+      const res = await api.get('/doctors/attendance', { params: { facilityId: facId } });
+      if (Array.isArray(res.data)) setDoctorShiftLogs(res.data);
+    } catch (e) {}
+  };
+
+  const handleSaveOpdTimetable = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      const facId = getFacilityIdStr();
+      const res = await api.post('/queues/opd-schedule', {
+        facilityId: facId,
+        department: selectedOpdScheduleDept,
+        ...opdScheduleDetails,
+      });
+      if (res.data?.opdStatusObj) setOpdEngineStatus(res.data.opdStatusObj);
+      alert(`✓ OPD Operating Hours & Schedule for ${selectedOpdScheduleDept} saved successfully!`);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update OPD timetable');
+    }
+  };
+
+  const handleManualFacilityOpdControl = async (action) => {
+    try {
+      const facId = getFacilityIdStr();
+      const res = await api.post('/queues/opd-status', {
+        facilityId: facId,
+        department: selectedOpdScheduleDept,
+        action,
+      });
+      if (res.data?.opdStatusObj) setOpdEngineStatus(res.data.opdStatusObj);
+      alert(`✓ OPD Manual Status updated: ${res.data?.opdStatusObj?.opdStatus || action}`);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update OPD status');
+    }
+  };
+
+  const handleDownloadDoctorAttendanceCsv = () => {
+    const facId = getFacilityIdStr();
+    const token = localStorage.getItem('care_token');
+    const todayStr = new Date().toISOString().split('T')[0];
+    const baseUrl = api.defaults.baseURL || 'http://localhost:5001/api';
+    const url = `${baseUrl}/doctors/attendance-csv?facilityId=${facId}&date=${todayStr}&token=${token}`;
+    window.open(url, '_blank');
+  };
+
   // Shift Ward Modal States
   const [showShiftWardModal, setShowShiftWardModal] = useState(false);
   const [shiftTargetBooking, setShiftTargetBooking] = useState(null);
@@ -477,6 +569,8 @@ export default function FacilityDashboard() {
             ventilatorsAvailable: cap.ventilatorsAvailable ?? 0,
           });
         }
+        fetchOpdScheduleForFacility(selectedOpdScheduleDept);
+        fetchDoctorShiftAttendance();
       }
     } catch (err) {
       console.error('Failed to load facility data:', err);
@@ -995,6 +1089,7 @@ export default function FacilityDashboard() {
               <div className="space-y-1">
                 {[
                   { id: 'overview', label: 'Overview Command', icon: Activity },
+                  { id: 'opd-schedule', label: 'OPD Timing & Doctor Roster', icon: Clock },
                   { id: 'appointments', label: 'OPD Appointments', icon: Calendar },
                   { id: 'doctors', label: 'Doctors & Roster', icon: Stethoscope },
                 ].map(item => {
@@ -1515,6 +1610,300 @@ export default function FacilityDashboard() {
               </button>
             </div>
 
+          </div>
+        )}
+
+        {/* ----------------- TAB: OPD SCHEDULE & DOCTOR ROSTER TIMING ----------------- */}
+        {activeTab === 'opd-schedule' && (
+          <div className="space-y-6 text-xs">
+            {/* CONSOLE HEADER & DEPARTMENT SELECTOR */}
+            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300">
+                    <Clock className="w-5 h-5 text-teal-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">OPD Operating Hours &amp; Doctor Activity Shift Console</h3>
+                    <p className="text-xs text-slate-400">Configure hospital opening/closing times, break cutoffs, and monitor real-time doctor check-in &amp; check-out shift attendance.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-400">Department:</span>
+                    <select
+                      value={selectedOpdScheduleDept}
+                      onChange={(e) => {
+                        setSelectedOpdScheduleDept(e.target.value);
+                        fetchOpdScheduleForFacility(e.target.value);
+                      }}
+                      className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-teal-300 focus:outline-none focus:border-teal-500"
+                    >
+                      <option value="General Medicine">General Medicine</option>
+                      <option value="Cardiology OPD">Cardiology OPD</option>
+                      <option value="Pediatrics OPD">Pediatrics OPD</option>
+                      <option value="Orthopedics OPD">Orthopedics OPD</option>
+                      <option value="Neurology OPD">Neurology OPD</option>
+                      <option value="Dermatology OPD">Dermatology OPD</option>
+                      <option value="ENT OPD">ENT OPD</option>
+                    </select>
+                  </div>
+
+                  {/* LIVE OPD STATUS BADGE */}
+                  <div className={`px-3.5 py-1.5 rounded-xl border flex items-center gap-2 font-mono text-xs font-black uppercase ${
+                    opdEngineStatus?.opdStatus === 'OPEN' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
+                    opdEngineStatus?.opdStatus === 'BREAK' || opdEngineStatus?.opdStatus === 'CLOSING_SOON' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                    'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${opdEngineStatus?.opdStatus === 'OPEN' ? 'bg-emerald-400 animate-pulse' : opdEngineStatus?.opdStatus === 'BREAK' ? 'bg-amber-400' : 'bg-rose-400'}`} />
+                    <span>STATUS: {opdEngineStatus?.opdStatus?.replace('_', ' ') || 'OPEN'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* TIMETABLE SCHEDULE FORM & MANUAL CONTROLS GRID */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+                {/* TIMETABLE FORM */}
+                <form onSubmit={handleSaveOpdTimetable} className="lg:col-span-8 bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-900 pb-2">
+                    <span className="text-xs font-extrabold text-teal-300 uppercase tracking-wider">Hospital OPD Timetable Configuration</span>
+                    <span className="text-[10px] text-slate-500 font-mono">Timezone: Asia/Kolkata</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Opening Time</label>
+                      <input
+                        type="time"
+                        value={opdScheduleDetails.openTime}
+                        onChange={(e) => setOpdScheduleDetails(prev => ({ ...prev, openTime: e.target.value }))}
+                        className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white focus:outline-none focus:border-teal-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Closing Time</label>
+                      <input
+                        type="time"
+                        value={opdScheduleDetails.closeTime}
+                        onChange={(e) => setOpdScheduleDetails(prev => ({ ...prev, closeTime: e.target.value }))}
+                        className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white focus:outline-none focus:border-teal-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Last Token Cutoff</label>
+                      <input
+                        type="time"
+                        value={opdScheduleDetails.lastTokenTime}
+                        onChange={(e) => setOpdScheduleDetails(prev => ({ ...prev, lastTokenTime: e.target.value }))}
+                        className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono font-bold text-amber-400 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Break Start</label>
+                      <input
+                        type="time"
+                        value={opdScheduleDetails.breakStart}
+                        onChange={(e) => setOpdScheduleDetails(prev => ({ ...prev, breakStart: e.target.value }))}
+                        className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white focus:outline-none focus:border-teal-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Break End</label>
+                      <input
+                        type="time"
+                        value={opdScheduleDetails.breakEnd}
+                        onChange={(e) => setOpdScheduleDetails(prev => ({ ...prev, breakEnd: e.target.value }))}
+                        className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white focus:outline-none focus:border-teal-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Queue Serving Mode</label>
+                      <select
+                        value={opdScheduleDetails.queueMode}
+                        onChange={(e) => setOpdScheduleDetails(prev => ({ ...prev, queueMode: e.target.value }))}
+                        className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-teal-500"
+                      >
+                        <option value="SHARED_QUEUE">Shared Department Queue</option>
+                        <option value="DOCTOR_SPECIFIC_QUEUE">Doctor Specific Queue</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-teal-500/20 transition active:scale-95 flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save OPD Schedule &amp; Timetable</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* MANUAL HOSPITAL CONTROLS */}
+                <div className="lg:col-span-4 bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider block">Hospital Manual Override Controls</span>
+                    <p className="text-[11px] text-slate-400">Instantly override current automatic timetable state for emergency or operational reasons.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleManualFacilityOpdControl('OPEN')}
+                      className={`py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                        opdEngineStatus?.opdStatus === 'OPEN'
+                          ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-lg shadow-emerald-500/20 scale-[1.02]'
+                          : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                      }`}
+                    >
+                      <span>Open OPD</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleManualFacilityOpdControl('PAUSE')}
+                      className={`py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                        opdEngineStatus?.opdStatus === 'PAUSED'
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-lg shadow-amber-500/20 scale-[1.02]'
+                          : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
+                      }`}
+                    >
+                      <span>Pause Queue</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleManualFacilityOpdControl('CLOSE_REGISTRATION')}
+                      className={`py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                        opdEngineStatus?.opdStatus === 'REGISTRATION_CLOSED'
+                          ? 'bg-purple-500 text-white border-purple-400 font-extrabold shadow-lg shadow-purple-500/20 scale-[1.02]'
+                          : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/40'
+                      }`}
+                    >
+                      <span>Stop Registration</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleManualFacilityOpdControl('CLOSE')}
+                      className={`py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                        opdEngineStatus?.opdStatus === 'CLOSED'
+                          ? 'bg-rose-500 text-white border-rose-400 font-extrabold shadow-lg shadow-rose-500/20 scale-[1.02]'
+                          : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40'
+                      }`}
+                    >
+                      <span>Close OPD</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-slate-900/90 rounded-xl border border-slate-800/80 text-[10px] text-slate-400">
+                    <div>
+                      Active state: <strong className="text-white uppercase font-mono">{opdEngineStatus?.opdStatus || 'OPEN'}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleManualFacilityOpdControl('AUTO')}
+                      className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 font-mono font-bold border border-slate-700 text-[10px] transition"
+                      title="Revert manual override to automatic schedule timetable"
+                    >
+                      Reset to Auto Timetable
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* DOCTOR SHIFT ACTIVITY & LOGIN/LOGOUT ATTENDANCE ROSTER */}
+            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300">
+                    <UserCheck className="w-5 h-5 text-teal-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Doctor Activity Roster — Login (In-Time) &amp; Logout (Out-Time) Datasheet</h3>
+                    <p className="text-xs text-slate-400">Real-time shift tracking logging doctor entry in-time, shift termination out-time, and active status.</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadDoctorAttendanceCsv}
+                  className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-teal-500/20 transition active:scale-95 flex items-center gap-2 self-start sm:self-auto"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Export Printable Attendance (.CSV)</span>
+                </button>
+              </div>
+
+              {doctorShiftLogs.length === 0 ? (
+                <div className="p-8 text-center text-xs font-mono text-slate-400 bg-slate-950/40 rounded-2xl border border-dashed border-slate-800">
+                  No doctor shift check-in logs recorded for today yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 font-mono text-[10px] uppercase tracking-wider">
+                        <th className="pb-3 px-3">Doctor Name</th>
+                        <th className="pb-3 px-3">Specialization &amp; Reg No</th>
+                        <th className="pb-3 px-3">Department</th>
+                        <th className="pb-3 px-3">Login Time (In-Time)</th>
+                        <th className="pb-3 px-3">Logout Time (Out-Time)</th>
+                        <th className="pb-3 px-3">Shift Status</th>
+                        <th className="pb-3 px-3 text-right">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/80">
+                      {doctorShiftLogs.map(log => (
+                        <tr key={log._id} className="hover:bg-slate-800/40 transition">
+                          <td className="py-3.5 px-3 font-bold text-white">
+                            {log.doctorId?.fullName || 'Dr. Medical Specialist'}
+                          </td>
+                          <td className="py-3.5 px-3 text-slate-300">
+                            <div>{log.doctorId?.specialization || 'Consultant'}</div>
+                            <div className="text-[10px] font-mono text-slate-500">{log.doctorId?.medicalRegistrationNumber || 'REG-ACTIVE'}</div>
+                          </td>
+                          <td className="py-3.5 px-3 font-semibold text-teal-300">
+                            {log.department || 'General Medicine'}
+                          </td>
+                          <td className="py-3.5 px-3 font-mono font-bold text-emerald-400">
+                            {log.inTime ? new Date(log.inTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'}
+                          </td>
+                          <td className="py-3.5 px-3 font-mono text-slate-400">
+                            {log.outTime ? new Date(log.outTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : (
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                                ACTIVE IN HOSPITAL
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3">
+                            <span className={`px-2.5 py-1 rounded-lg font-mono font-bold text-[10px] uppercase border ${
+                              log.status === 'AVAILABLE' || log.status === 'PRESENT' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
+                              log.status === 'ON_BREAK' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                              log.status === 'TERMINATED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
+                              'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                            }`}>
+                              {log.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 text-right text-slate-400 text-[11px]">
+                            {log.notes || 'Normal Shift'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -2241,6 +2241,7 @@ router.get('/queue/:facilityId', async (req, res) => {
     const { department = 'General OPD', tokenNumber } = req.query;
     const mongoose = require('mongoose');
     const todayStr = new Date().toISOString().split('T')[0];
+    const { evaluateOpdStatus, calculateWaitTime } = require('../../care_backend/services/opdScheduleEngine');
 
     // Count appointments for this facility & department today from Appointment collection
     const departmentAppointmentsCount = await Appointment.countDocuments({
@@ -2251,6 +2252,15 @@ router.get('/queue/:facilityId', async (req, res) => {
 
     const hasBookedToken = tokenNumber !== undefined && tokenNumber !== null && tokenNumber !== '' && !isNaN(parseInt(tokenNumber)) && parseInt(tokenNumber) > 0;
     const userToken = hasBookedToken ? parseInt(tokenNumber) : 0;
+
+    // Fetch OpdSchedule document if available
+    let opdSchedule = null;
+    try {
+      opdSchedule = await mongoose.connection.collection('opdschedules').findOne({
+        department,
+        $or: [{ facilityIdStr: facilityId }, { facilityId: facilityId }]
+      });
+    } catch (eSch) {}
 
     // Fetch QueueStatus configuration or Queue document
     const statusDoc = await QueueStatus.findOne({ facilityId, department }).lean();
@@ -2281,9 +2291,10 @@ router.get('/queue/:facilityId', async (req, res) => {
       };
     });
 
-    // Attempt to fetch real live queue token from carequeues for this specific department
+    // Fetch real live queue token from carequeues for this specific department
+    let realQueue = null;
     try {
-      let realQueue = await mongoose.connection.collection('carequeues').findOne({
+      realQueue = await mongoose.connection.collection('carequeues').findOne({
         department: department,
         date: todayStr,
         $or: [
@@ -2301,59 +2312,37 @@ router.get('/queue/:facilityId', async (req, res) => {
           ]
         });
       }
-
-      if (realQueue) {
-        const totalBooked = Math.max(realQueue.currentToken || 0, departmentAppointmentsCount);
-        const currentToken = realQueue.servingToken || (totalBooked > 0 ? 1 : 0);
-        const position = userToken > 0 ? Math.max(0, userToken - currentToken) : 0;
-
-        const currentRemaining = realQueue.currentPatientRemainingMinutes !== undefined && realQueue.currentPatientRemainingMinutes !== null
-          ? realQueue.currentPatientRemainingMinutes
-          : (statusDoc?.currentPatientRemainingMinutes ?? deptConfiguredAverage);
-
-        const calculation = computeSmartOpdWaitTime({
-          peopleAhead: position,
-          department,
-          configuredAverage: realQueue.averageConsultationMinutes || deptConfiguredAverage,
-          currentPatientRemaining: currentRemaining,
-          recentConsultations: realQueue.recentConsultations || statusDoc?.recentConsultations || [],
-          useRollingAverage: realQueue.useRollingAverage || statusDoc?.useRollingAverage || false,
-          activeDoctorsCount: realQueue.activeDoctorsCount || statusDoc?.activeDoctorsCount || 1
-        });
-
-        return res.json({
-          success: true,
-          facilityId,
-          department,
-          userToken,
-          currentToken,
-          totalTokensBooked: totalBooked,
-          positionInLine: position,
-          peopleAhead: position,
-          estimatedWaitMinutes: calculation.estimatedWaitMinutes,
-          currentPatientRemainingMinutes: calculation.currentPatientRemainingMinutes,
-          averageConsultationMinutes: calculation.generalAverageConsultationMinutes,
-          effectiveAverage: calculation.effectiveAverage,
-          currentPatientStartedAt: realQueue.currentPatientStartedAt || null,
-          hasAppointment: hasBookedToken,
-          status: userToken === 0 ? 'NO_APPOINTMENT' : position === 0 ? 'NOW_SERVING' : 'WAITING',
-          entries: realQueue.entries || [],
-          departmentQueues,
-          lastUpdated: new Date()
-        });
-      }
     } catch (qErr) {
       console.warn('Department Queue fetch warning:', qErr.message);
     }
 
-    const totalBooked = departmentAppointmentsCount;
-    const currentToken = totalBooked > 0 ? 1 : 0;
+    const opdStatusObj = evaluateOpdStatus(opdSchedule, realQueue?.manualOverrideStatus || 'NONE', new Date());
+
+    // Fetch active doctors in facility department today
+    let activeDoctorsCount = realQueue?.activeDoctorsCount || 1;
+    try {
+      const activeDocs = await mongoose.connection.collection('doctorattendances').find({
+        department,
+        date: todayStr,
+        status: { $in: ['PRESENT', 'AVAILABLE', 'IN_CONSULTATION'] }
+      }).toArray();
+      if (activeDocs.length > 0) activeDoctorsCount = activeDocs.length;
+    } catch (eDoc) {}
+
+    const totalBooked = Math.max(realQueue?.currentToken || 0, departmentAppointmentsCount);
+    const currentToken = realQueue?.servingToken || (totalBooked > 0 ? 1 : 0);
     const position = userToken > 0 ? Math.max(0, userToken - currentToken) : 0;
-    const calculation = computeSmartOpdWaitTime({
-      peopleAhead: position,
-      department,
-      configuredAverage: deptConfiguredAverage,
-      currentPatientRemaining: deptConfiguredAverage
+    const currentRemaining = realQueue?.currentPatientRemainingMinutes !== undefined && realQueue?.currentPatientRemainingMinutes !== null
+      ? realQueue.currentPatientRemainingMinutes
+      : (statusDoc?.currentPatientRemainingMinutes ?? deptConfiguredAverage);
+
+    const waitEstObj = calculateWaitTime({
+      opdStatusObj,
+      activeDoctorsCount,
+      waitingCount: position,
+      averageConsultationMinutes: realQueue?.averageConsultationMinutes || deptConfiguredAverage,
+      currentPatientRemainingMinutes: currentRemaining,
+      queueMode: realQueue?.queueMode || opdSchedule?.queueMode || 'SHARED_QUEUE',
     });
 
     return res.json({
@@ -2365,15 +2354,20 @@ router.get('/queue/:facilityId', async (req, res) => {
       totalTokensBooked: totalBooked,
       positionInLine: position,
       peopleAhead: position,
-      estimatedWaitMinutes: calculation.estimatedWaitMinutes,
-      currentPatientRemainingMinutes: calculation.currentPatientRemainingMinutes,
-      averageConsultationMinutes: calculation.generalAverageConsultationMinutes,
-      effectiveAverage: calculation.effectiveAverage,
-      currentPatientStartedAt: null,
+      estimatedWaitMinutes: waitEstObj.estimatedWaitMinutes,
+      waitDisplayText: waitEstObj.displayText,
+      opdStatus: opdStatusObj.opdStatus,
+      opdStatusObj,
+      registrationOpen: opdStatusObj.registrationOpen,
+      currentPatientRemainingMinutes: currentRemaining,
+      averageConsultationMinutes: realQueue?.averageConsultationMinutes || deptConfiguredAverage,
+      effectiveAverage: realQueue?.averageConsultationMinutes || deptConfiguredAverage,
+      currentPatientStartedAt: realQueue?.currentPatientStartedAt || null,
       hasAppointment: hasBookedToken,
       status: userToken === 0 ? 'NO_APPOINTMENT' : position === 0 ? 'NOW_SERVING' : 'WAITING',
-      entries: [],
+      entries: realQueue?.entries || [],
       departmentQueues,
+      scheduleConfig: opdSchedule || null,
       lastUpdated: new Date()
     });
   } catch (err) {

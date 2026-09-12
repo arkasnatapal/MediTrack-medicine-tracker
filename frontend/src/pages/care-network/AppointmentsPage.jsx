@@ -341,7 +341,11 @@ const AppointmentsPage = () => {
           userToken: userAptForFac ? (res.data.userToken || userAptForFac.tokenNumber || 0) : 0,
           currentToken: res.data.currentToken || 0,
           positionInLine: userAptForFac ? (res.data.positionInLine || 0) : 0,
-          estimatedWaitMinutes: userAptForFac ? (res.data.estimatedWaitMinutes || 0) : 0,
+          estimatedWaitMinutes: res.data.estimatedWaitMinutes,
+          waitDisplayText: res.data.waitDisplayText || (res.data.estimatedWaitMinutes ? `~${res.data.estimatedWaitMinutes} Mins` : 'Unavailable'),
+          opdStatus: res.data.opdStatus || 'OPEN',
+          opdStatusObj: res.data.opdStatusObj || null,
+          registrationOpen: res.data.registrationOpen !== false,
           facilityName: facObj?.name || 'Selected Healthcare Facility',
           hasAppointment: !!userAptForFac,
           department: res.data.department || dept,
@@ -512,6 +516,29 @@ const AppointmentsPage = () => {
           </div>
         </div>
 
+        {/* OPD OPERATIONAL STATUS BADGE */}
+        {activeQueue.opdStatusObj && (
+          <div className={`p-3.5 rounded-2xl flex items-center justify-between border ${
+            activeQueue.opdStatus === 'OPEN' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300' :
+            activeQueue.opdStatus === 'BREAK' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300' :
+            activeQueue.opdStatus === 'CLOSING_SOON' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300' :
+            'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                activeQueue.opdStatus === 'OPEN' ? 'bg-emerald-500 animate-pulse' :
+                activeQueue.opdStatus === 'BREAK' || activeQueue.opdStatus === 'CLOSING_SOON' ? 'bg-amber-500' : 'bg-rose-500'
+              }`} />
+              <span className="text-xs font-bold font-mono uppercase">
+                OPD STATUS: {activeQueue.opdStatus.replace('_', ' ')}
+              </span>
+            </div>
+            <span className="text-xs font-semibold">
+              {activeQueue.opdStatusObj.reason || 'Authoritative Status'}
+            </span>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
           <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-blue-200/80 dark:border-white/10 shadow-sm">
             <span className="text-[10px] font-extrabold uppercase text-blue-900 dark:text-blue-200">YOUR TOKEN</span>
@@ -527,8 +554,8 @@ const AppointmentsPage = () => {
           </div>
           <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-blue-200/80 dark:border-white/10 shadow-sm relative overflow-hidden">
             <span className="text-[10px] font-extrabold uppercase text-blue-900 dark:text-blue-200">ESTIMATED WAIT</span>
-            <p className="text-3xl font-black text-cyan-700 dark:text-cyan-300">
-              {activeQueue.userToken === 0 ? '0 Mins' : activeQueue.positionInLine === 0 ? "0 / You're next" : `~${activeQueue.estimatedWaitMinutes} Mins`}
+            <p className="text-2xl sm:text-3xl font-black text-cyan-700 dark:text-cyan-300">
+              {activeQueue.userToken === 0 ? '--' : activeQueue.positionInLine === 0 ? "0 / You're next" : (activeQueue.waitDisplayText || `~${activeQueue.estimatedWaitMinutes || 0} Mins`)}
             </p>
             <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Based on live queue status</p>
           </div>

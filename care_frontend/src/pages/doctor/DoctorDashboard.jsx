@@ -48,6 +48,64 @@ export default function DoctorDashboard() {
   const [mediaMode, setMediaMode] = useState('VIDEO');
   const [micOn, setMicOn] = useState(true);
   const [videoOn, setVideoOn] = useState(true);
+
+  // Doctor Entry Check-in Modal & Shift Status State
+  const [showDoctorCheckinModal, setShowDoctorCheckinModal] = useState(false);
+  const [checkinFacilityId, setCheckinFacilityId] = useState('');
+  const [checkinDepartment, setCheckinDepartment] = useState('General Medicine');
+  const [checkinInTime, setCheckinInTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [doctorShiftAttendance, setDoctorShiftAttendance] = useState(null);
+
+  const handleDoctorCheckinSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      const targetFacId = checkinFacilityId || associations[0]?.facility?._id || user?.facilityId || user?.facility;
+      const todayStr = new Date().toISOString().split('T')[0];
+      const res = await api.post('/doctors/checkin', {
+        doctorId: user?.doctorId || user?._id,
+        facilityId: targetFacId,
+        department: checkinDepartment,
+        inTime: checkinInTime ? new Date(`${todayStr}T${checkinInTime}:00`).toISOString() : new Date().toISOString(),
+      });
+      setDoctorShiftAttendance(res.data.attendance);
+      setShowDoctorCheckinModal(false);
+      alert('✓ Hospital Entry Check-in logged! Status set to AVAILABLE.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to check in doctor');
+    }
+  };
+
+  const handleDoctorStatusToggle = async (status, reason = '') => {
+    try {
+      const targetFacId = checkinFacilityId || associations[0]?.facility?._id || user?.facilityId || user?.facility;
+      const res = await api.post('/doctors/availability', {
+        doctorId: user?.doctorId || user?._id,
+        facilityId: targetFacId,
+        department: checkinDepartment,
+        status,
+        reason,
+      });
+      setDoctorShiftAttendance(res.data.attendance);
+      alert(`✓ Status updated to ${status}`);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update doctor status');
+    }
+  };
+
+  const handleDoctorTerminateShift = async () => {
+    if (!window.confirm('Are you sure you want to terminate your job shift for today? Out-time will be logged.')) return;
+    try {
+      const targetFacId = checkinFacilityId || associations[0]?.facility?._id || user?.facilityId || user?.facility;
+      const res = await api.post('/doctors/checkout', {
+        doctorId: user?.doctorId || user?._id,
+        facilityId: targetFacId,
+      });
+      setDoctorShiftAttendance(res.data.attendance);
+      alert('✓ Shift terminated for today. Out-time logged successfully.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to terminate shift');
+    }
+  };
   const [remoteStreamActive, setRemoteStreamActive] = useState(false);
   const [modeSwitchToast, setModeSwitchToast] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -963,19 +1021,128 @@ export default function DoctorDashboard() {
               <span>Specialization: <strong className="text-cyan-400">{doctorSpec}</strong></span>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
+            <button
+              onClick={() => setShowDoctorCheckinModal(true)}
+              className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow transition"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Hospital Check-in Modal</span>
+            </button>
+            <button
+              onClick={() => handleDoctorStatusToggle('AVAILABLE')}
+              className="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs"
+            >
+              🟢 Available
+            </button>
+            <button
+              onClick={() => handleDoctorStatusToggle('ON_BREAK')}
+              className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs"
+            >
+              🟡 Take Break
+            </button>
+            <button
+              onClick={() => handleDoctorStatusToggle('UNAVAILABLE')}
+              className="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs"
+            >
+              🔴 Unavailable
+            </button>
+            <button
+              onClick={handleDoctorTerminateShift}
+              className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-rose-400 border border-rose-500/30 font-extrabold text-xs"
+            >
+              ⏹️ Terminate Shift
+            </button>
             <button
               onClick={() => setShowDoctorHistoryModal(true)}
-              className="flex-1 sm:flex-none justify-center px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-teal-300 text-xs font-semibold flex items-center gap-2 border border-teal-500/30 transition shadow-sm"
+              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-teal-300 text-xs font-semibold flex items-center gap-2 border border-teal-500/30 transition shadow-sm"
               title="Open Clinical History Archive Modal"
             >
               <History className="w-3.5 h-3.5 text-teal-400" /> History ({teleSessions.filter(s => s.status === 'CLOSED' || s.status === 'COMPLETED').length + referrals.filter(r => r.status === 'COMPLETED').length})
             </button>
-            <button onClick={loadDoctorData} className="flex-1 sm:flex-none justify-center px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-800 transition">
+            <button onClick={loadDoctorData} className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-800 transition">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
             </button>
           </div>
         </div>
+
+        {/* DOCTOR ENTRY CHECK-IN MODAL */}
+        {showDoctorCheckinModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-teal-400" />
+                  <h3 className="text-base font-bold text-white">Hospital Entry &amp; In-Time Check-in</h3>
+                </div>
+                <button onClick={() => setShowDoctorCheckinModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleDoctorCheckinSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Select Hospital / Facility</label>
+                  <select
+                    value={checkinFacilityId}
+                    onChange={(e) => setCheckinFacilityId(e.target.value)}
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl font-bold text-white"
+                  >
+                    <option value="">{associations[0]?.facility?.name || 'Care Network Facility'}</option>
+                    {associations.map(a => (
+                      <option key={a.associationId} value={a.facility?._id}>
+                        {a.facility?.name} ({a.department})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Select Department</label>
+                  <select
+                    value={checkinDepartment}
+                    onChange={(e) => setCheckinDepartment(e.target.value)}
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl font-bold text-white"
+                  >
+                    <option value="General Medicine">General Medicine</option>
+                    <option value="Cardiology OPD">Cardiology OPD</option>
+                    <option value="Pediatrics OPD">Pediatrics OPD</option>
+                    <option value="Orthopedics OPD">Orthopedics OPD</option>
+                    <option value="Neurology OPD">Neurology OPD</option>
+                    <option value="Dermatology OPD">Dermatology OPD</option>
+                    <option value="ENT OPD">ENT OPD</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Hospital Entry In-Time</label>
+                  <input
+                    type="time"
+                    value={checkinInTime}
+                    onChange={(e) => setCheckinInTime(e.target.value)}
+                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl font-mono font-bold text-teal-400"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDoctorCheckinModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-xs shadow"
+                  >
+                    Confirm Entry &amp; Set Available
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* ----------------- TAB 1: CLINICAL QUEUE ----------------- */}
         {activeTab === 'queue' && (
