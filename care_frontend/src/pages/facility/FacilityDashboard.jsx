@@ -143,13 +143,14 @@ export default function FacilityDashboard() {
     if (e && e.preventDefault) e.preventDefault();
     try {
       const facId = getFacilityIdStr();
+      const targetDept = selectedOpdScheduleDept || 'General Medicine';
       const res = await api.post('/queues/opd-schedule', {
         facilityId: facId,
-        department: selectedOpdScheduleDept,
+        department: targetDept,
         ...opdScheduleDetails,
       });
       if (res.data?.opdStatusObj) setOpdEngineStatus(res.data.opdStatusObj);
-      alert(`✓ OPD Operating Hours & Schedule for ${selectedOpdScheduleDept} saved successfully!`);
+      alert(`✓ OPD Operating Hours & Schedule for ${targetDept} saved successfully!`);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update OPD timetable');
     }

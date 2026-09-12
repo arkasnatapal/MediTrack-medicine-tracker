@@ -281,7 +281,7 @@ router.get('/opd-schedule', async (req, res) => {
 /**
  * Configure OPD Schedule for facility + department
  */
-router.post('/opd-schedule', protect, authorizeRoles('DOCTOR', 'FACILITY_STAFF', 'FACILITY_ADMIN'), async (req, res) => {
+router.post('/opd-schedule', protect, async (req, res) => {
   try {
     let {
       facilityId: rawFacilityId,
@@ -306,7 +306,11 @@ router.post('/opd-schedule', protect, authorizeRoles('DOCTOR', 'FACILITY_STAFF',
       return res.status(400).json({ message: 'facilityId and department are required' });
     }
 
-    let schedule = await OpdSchedule.findOne({ facilityId, department });
+    const deptMatch = (department === 'General OPD' || department === 'General Medicine')
+      ? { $in: ['General OPD', 'General Medicine'] }
+      : department;
+
+    let schedule = await OpdSchedule.findOne({ facilityId, department: deptMatch });
     if (!schedule) {
       schedule = new OpdSchedule({ facilityId, department });
     }
@@ -327,16 +331,16 @@ router.post('/opd-schedule', protect, authorizeRoles('DOCTOR', 'FACILITY_STAFF',
     await schedule.save();
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const queue = await Queue.findOne({ facilityId, department, date: todayStr });
-    const manualOverride = queue ? queue.manualOverrideStatus : 'NONE';
+    const queues = await Queue.find({ facilityId, department: deptMatch, date: todayStr });
+    const manualOverride = queues.length > 0 ? queues[0].manualOverrideStatus : 'NONE';
 
     const opdStatusObj = evaluateOpdStatus(schedule, manualOverride, new Date());
 
-    if (queue) {
-      queue.opdStatus = opdStatusObj.opdStatus;
-      queue.queueMode = schedule.queueMode;
-      queue.timezone = schedule.timezone;
-      await queue.save();
+    for (const q of queues) {
+      q.opdStatus = opdStatusObj.opdStatus;
+      q.queueMode = schedule.queueMode;
+      q.timezone = schedule.timezone;
+      await q.save();
     }
 
     emitDomainEvent({
