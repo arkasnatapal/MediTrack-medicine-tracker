@@ -144,9 +144,8 @@ const initRealtimeService = (httpServer) => {
               isAuthorized = true;
             }
           } else if (prefix === 'facility') {
-            if (targetId === '*' || targetId === 'me' || userFacId === targetId || userRole === 'FACILITY_ADMIN' || userRole === 'FACILITY_STAFF' || userRole === 'DOCTOR' || userRole === 'SYSTEM_ADMIN') {
-              isAuthorized = true;
-            }
+            // Public facility OPD status, queue tokens, and wait times are public telemetry
+            isAuthorized = true;
           }
         }
 

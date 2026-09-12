@@ -20,6 +20,7 @@ const CITIES_LIST = [
 
 const OPD_DEPARTMENTS = [
   'General OPD',
+  'General Medicine',
   'Cardiology OPD',
   'Pediatrics OPD',
   'Orthopedics OPD',
@@ -362,6 +363,12 @@ const AppointmentsPage = () => {
   const handleBook = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (activeQueue.registrationOpen === false || activeQueue.opdStatus === 'PAUSED' || activeQueue.opdStatus === 'CLOSED' || activeQueue.opdStatus === 'REGISTRATION_CLOSED' || activeQueue.opdStatus === 'HOLIDAY') {
+      alert(`🚫 OPD Booking Unavailable: OPD status is currently ${activeQueue.opdStatus ? activeQueue.opdStatus.replace('_', ' ') : 'CLOSED'}. ${activeQueue.opdStatusObj?.reason || ''}`);
+      return;
+    }
+
     setIsSubmitting(true);
     const facilityObj = facilities.find(f => (f.facilityId === selectedFacilityId || f._id === selectedFacilityId));
     const token = localStorage.getItem('token');
@@ -703,12 +710,33 @@ const AppointmentsPage = () => {
                   </div>
                 </div>
 
+                {/* OPD BOOKING UNAVAILABLE WARNING */}
+                {(activeQueue.registrationOpen === false || activeQueue.opdStatus === 'PAUSED' || activeQueue.opdStatus === 'CLOSED' || activeQueue.opdStatus === 'REGISTRATION_CLOSED' || activeQueue.opdStatus === 'HOLIDAY') && (
+                  <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-800 dark:text-rose-200 text-xs font-bold flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="block font-black uppercase text-[11px] tracking-wider text-rose-600 dark:text-rose-400">
+                        OPD Booking Unavailable ({activeQueue.opdStatus ? activeQueue.opdStatus.replace('_', ' ') : 'CLOSED'})
+                      </span>
+                      <p className="font-medium mt-0.5 leading-snug">
+                        {activeQueue.opdStatusObj?.reason || 'Token generation is currently paused or closed by hospital operational schedule.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-all"
+                  disabled={isSubmitting || activeQueue.registrationOpen === false || activeQueue.opdStatus === 'PAUSED' || activeQueue.opdStatus === 'CLOSED' || activeQueue.opdStatus === 'REGISTRATION_CLOSED' || activeQueue.opdStatus === 'HOLIDAY'}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-75 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? 'Booking Appointment...' : 'Confirm Appointment & Issue Token'}
+                  {isSubmitting ? (
+                    <span>Booking Appointment...</span>
+                  ) : (activeQueue.registrationOpen === false || activeQueue.opdStatus === 'PAUSED' || activeQueue.opdStatus === 'CLOSED' || activeQueue.opdStatus === 'REGISTRATION_CLOSED' || activeQueue.opdStatus === 'HOLIDAY') ? (
+                    <span>🚫 Booking Unavailable ({activeQueue.opdStatus ? activeQueue.opdStatus.replace('_', ' ') : 'CLOSED'})</span>
+                  ) : (
+                    <span>Confirm Appointment &amp; Issue Token</span>
+                  )}
                 </button>
               </form>
             </div>

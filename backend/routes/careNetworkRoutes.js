@@ -2253,12 +2253,25 @@ router.get('/queue/:facilityId', async (req, res) => {
     const hasBookedToken = tokenNumber !== undefined && tokenNumber !== null && tokenNumber !== '' && !isNaN(parseInt(tokenNumber)) && parseInt(tokenNumber) > 0;
     const userToken = hasBookedToken ? parseInt(tokenNumber) : 0;
 
+    const deptMatch = (department === 'General OPD' || department === 'General Medicine')
+      ? { $in: ['General OPD', 'General Medicine'] }
+      : department;
+
+    let facIdObj = null;
+    if (mongoose.Types.ObjectId.isValid(facilityId)) {
+      facIdObj = new mongoose.Types.ObjectId(facilityId);
+    }
+
     // Fetch OpdSchedule document if available
     let opdSchedule = null;
     try {
       opdSchedule = await mongoose.connection.collection('opdschedules').findOne({
-        department,
-        $or: [{ facilityIdStr: facilityId }, { facilityId: facilityId }]
+        department: deptMatch,
+        $or: [
+          { facilityIdStr: facilityId },
+          { facilityId: facilityId },
+          ...(facIdObj ? [{ facilityId: facIdObj }] : [])
+        ]
       });
     } catch (eSch) {}
 
@@ -2273,7 +2286,8 @@ router.get('/queue/:facilityId', async (req, res) => {
         date: todayStr,
         $or: [
           { facilityIdStr: facilityId },
-          { facilityId: facilityId }
+          { facilityId: facilityId },
+          ...(facIdObj ? [{ facilityId: facIdObj }] : [])
         ]
       }).toArray();
     } catch (err) {
@@ -2295,11 +2309,12 @@ router.get('/queue/:facilityId', async (req, res) => {
     let realQueue = null;
     try {
       realQueue = await mongoose.connection.collection('carequeues').findOne({
-        department: department,
+        department: deptMatch,
         date: todayStr,
         $or: [
           { facilityIdStr: facilityId },
-          { facilityId: facilityId }
+          { facilityId: facilityId },
+          ...(facIdObj ? [{ facilityId: facIdObj }] : [])
         ]
       });
 
@@ -2308,7 +2323,8 @@ router.get('/queue/:facilityId', async (req, res) => {
           date: todayStr,
           $or: [
             { facilityIdStr: facilityId },
-            { facilityId: facilityId }
+            { facilityId: facilityId },
+            ...(facIdObj ? [{ facilityId: facIdObj }] : [])
           ]
         });
       }

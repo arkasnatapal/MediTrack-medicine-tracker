@@ -183,7 +183,11 @@ router.get('/opd-schedule', async (req, res) => {
       return res.status(400).json({ message: 'facilityId and department required' });
     }
 
-    let schedule = await OpdSchedule.findOne({ facilityId, department });
+    const deptMatch = (department === 'General OPD' || department === 'General Medicine')
+      ? { $in: ['General OPD', 'General Medicine'] }
+      : department;
+
+    let schedule = await OpdSchedule.findOne({ facilityId, department: deptMatch });
     if (!schedule) {
       schedule = await OpdSchedule.create({
         facilityId,
@@ -197,7 +201,7 @@ router.get('/opd-schedule', async (req, res) => {
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const queue = await Queue.findOne({ facilityId, department, date: todayStr });
+    const queue = await Queue.findOne({ facilityId, department: deptMatch, date: todayStr });
     const manualOverride = queue ? queue.manualOverrideStatus : 'NONE';
 
     const opdStatusObj = evaluateOpdStatus(schedule, manualOverride, new Date());
@@ -306,7 +310,11 @@ router.post('/opd-status', protect, authorizeRoles('DOCTOR', 'FACILITY_STAFF', '
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
-    let queue = await Queue.findOne({ facilityId, department, date: todayStr });
+    const deptMatch = (department === 'General OPD' || department === 'General Medicine')
+      ? { $in: ['General OPD', 'General Medicine'] }
+      : department;
+
+    let queue = await Queue.findOne({ facilityId, department: deptMatch, date: todayStr });
     if (!queue) {
       queue = await Queue.create({
         facilityId,
@@ -345,7 +353,7 @@ router.post('/opd-status', protect, authorizeRoles('DOCTOR', 'FACILITY_STAFF', '
     queue.manualOverrideStatus = override;
     await queue.save();
 
-    const schedule = await OpdSchedule.findOne({ facilityId, department });
+    const schedule = await OpdSchedule.findOne({ facilityId, department: deptMatch });
     const opdStatusObj = evaluateOpdStatus(schedule, override, new Date());
     queue.opdStatus = opdStatusObj.opdStatus;
     await queue.save();
