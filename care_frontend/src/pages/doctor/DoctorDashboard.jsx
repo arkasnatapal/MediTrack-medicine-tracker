@@ -64,6 +64,12 @@ export default function DoctorDashboard() {
   const [liveKitRoomName, setLiveKitRoomName] = useState('');
   const [liveKitCallType, setLiveKitCallType] = useState('VIDEO');
 
+  // Smart OPD Wait-Time Doctor Control & Timer States
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [customEstimateInput, setCustomEstimateInput] = useState('');
+  const [showOvertimeModal, setShowOvertimeModal] = useState(false);
+  const [overtimeDismissedForToken, setOvertimeDismissedForToken] = useState(null);
+
   const timerRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -399,6 +405,34 @@ export default function DoctorDashboard() {
     }
   };
 
+  // Live Timer for Current Consultation & Overtime Monitoring
+  useEffect(() => {
+    let interval = null;
+    if (queue?.servingToken) {
+      interval = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+    return () => clearInterval(interval);
+  }, [queue?.servingToken]);
+
+  // Check if current consultation exceeds expected general average & trigger Overtime Popup
+  useEffect(() => {
+    if (!queue || !queue.servingToken) {
+      setShowOvertimeModal(false);
+      return;
+    }
+    const generalAvg = queue.averageConsultationMinutes || 7;
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+
+    // Trigger popup modal if elapsed time exceeds general average and not yet dismissed for this token
+    if (elapsedMinutes >= generalAvg && overtimeDismissedForToken !== queue.servingToken) {
+      setShowOvertimeModal(true);
+    }
+  }, [elapsedSeconds, queue?.servingToken, queue?.averageConsultationMinutes, overtimeDismissedForToken]);
+
   // Queue Action Controller (NEXT PATIENT / COMPLETE)
   const handleQueueAction = async (action, tokenNumber) => {
     if (!queue) return;
@@ -409,8 +443,32 @@ export default function DoctorDashboard() {
         tokenNumber,
       });
       setQueue(res.data);
+      setElapsedSeconds(0);
+      setShowOvertimeModal(false);
+      setOvertimeDismissedForToken(null);
     } catch (err) {
       alert(err.response?.data?.message || 'Queue action failed');
+    }
+  };
+
+  // Doctor Updates Current Patient Remaining Time Estimate
+  const handleUpdateEstimate = async (remainingMins) => {
+    if (!queue) return;
+    const parsed = parseInt(remainingMins);
+    if (isNaN(parsed) || parsed < 0) return alert('Please enter a valid estimate in minutes.');
+    try {
+      const res = await api.post('/queues/action', {
+        queueId: queue._id,
+        action: 'UPDATE_ESTIMATE',
+        remainingMinutes: parsed,
+      });
+      setQueue(res.data);
+      setShowOvertimeModal(false);
+      if (queue?.servingToken) {
+        setOvertimeDismissedForToken(queue.servingToken);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update estimate');
     }
   };
 
@@ -922,21 +980,110 @@ export default function DoctorDashboard() {
         {/* ----------------- TAB 1: CLINICAL QUEUE ----------------- */}
         {activeTab === 'queue' && (
           <div className="space-y-6 min-w-0 max-w-full">
-            <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 max-w-full">
-              <div>
-                <span className="text-xs text-slate-400 font-semibold block mb-1">CURRENTLY SERVING OPD TOKEN</span>
-                <div className="text-3xl sm:text-4xl font-extrabold text-cyan-400">{queue?.servingToken ? `Token #${queue.servingToken}` : 'No active consult'}</div>
-                <p className="text-xs text-slate-400 mt-1">Department: <strong className="text-white">{queue?.department || 'General Medicine'}</strong></p>
+            {/* CURRENT PATIENT & WAIT-TIME CONTROLS BANNER */}
+            <div className="p-4 sm:p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-5 max-w-full shadow-2xl">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold font-mono uppercase">
+                      CURRENT PATIENT IN CONSULTATION
+                    </span>
+                    {Math.floor(elapsedSeconds / 60) >= (queue?.averageConsultationMinutes || 7) && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold font-mono uppercase flex items-center gap-1 animate-pulse">
+                        <AlertTriangle className="w-3 h-3" /> Overtime
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-3xl sm:text-4xl font-extrabold text-cyan-400 mt-1">
+                    {queue?.servingToken ? `Token #${queue.servingToken}` : 'No Active Consult'}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Department: <strong className="text-white">{queue?.department || 'General Medicine'}</strong>
+                  </p>
+                </div>
+
+                {/* LIVE ELAPSED TIMER & ACTIONS */}
+                <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                  <div className="px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-center min-w-[120px]">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase block tracking-wider">ELAPSED TIME</span>
+                    <span className={`text-xl font-mono font-black ${Math.floor(elapsedSeconds / 60) >= (queue?.averageConsultationMinutes || 7) ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      {String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:{String(elapsedSeconds % 60).padStart(2, '0')}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 flex-1 md:flex-none">
+                    <button onClick={() => handleQueueAction('NEXT')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-cyan-500/20 transition active:scale-95">
+                      Call Next Patient
+                    </button>
+                    <button onClick={() => handleQueueAction('COMPLETE')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition active:scale-95">
+                      Complete
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex flex-wrap gap-3 w-full md:w-auto">
-                <button onClick={() => handleQueueAction('NEXT')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-cyan-500/20 transition active:scale-95">
-                  Call Next Patient
-                </button>
-                <button onClick={() => handleQueueAction('COMPLETE')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition active:scale-95">
-                  Complete Consultation
-                </button>
-              </div>
+              {/* ESTIMATE CONTROLS FOR CURRENT PATIENT */}
+              {queue?.servingToken > 0 && (
+                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <span className="text-xs font-bold text-slate-200">CURRENT PATIENT REMAINING ESTIMATE</span>
+                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                      <span>General Average: <strong className="text-cyan-300">{queue?.averageConsultationMinutes || 7} min</strong></span>
+                      <span>•</span>
+                      <span>Current Remaining: <strong className="text-amber-400">{queue?.currentPatientRemainingMinutes ?? (queue?.averageConsultationMinutes || 7)} min</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    <button
+                      onClick={() => handleUpdateEstimate(queue?.averageConsultationMinutes || 7)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold transition"
+                    >
+                      Normal ({queue?.averageConsultationMinutes || 7}m)
+                    </button>
+                    <button
+                      onClick={() => handleUpdateEstimate((queue?.currentPatientRemainingMinutes || 7) + 5)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition"
+                    >
+                      +5 Mins
+                    </button>
+                    <button
+                      onClick={() => handleUpdateEstimate((queue?.currentPatientRemainingMinutes || 7) + 10)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition"
+                    >
+                      +10 Mins
+                    </button>
+                    <button
+                      onClick={() => handleUpdateEstimate((queue?.currentPatientRemainingMinutes || 7) + 15)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition"
+                    >
+                      +15 Mins
+                    </button>
+
+                    <div className="flex items-center gap-1.5 ml-auto lg:ml-2">
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Mins"
+                        value={customEstimateInput}
+                        onChange={(e) => setCustomEstimateInput(e.target.value)}
+                        className="w-16 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
+                      />
+                      <button
+                        onClick={() => {
+                          if (customEstimateInput) {
+                            handleUpdateEstimate(customEstimateInput);
+                            setCustomEstimateInput('');
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs transition"
+                      >
+                        Update
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6 min-w-0 max-w-full">
@@ -3200,6 +3347,69 @@ export default function DoctorDashboard() {
             </div>
           </div>
         )}
+
+      {/* OVERTIME CONSULTATION PROMPT MODAL */}
+      {showOvertimeModal && queue?.servingToken > 0 && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                <AlertTriangle className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Consultation Running Overtime</h3>
+                <p className="text-xs text-amber-400 font-mono">Token #{queue.servingToken} • Elapsed: {Math.floor(elapsedSeconds / 60)} mins</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              This consultation has exceeded the normal expected average of <strong className="text-white">{queue?.averageConsultationMinutes || 7} minutes</strong>. Please update the estimated remaining time so waiting patients get accurate live wait times.
+            </p>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-extrabold uppercase text-slate-400">Quickly extend remaining estimate:</span>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => handleUpdateEstimate(5)}
+                  className="py-2.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition"
+                >
+                  +5 Mins
+                </button>
+                <button
+                  onClick={() => handleUpdateEstimate(10)}
+                  className="py-2.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition"
+                >
+                  +10 Mins
+                </button>
+                <button
+                  onClick={() => handleUpdateEstimate(15)}
+                  className="py-2.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition"
+                >
+                  +15 Mins
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
+              <button
+                onClick={() => {
+                  setShowOvertimeModal(false);
+                  if (queue?.servingToken) setOvertimeDismissedForToken(queue.servingToken);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-semibold"
+              >
+                Keep Current / Dismiss
+              </button>
+              <button
+                onClick={() => handleQueueAction('NEXT')}
+                className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold"
+              >
+                Call Next Patient
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </main>
     </div>
   );

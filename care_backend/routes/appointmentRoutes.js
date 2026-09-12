@@ -94,7 +94,7 @@ router.post('/', async (req, res) => {
       type: type || 'IN_PERSON',
       symptoms,
       triageLevel: triageLevel || 'NORMAL',
-      status: 'CONFIRMED',
+      status: 'PENDING_APPROVAL',
     });
 
     const facility = await Facility.findById(facilityId);

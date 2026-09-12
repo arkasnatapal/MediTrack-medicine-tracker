@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Milestone, CheckCircle2, Clock, Calendar, Activity, GitMerge, Pill, Stethoscope, Video, Sparkles, ChevronRight, Play, FileText, Download, X, ExternalLink, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { Milestone, CheckCircle2, Clock, Calendar, Activity, GitMerge, Pill, Stethoscope, Video, Sparkles, ChevronRight, Play, FileText, Download, X, ExternalLink, User, ChevronDown, ChevronUp, Ticket, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import useRealtimeSync from '../../hooks/useRealtimeSync';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -13,10 +14,103 @@ const CareJourneyPage = () => {
   const [loading, setLoading] = useState(true);
   const [expandedCards, setExpandedCards] = useState({});
 
+  // Active OPD Appointments & Queue Live Widget State
+  const [activeAppointments, setActiveAppointments] = useState([]);
+  const [queueDataMap, setQueueDataMap] = useState({});
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+
+  const getUserIdFromToken = () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload._id || payload.id;
+    } catch (e) {
+      return null;
+    }
+  };
+  const currentUserId = getUserIdFromToken();
+
+  useRealtimeSync({
+    channels: [
+      'global',
+      currentUserId ? `patient:${currentUserId}` : null,
+      currentUserId ? `user:${currentUserId}` : null,
+    ].filter(Boolean),
+    onEvent: (eventPayload) => {
+      console.log('⚡ Realtime Event in CareJourneyPage:', eventPayload);
+      fetchCareJourney();
+      fetchPrescriptions();
+      fetchActiveAppointmentsAndQueues();
+    },
+    onReconnectRefetch: () => {
+      fetchCareJourney();
+      fetchPrescriptions();
+      fetchActiveAppointmentsAndQueues();
+    }
+  });
+
   useEffect(() => {
     fetchCareJourney();
     fetchPrescriptions();
+    fetchActiveAppointmentsAndQueues();
   }, []);
+
+  useEffect(() => {
+    if (!activeAppointments || activeAppointments.length === 0) return;
+    const interval = setInterval(() => {
+      fetchActiveAppointmentsAndQueues();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [activeAppointments]);
+
+  const fetchActiveAppointmentsAndQueues = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/care-network/appointments/my`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.data && res.data.appointments) {
+        const activeOnly = res.data.appointments.filter(
+          a => a.status !== 'COMPLETED' && a.status !== 'CANCELLED'
+        );
+        setActiveAppointments(activeOnly);
+
+        const newMap = {};
+        for (const apt of activeOnly) {
+          const aptKey = apt.appointmentId || apt._id;
+          const facId = apt.facilityId || 'FAC-DEFAULT';
+          const dept = apt.department || 'General OPD';
+          const userAptToken = apt.tokenNumber || 0;
+          try {
+            const qRes = await axios.get(`${API_BASE}/care-network/queue/${facId}?department=${encodeURIComponent(dept)}&tokenNumber=${userAptToken || ''}`);
+            if (qRes.data && qRes.data.success) {
+              newMap[aptKey] = {
+                userToken: userAptToken > 0 ? (qRes.data.userToken || userAptToken) : 0,
+                currentToken: qRes.data.currentToken || 0,
+                positionInLine: userAptToken > 0 ? (qRes.data.positionInLine !== undefined ? qRes.data.positionInLine : Math.max(0, userAptToken - (qRes.data.currentToken || 1))) : 0,
+                estimatedWaitMinutes: userAptToken > 0 ? (qRes.data.estimatedWaitMinutes || 0) : 0,
+                currentPatientRemainingMinutes: qRes.data.currentPatientRemainingMinutes || 7,
+                averageConsultationMinutes: qRes.data.averageConsultationMinutes || 7
+              };
+            }
+          } catch (qErr) {
+            newMap[aptKey] = {
+              userToken: userAptToken,
+              currentToken: 1,
+              positionInLine: userAptToken > 0 ? Math.max(0, userAptToken - 1) : 0,
+              estimatedWaitMinutes: userAptToken > 0 ? Math.max(0, userAptToken - 1) * 7 : 0
+            };
+          }
+        }
+        setQueueDataMap(newMap);
+      }
+    } catch (err) {
+      console.warn('Error fetching active appointments for care journey:', err);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
 
   const fetchCareJourney = async () => {
     try {
@@ -160,6 +254,143 @@ const CareJourneyPage = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ACTIVE OPD QUEUE & APPOINTMENTS OVERVIEW LIVE WIDGET */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-7 rounded-3xl text-white shadow-xl border border-indigo-500/30 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
+              <Ticket className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-white tracking-wide">ACTIVE OPD APPOINTMENTS &amp; LIVE QUEUE MONITOR</h2>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold uppercase font-mono flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> REAL-TIME SYNC
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium">Live token status, people ahead &amp; estimated wait time</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              onClick={fetchActiveAppointmentsAndQueues}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${loadingAppointments ? 'animate-spin' : ''}`} />
+              <span>Refresh Queue</span>
+            </button>
+            <button
+              onClick={() => navigate('/care-network/appointments')}
+              className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold flex items-center gap-1 transition"
+            >
+              <span>Book / Manage</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {activeAppointments.length === 0 ? (
+          <div className="p-6 text-center bg-slate-950/60 rounded-2xl border border-dashed border-slate-800 space-y-2">
+            <Clock className="w-8 h-8 text-slate-500 mx-auto" />
+            <p className="text-xs text-slate-300 font-semibold">No active OPD appointments currently in queue.</p>
+            <p className="text-[11px] text-slate-500">Book an appointment at a nearby public healthcare facility to monitor your live token status, people ahead, and estimated wait time here.</p>
+            <button
+              onClick={() => navigate('/care-network/appointments')}
+              className="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition"
+            >
+              Book OPD Appointment
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activeAppointments.map(apt => {
+              const aptKey = apt.appointmentId || apt._id;
+              const qInfo = queueDataMap[aptKey] || {
+                userToken: apt.tokenNumber || 0,
+                currentToken: 1,
+                positionInLine: Math.max(0, (apt.tokenNumber || 1) - 1),
+                estimatedWaitMinutes: Math.max(0, (apt.tokenNumber || 1) - 1) * 7
+              };
+
+              const userToken = apt.tokenNumber || qInfo.userToken || 0;
+              const currentToken = qInfo.currentToken || 1;
+              const peopleAhead = qInfo.positionInLine !== undefined ? qInfo.positionInLine : Math.max(0, userToken - currentToken);
+              const estWait = qInfo.estimatedWaitMinutes || 0;
+
+              const isPending = apt.status === 'PENDING_APPROVAL' || apt.status === 'REQUESTED' || apt.status === 'BOOKED';
+              const isConfirmed = apt.status === 'CONFIRMED';
+              const isCheckedIn = apt.status === 'CHECKED_IN';
+              const isConsulting = apt.status === 'IN_CONSULTATION';
+
+              return (
+                <div
+                  key={aptKey}
+                  className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4 shadow-lg hover:border-cyan-500/50 transition relative overflow-hidden group"
+                >
+                  {/* Top Bar: Hospital & Status */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
+                          {apt.facilityName || 'Healthcare Center'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-cyan-400 font-semibold">
+                        Department: {apt.department || 'General OPD'}
+                      </p>
+                    </div>
+
+                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 flex items-center gap-1 ${
+                      isConfirmed ? 'bg-blue-600 text-white shadow-sm border border-blue-400 font-black' :
+                      isCheckedIn ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40' :
+                      isConsulting ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse' :
+                      'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+                    }`}>
+                      {isPending ? '⏳ Awaiting Hospital Permission' : isConfirmed ? '✓ CONFIRMED' : apt.status}
+                    </span>
+                  </div>
+
+                  {/* 4 Metrics Grid */}
+                  <div className="grid grid-cols-4 gap-2 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+                    <div>
+                      <span className="text-[9px] font-extrabold text-slate-400 block uppercase">YOUR TOKEN</span>
+                      <span className="text-lg font-black text-white font-mono">#{userToken || '--'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-extrabold text-slate-400 block uppercase">NOW SERVING</span>
+                      <span className="text-lg font-black text-emerald-400 font-mono">#{currentToken}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-extrabold text-slate-400 block uppercase">PEOPLE AHEAD</span>
+                      <span className="text-lg font-black text-amber-300 font-mono">{peopleAhead}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-extrabold text-slate-400 block uppercase">ESTIMATED WAIT</span>
+                      <span className="text-lg font-black text-cyan-300 font-mono">
+                        {peopleAhead === 0 && userToken > 0 ? "0 / Next" : `~${estWait}m`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Doctor & Time slot info */}
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-900">
+                    <div className="flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Doctor: <strong className="text-slate-200">{apt.doctorName || 'Duty Medical Officer'}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Slot: <strong className="text-slate-200">{apt.time || apt.timeSlot || '09:30 AM'}</strong></span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* TIMELINE TREE */}

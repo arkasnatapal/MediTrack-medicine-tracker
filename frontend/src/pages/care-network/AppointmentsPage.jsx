@@ -345,7 +345,9 @@ const AppointmentsPage = () => {
           facilityName: facObj?.name || 'Selected Healthcare Facility',
           hasAppointment: !!userAptForFac,
           department: res.data.department || dept,
-          departmentQueues: res.data.departmentQueues || {}
+          departmentQueues: res.data.departmentQueues || {},
+          averageConsultationMinutes: res.data.averageConsultationMinutes || 7,
+          currentPatientRemainingMinutes: res.data.currentPatientRemainingMinutes || 7
         });
       }
     } catch (err) {
@@ -372,7 +374,7 @@ const AppointmentsPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setBookingSuccess(`Token #${res.data.tokenNumber} reserved at ${facilityObj ? facilityObj.name : 'Hospital'} for ${date} at ${time}`);
+      setBookingSuccess(`Token #${res.data.tokenNumber} requested at ${facilityObj ? facilityObj.name : 'Hospital'} for ${date} at ${time}. Awaiting hospital permission before confirmation.`);
       fetchAppointments();
       if (selectedFacilityId) fetchQueueStatus(selectedFacilityId, department);
       setTimeout(() => setBookingSuccess(null), 6000);
@@ -523,9 +525,12 @@ const AppointmentsPage = () => {
             <span className="text-[10px] font-extrabold uppercase text-blue-900 dark:text-blue-200">PEOPLE AHEAD</span>
             <p className="text-3xl font-black text-amber-600 dark:text-amber-300">{activeQueue.positionInLine}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-blue-200/80 dark:border-white/10 shadow-sm">
+          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-blue-200/80 dark:border-white/10 shadow-sm relative overflow-hidden">
             <span className="text-[10px] font-extrabold uppercase text-blue-900 dark:text-blue-200">ESTIMATED WAIT</span>
-            <p className="text-3xl font-black text-cyan-700 dark:text-cyan-300">{activeQueue.estimatedWaitMinutes} Mins</p>
+            <p className="text-3xl font-black text-cyan-700 dark:text-cyan-300">
+              {activeQueue.userToken === 0 ? '0 Mins' : activeQueue.positionInLine === 0 ? "0 / You're next" : `~${activeQueue.estimatedWaitMinutes} Mins`}
+            </p>
+            <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Based on live queue status</p>
           </div>
         </div>
       </div>
@@ -1045,12 +1050,19 @@ const AppointmentsPage = () => {
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                             <span>Done</span>
                           </button>
-                          <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+                          <span className={`text-xs font-extrabold px-3 py-1 rounded-full uppercase flex items-center gap-1 ${
                             apt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                            apt.status === 'CONFIRMED' ? 'bg-blue-600 text-white shadow-sm border border-blue-400 font-black' :
+                            apt.status === 'CHECKED_IN' ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40' :
+                            apt.status === 'IN_CONSULTATION' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' :
                             apt.status === 'RESCHEDULED' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' :
-                            'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                            'bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40 animate-pulse'
                           }`}>
-                            {apt.status}
+                            {apt.status === 'PENDING_APPROVAL' || apt.status === 'REQUESTED' || apt.status === 'BOOKED'
+                              ? '⏳ Awaiting Hospital Permission'
+                              : apt.status === 'CONFIRMED'
+                              ? 'CONFIRMED'
+                              : apt.status}
                           </span>
                           <button
                             onClick={() => handleDeleteAppointment(apt.appointmentId || apt._id)}

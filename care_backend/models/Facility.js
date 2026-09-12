@@ -21,6 +21,19 @@ const facilitySchema = new mongoose.Schema(
     website: { type: String },
     emergencyAvailable: { type: Boolean, default: false },
     departments: [{ type: String }],
+    departmentAverages: {
+      type: Map,
+      of: Number,
+      default: {
+        'General OPD': 7,
+        'Cardiology OPD': 12,
+        'Pediatrics OPD': 8,
+        'Orthopedics OPD': 10,
+        'Neurology OPD': 10,
+        'Dermatology OPD': 8,
+        'ENT OPD': 7
+      }
+    },
     diagnosticServices: [{ type: String }],
     availableFacilities: [{ type: String }],
     medicineCapability: { type: Boolean, default: true },

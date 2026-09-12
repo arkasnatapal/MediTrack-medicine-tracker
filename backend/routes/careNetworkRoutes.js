@@ -1235,7 +1235,7 @@ router.post('/appointments', authMiddleware, async (req, res) => {
       tokenNumber,
       reasonForVisit: reasonForVisit || 'General Consultation',
       triagePriority: triagePriority || 'ROUTINE',
-      status: 'BOOKED'
+      status: 'PENDING_APPROVAL'
     });
 
     await appointment.save();
@@ -1280,7 +1280,7 @@ router.post('/appointments', authMiddleware, async (req, res) => {
         tokenNumber: tokenNumber,
         symptoms: reasonForVisit || 'General Consultation',
         triagePriority: triagePriority || 'ROUTINE',
-        status: 'CONFIRMED',
+        status: 'PENDING_APPROVAL',
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -1369,8 +1369,8 @@ router.post('/appointments', authMiddleware, async (req, res) => {
       type: 'APPOINTMENT',
       facilityId,
       facilityName,
-      title: `Token #${tokenNumber} Booked at ${facilityName} (${department})`,
-      description: `Appointment reserved for ${department} on ${appointment.date} at ${appointment.time}.`,
+      title: `Token #${tokenNumber} Requested at ${facilityName} (${department})`,
+      description: `Appointment request submitted for ${department} on ${appointment.date} at ${appointment.time}. Awaiting hospital permission.`,
       status: 'COMPLETED'
     });
 
@@ -1386,7 +1386,7 @@ router.post('/appointments', authMiddleware, async (req, res) => {
 
     return res.json({
       success: true,
-      message: `Appointment booked successfully! Your ${department} Token Number is #${tokenNumber}`,
+      message: `Appointment requested! Your Token Number is #${tokenNumber}. Awaiting hospital permission before confirmation.`,
       appointment
     });
   } catch (err) {
@@ -2168,6 +2168,73 @@ router.put('/bed-bookings/:id/shift-ward', authMiddleware, async (req, res) => {
 
 
 
+const OPD_DEFAULT_AVERAGES = {
+  'General OPD': 7,
+  'Cardiology OPD': 12,
+  'Pediatrics OPD': 8,
+  'Orthopedics OPD': 10,
+  'Neurology OPD': 10,
+  'Dermatology OPD': 8,
+  'ENT OPD': 7
+};
+
+// Helper for deterministic queue wait-time calculations
+function computeSmartOpdWaitTime({
+  peopleAhead,
+  department = 'General OPD',
+  configuredAverage,
+  currentPatientRemaining,
+  recentConsultations = [],
+  useRollingAverage = false,
+  activeDoctorsCount = 1
+}) {
+  const numAhead = Math.max(0, parseInt(peopleAhead) || 0);
+
+  // 1. Determine general OPD average consultation time
+  let generalAverage = configuredAverage;
+  if (!generalAverage || isNaN(generalAverage) || generalAverage <= 0) {
+    generalAverage = OPD_DEFAULT_AVERAGES[department] || 7;
+  }
+
+  // 2. Rolling average override if enabled and sufficient history exists
+  if (useRollingAverage && Array.isArray(recentConsultations) && recentConsultations.length >= 3) {
+    const recentSlice = recentConsultations.slice(-20);
+    const sum = recentSlice.reduce((acc, c) => acc + (c.durationMinutes || generalAverage), 0);
+    const rollingAvg = Math.round((sum / recentSlice.length) * 10) / 10;
+    if (rollingAvg > 0) {
+      generalAverage = rollingAvg;
+    }
+  }
+
+  // 3. Determine current patient remaining time
+  let currentRemaining = currentPatientRemaining;
+  if (currentRemaining === undefined || currentRemaining === null || isNaN(currentRemaining) || currentRemaining < 0) {
+    currentRemaining = generalAverage;
+  }
+
+  // 4. Scaling for multiple active doctors
+  const doctors = Math.max(1, parseInt(activeDoctorsCount) || 1);
+  const effectiveAverage = generalAverage / doctors;
+
+  // 5. Total wait calculation: current patient remaining + (peopleAhead * effectiveAverage)
+  let estimatedWait = 0;
+  if (numAhead > 0) {
+    estimatedWait = Math.round(currentRemaining + (numAhead * effectiveAverage));
+  } else {
+    estimatedWait = 0;
+  }
+
+  if (isNaN(estimatedWait) || estimatedWait < 0) estimatedWait = 0;
+
+  return {
+    estimatedWaitMinutes: estimatedWait,
+    currentPatientRemainingMinutes: currentRemaining,
+    generalAverageConsultationMinutes: generalAverage,
+    effectiveAverage: Math.round(effectiveAverage * 10) / 10,
+    peopleAhead: numAhead
+  };
+}
+
 router.get('/queue/:facilityId', async (req, res) => {
   try {
     const { facilityId } = req.params;
@@ -2185,7 +2252,11 @@ router.get('/queue/:facilityId', async (req, res) => {
     const hasBookedToken = tokenNumber !== undefined && tokenNumber !== null && tokenNumber !== '' && !isNaN(parseInt(tokenNumber)) && parseInt(tokenNumber) > 0;
     const userToken = hasBookedToken ? parseInt(tokenNumber) : 0;
 
-    // Fetch all active department queues for this facility today to build overview summary map
+    // Fetch QueueStatus configuration or Queue document
+    const statusDoc = await QueueStatus.findOne({ facilityId, department }).lean();
+    const deptConfiguredAverage = statusDoc?.departmentAverages?.get?.(department) || statusDoc?.averageConsultationMinutes || OPD_DEFAULT_AVERAGES[department] || 7;
+
+    // Fetch all active department queues for this facility today to build summary map
     let allFacilityQueues = [];
     try {
       allFacilityQueues = await mongoose.connection.collection('carequeues').find({
@@ -2235,7 +2306,20 @@ router.get('/queue/:facilityId', async (req, res) => {
         const totalBooked = Math.max(realQueue.currentToken || 0, departmentAppointmentsCount);
         const currentToken = realQueue.servingToken || (totalBooked > 0 ? 1 : 0);
         const position = userToken > 0 ? Math.max(0, userToken - currentToken) : 0;
-        const estimatedWaitMinutes = position * 5;
+
+        const currentRemaining = realQueue.currentPatientRemainingMinutes !== undefined && realQueue.currentPatientRemainingMinutes !== null
+          ? realQueue.currentPatientRemainingMinutes
+          : (statusDoc?.currentPatientRemainingMinutes ?? deptConfiguredAverage);
+
+        const calculation = computeSmartOpdWaitTime({
+          peopleAhead: position,
+          department,
+          configuredAverage: realQueue.averageConsultationMinutes || deptConfiguredAverage,
+          currentPatientRemaining: currentRemaining,
+          recentConsultations: realQueue.recentConsultations || statusDoc?.recentConsultations || [],
+          useRollingAverage: realQueue.useRollingAverage || statusDoc?.useRollingAverage || false,
+          activeDoctorsCount: realQueue.activeDoctorsCount || statusDoc?.activeDoctorsCount || 1
+        });
 
         return res.json({
           success: true,
@@ -2245,7 +2329,12 @@ router.get('/queue/:facilityId', async (req, res) => {
           currentToken,
           totalTokensBooked: totalBooked,
           positionInLine: position,
-          estimatedWaitMinutes,
+          peopleAhead: position,
+          estimatedWaitMinutes: calculation.estimatedWaitMinutes,
+          currentPatientRemainingMinutes: calculation.currentPatientRemainingMinutes,
+          averageConsultationMinutes: calculation.generalAverageConsultationMinutes,
+          effectiveAverage: calculation.effectiveAverage,
+          currentPatientStartedAt: realQueue.currentPatientStartedAt || null,
           hasAppointment: hasBookedToken,
           status: userToken === 0 ? 'NO_APPOINTMENT' : position === 0 ? 'NOW_SERVING' : 'WAITING',
           entries: realQueue.entries || [],
@@ -2260,7 +2349,12 @@ router.get('/queue/:facilityId', async (req, res) => {
     const totalBooked = departmentAppointmentsCount;
     const currentToken = totalBooked > 0 ? 1 : 0;
     const position = userToken > 0 ? Math.max(0, userToken - currentToken) : 0;
-    const estimatedWaitMinutes = position * 5;
+    const calculation = computeSmartOpdWaitTime({
+      peopleAhead: position,
+      department,
+      configuredAverage: deptConfiguredAverage,
+      currentPatientRemaining: deptConfiguredAverage
+    });
 
     return res.json({
       success: true,
@@ -2270,7 +2364,12 @@ router.get('/queue/:facilityId', async (req, res) => {
       currentToken,
       totalTokensBooked: totalBooked,
       positionInLine: position,
-      estimatedWaitMinutes,
+      peopleAhead: position,
+      estimatedWaitMinutes: calculation.estimatedWaitMinutes,
+      currentPatientRemainingMinutes: calculation.currentPatientRemainingMinutes,
+      averageConsultationMinutes: calculation.generalAverageConsultationMinutes,
+      effectiveAverage: calculation.effectiveAverage,
+      currentPatientStartedAt: null,
       hasAppointment: hasBookedToken,
       status: userToken === 0 ? 'NO_APPOINTMENT' : position === 0 ? 'NOW_SERVING' : 'WAITING',
       entries: [],
@@ -2282,10 +2381,139 @@ router.get('/queue/:facilityId', async (req, res) => {
   }
 });
 
-// Doctor / Hospital Staff Queue Advance Action
+// Update Doctor's Current Patient Remaining Time Estimate
+router.post('/queue/estimate', async (req, res) => {
+  try {
+    const { facilityId, department = 'General OPD', remainingMinutes } = req.body;
+    const mongoose = require('mongoose');
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const parsedRemaining = parseInt(remainingMinutes);
+    if (isNaN(parsedRemaining) || parsedRemaining < 0) {
+      return res.status(400).json({ success: false, message: 'Invalid remaining minutes input' });
+    }
+
+    let queue = await mongoose.connection.collection('carequeues').findOne({
+      department,
+      date: todayStr,
+      $or: [{ facilityIdStr: facilityId }, { facilityId: facilityId }]
+    });
+
+    if (queue) {
+      await mongoose.connection.collection('carequeues').updateOne(
+        { _id: queue._id },
+        { $set: { currentPatientRemainingMinutes: parsedRemaining, updatedAt: new Date() } }
+      );
+    }
+
+    await QueueStatus.updateOne(
+      { facilityId, department },
+      { $set: { currentPatientRemainingMinutes: parsedRemaining, lastUpdated: new Date() } },
+      { upsert: true }
+    );
+
+    const eventPayload = emitDomainEvent({
+      type: 'queue.consultation_time_updated',
+      resourceType: 'Queue',
+      resourceId: queue ? queue._id : facilityId,
+      facilityId,
+      version: Date.now(),
+      data: {
+        facilityId,
+        department,
+        currentToken: queue?.servingToken || 1,
+        currentPatientRemainingMinutes: parsedRemaining,
+        averageConsultationMinutes: queue?.averageConsultationMinutes || OPD_DEFAULT_AVERAGES[department] || 7,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: `Current patient remaining time updated to ${parsedRemaining} mins`,
+      currentPatientRemainingMinutes: parsedRemaining,
+      eventPayload
+    });
+  } catch (err) {
+    console.error('Error updating doctor estimate:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update consultation time' });
+  }
+});
+
+// Facility General OPD Time Configuration
+router.post('/queue/config', async (req, res) => {
+  try {
+    const { facilityId, department = 'General OPD', averageConsultationMinutes, useRollingAverage } = req.body;
+    const mongoose = require('mongoose');
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const parsedAverage = parseInt(averageConsultationMinutes);
+    if (isNaN(parsedAverage) || parsedAverage <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid average consultation minutes' });
+    }
+
+    let queue = await mongoose.connection.collection('carequeues').findOne({
+      department,
+      date: todayStr,
+      $or: [{ facilityIdStr: facilityId }, { facilityId: facilityId }]
+    });
+
+    if (queue) {
+      await mongoose.connection.collection('carequeues').updateOne(
+        { _id: queue._id },
+        {
+          $set: {
+            averageConsultationMinutes: parsedAverage,
+            useRollingAverage: !!useRollingAverage,
+            updatedAt: new Date()
+          }
+        }
+      );
+    }
+
+    await QueueStatus.updateOne(
+      { facilityId, department },
+      {
+        $set: {
+          averageConsultationMinutes: parsedAverage,
+          useRollingAverage: !!useRollingAverage,
+          lastUpdated: new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    emitDomainEvent({
+      type: 'queue.updated',
+      resourceType: 'Queue',
+      resourceId: queue ? queue._id : facilityId,
+      facilityId,
+      version: Date.now(),
+      data: {
+        facilityId,
+        department,
+        averageConsultationMinutes: parsedAverage,
+        useRollingAverage: !!useRollingAverage,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: `General ${department} consultation average set to ${parsedAverage} mins`,
+      averageConsultationMinutes: parsedAverage,
+      useRollingAverage: !!useRollingAverage
+    });
+  } catch (err) {
+    console.error('Error configuring general OPD time:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update facility queue settings' });
+  }
+});
+
+// Doctor / Hospital Staff Queue Action (CALL NEXT / COMPLETE / UPDATE ESTIMATE)
 router.post('/queue/action', async (req, res) => {
   try {
-    const { facilityId, department = 'General OPD', action = 'COMPLETE', tokenNumber } = req.body;
+    const { facilityId, department = 'General OPD', action = 'COMPLETE', tokenNumber, remainingMinutes, doctorId } = req.body;
     const mongoose = require('mongoose');
     const todayStr = new Date().toISOString().split('T')[0];
 
@@ -2299,40 +2527,84 @@ router.post('/queue/action', async (req, res) => {
     });
 
     if (!queue) {
-      queue = await mongoose.connection.collection('carequeues').findOne({
-        date: todayStr,
-        $or: [
-          { facilityIdStr: facilityId },
-          { facilityId: facilityId }
-        ]
-      });
-    }
-
-    if (!queue) {
-      // Create default department queue if none exists
+      const defaultAvg = OPD_DEFAULT_AVERAGES[department] || 7;
       const newQueue = {
         facilityIdStr: facilityId || 'DEFAULT',
         department: department,
         date: todayStr,
         currentToken: 1,
-        servingToken: 2,
+        servingToken: 1,
+        averageConsultationMinutes: defaultAvg,
+        currentPatientRemainingMinutes: defaultAvg,
+        currentPatientStartedAt: new Date(),
+        recentConsultations: [],
         entries: [],
         createdAt: new Date(),
         updatedAt: new Date()
       };
       await mongoose.connection.collection('carequeues').insertOne(newQueue);
-      return res.json({ success: true, message: `Queue advanced for ${department}`, servingToken: 2, currentToken: 2, department });
+      queue = newQueue;
     }
 
-    let newServingToken = (queue.servingToken || 1) + 1;
+    const generalAvg = queue.averageConsultationMinutes || OPD_DEFAULT_AVERAGES[department] || 7;
+
+    if (action === 'UPDATE_ESTIMATE' && remainingMinutes !== undefined) {
+      const parsedRemaining = parseInt(remainingMinutes);
+      await mongoose.connection.collection('carequeues').updateOne(
+        { _id: queue._id },
+        { $set: { currentPatientRemainingMinutes: parsedRemaining, updatedAt: new Date() } }
+      );
+
+      emitDomainEvent({
+        type: 'queue.consultation_time_updated',
+        resourceType: 'Queue',
+        resourceId: queue._id,
+        facilityId,
+        version: Date.now(),
+        data: {
+          facilityId,
+          department,
+          currentToken: queue.servingToken || 1,
+          currentPatientRemainingMinutes: parsedRemaining,
+          averageConsultationMinutes: generalAvg
+        }
+      });
+
+      return res.json({
+        success: true,
+        message: `Current patient remaining time set to ${parsedRemaining} mins`,
+        currentPatientRemainingMinutes: parsedRemaining,
+        servingToken: queue.servingToken || 1
+      });
+    }
+
+    // Handing NEXT / COMPLETE actions
+    const prevServingToken = queue.servingToken || 1;
+    let newServingToken = prevServingToken + 1;
     if (tokenNumber && parseInt(tokenNumber)) {
-      newServingToken = parseInt(tokenNumber) + 1;
+      newServingToken = parseInt(tokenNumber);
     }
 
-    // Mark completed entry in entries array
+    // Calculate actual elapsed duration for completed consultation
+    let actualDuration = generalAvg;
+    if (queue.currentPatientStartedAt) {
+      const elapsedMs = new Date() - new Date(queue.currentPatientStartedAt);
+      actualDuration = Math.max(1, Math.round(elapsedMs / 60000));
+    }
+
+    // Append to rolling recentConsultations array (keep last 20)
+    const recentConsultations = Array.isArray(queue.recentConsultations) ? queue.recentConsultations : [];
+    recentConsultations.push({
+      durationMinutes: actualDuration,
+      completedAt: new Date(),
+      doctorId: doctorId || null
+    });
+    const updatedRecent = recentConsultations.slice(-20);
+
+    // Update entries status
     const updatedEntries = (queue.entries || []).map(entry => {
-      if (entry.tokenNumber === (queue.servingToken || 1)) {
-        return { ...entry, status: 'COMPLETED', endTime: new Date() };
+      if (entry.tokenNumber === prevServingToken) {
+        return { ...entry, status: 'COMPLETED', endTime: new Date(), durationMinutes: actualDuration };
       }
       if (entry.tokenNumber === newServingToken) {
         return { ...entry, status: 'IN_CONSULTATION', startTime: new Date() };
@@ -2340,28 +2612,86 @@ router.post('/queue/action', async (req, res) => {
       return entry;
     });
 
+    const nowStarted = new Date();
     await mongoose.connection.collection('carequeues').updateOne(
       { _id: queue._id },
       {
         $set: {
           servingToken: newServingToken,
           entries: updatedEntries,
+          currentPatientRemainingMinutes: generalAvg, // Reset current patient estimate to configured general average for newly called patient
+          currentPatientStartedAt: nowStarted,
+          recentConsultations: updatedRecent,
           updatedAt: new Date()
         }
       }
     );
 
-    // Update appointment status in main DB if applicable for this department
+    // Update appointment status in main DB
     await Appointment.updateMany(
-      { facilityId, department, tokenNumber: queue.servingToken || 1, date: todayStr },
+      { facilityId, department, tokenNumber: prevServingToken, date: todayStr },
       { $set: { status: 'COMPLETED' } }
     );
+    await Appointment.updateMany(
+      { facilityId, department, tokenNumber: newServingToken, date: todayStr },
+      { $set: { status: 'IN_CONSULTATION' } }
+    );
+
+    // Emit Realtime Domain Events
+    emitDomainEvent({
+      type: 'queue.consultation_completed',
+      resourceType: 'Queue',
+      resourceId: queue._id,
+      facilityId,
+      version: Date.now(),
+      data: {
+        facilityId,
+        department,
+        completedToken: prevServingToken,
+        durationMinutes: actualDuration
+      }
+    });
+
+    emitDomainEvent({
+      type: 'queue.token_called',
+      resourceType: 'Queue',
+      resourceId: queue._id,
+      facilityId,
+      version: Date.now(),
+      data: {
+        facilityId,
+        department,
+        currentToken: newServingToken,
+        previousToken: prevServingToken,
+        currentPatientRemainingMinutes: generalAvg,
+        averageConsultationMinutes: generalAvg,
+        startedAt: nowStarted.toISOString()
+      }
+    });
+
+    emitDomainEvent({
+      type: 'queue.estimate_updated',
+      resourceType: 'Queue',
+      resourceId: queue._id,
+      facilityId,
+      version: Date.now(),
+      data: {
+        facilityId,
+        department,
+        currentToken: newServingToken,
+        currentPatientRemainingMinutes: generalAvg,
+        averageConsultationMinutes: generalAvg
+      }
+    });
 
     return res.json({
       success: true,
-      message: `Queue advanced for ${department}! Now serving Token #${newServingToken}`,
+      message: `Token #${newServingToken} called for ${department}. Reset current patient estimate to ${generalAvg} mins.`,
       servingToken: newServingToken,
       currentToken: queue.currentToken || newServingToken,
+      currentPatientRemainingMinutes: generalAvg,
+      averageConsultationMinutes: generalAvg,
+      previousCompletedDuration: actualDuration,
       department
     });
   } catch (err) {

@@ -55,6 +55,38 @@ export default function FacilityDashboard() {
   const [allottedBedNumber, setAllottedBedNumber] = useState('');
   const [hospitalNotes, setHospitalNotes] = useState('');
 
+  // OPD Consultation Time Control States
+  const [opdAverages, setOpdAverages] = useState({
+    'General OPD': 7,
+    'Cardiology OPD': 12,
+    'Pediatrics OPD': 8,
+    'Orthopedics OPD': 10,
+    'Neurology OPD': 10,
+    'Dermatology OPD': 8,
+    'ENT OPD': 7
+  });
+  const [useRollingAvgMap, setUseRollingAvgMap] = useState({});
+  const [savingOpdConfig, setSavingOpdConfig] = useState(false);
+
+  const handleSaveOpdAverage = async (dept, minutes, useRolling = false) => {
+    try {
+      setSavingOpdConfig(true);
+      await api.post('/queues/config', {
+        facilityId: user?.facility?._id || user?.facilityId,
+        department: dept,
+        averageConsultationMinutes: parseInt(minutes),
+        useRollingAverage: useRolling
+      });
+      setOpdAverages(prev => ({ ...prev, [dept]: parseInt(minutes) }));
+      setUseRollingAvgMap(prev => ({ ...prev, [dept]: useRolling }));
+      alert(`General average consultation time for ${dept} set to ${minutes} mins.`);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update OPD consultation time');
+    } finally {
+      setSavingOpdConfig(false);
+    }
+  };
+
   // Shift Ward Modal States
   const [showShiftWardModal, setShowShiftWardModal] = useState(false);
   const [shiftTargetBooking, setShiftTargetBooking] = useState(null);
@@ -209,6 +241,17 @@ export default function FacilityDashboard() {
       loadDashboardData();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to assign doctor');
+    }
+  };
+
+  const handleApproveAppointment = async (aptId) => {
+    try {
+      const cleanId = String(aptId).startsWith('CARE-') ? String(aptId).replace('CARE-', '') : aptId;
+      await api.put(`/appointments/${cleanId}/status`, { status: 'CONFIRMED' });
+      alert('Appointment approved & permission granted! Realtime update sent to patient.');
+      loadDashboardData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to approve appointment');
     }
   };
 
@@ -1267,6 +1310,67 @@ export default function FacilityDashboard() {
 
             </div>
 
+            {/* GENERAL OPD CONSULTATION TIME CONFIGURATION CARD */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+                    <Clock className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">General OPD Consultation Time Control</h3>
+                    <p className="text-xs text-slate-400">Configure standard expected consultation minutes per department for wait-time estimation</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+                {Object.entries(opdAverages).map(([dept, mins]) => (
+                  <div key={dept} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white truncate">{dept}</span>
+                      <span className="px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 text-[10px] font-bold font-mono">
+                        {mins} min
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={mins}
+                        onChange={(e) => setOpdAverages(prev => ({ ...prev, [dept]: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        className="w-20 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
+                      />
+                      <button
+                        disabled={savingOpdConfig}
+                        onClick={() => handleSaveOpdAverage(dept, mins, useRollingAvgMap[dept])}
+                        className="flex-1 py-1.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-slate-950 font-bold text-xs transition"
+                      >
+                        Save
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-900">
+                      <span>Rolling Avg</span>
+                      <label className="inline-flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!useRollingAvgMap[dept]}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            setUseRollingAvgMap(prev => ({ ...prev, [dept]: val }));
+                            handleSaveOpdAverage(dept, mins, val);
+                          }}
+                          className="rounded bg-slate-900 border-slate-800 text-teal-400 focus:ring-0"
+                        />
+                        <span className="text-slate-300">Auto-roll</span>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Live OPD Appointments Stream Table Widget */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
@@ -1324,27 +1428,37 @@ export default function FacilityDashboard() {
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono uppercase inline-flex items-center gap-1 ${
                               apt.status === 'COMPLETED' 
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : apt.status === 'CONFIRMED'
+                                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
                                 : apt.status === 'CHECKED_IN'
                                 ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
-                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
                             }`} title={`Status: ${apt.status}`}>
-                              {apt.status === 'COMPLETED' ? (
-                                <>
-                                  <span className="font-extrabold text-xs">✓</span>
-                                  <span className="hidden sm:inline">COMPLETED</span>
-                                </>
-                              ) : (
-                                apt.status
-                              )}
+                              {apt.status === 'PENDING_APPROVAL' || apt.status === 'REQUESTED' || apt.status === 'BOOKED'
+                                ? '⏳ PENDING PERMISSION'
+                                : apt.status === 'CONFIRMED'
+                                ? '✓ CONFIRMED'
+                                : apt.status}
                             </span>
                           </td>
                           <td className="py-3 px-3 text-right">
-                            <button
-                              onClick={() => openAssignDoctorModal(apt)}
-                              className="px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 text-[11px] font-bold border border-teal-500/30 transition"
-                            >
-                              Assign Doctor
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {(apt.status === 'PENDING_APPROVAL' || apt.status === 'REQUESTED' || apt.status === 'BOOKED') && (
+                                <button
+                                  onClick={() => handleApproveAppointment(apt._id)}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-500/40 transition flex items-center gap-1 shadow-sm"
+                                  title="Approve Appointment & Grant Permission"
+                                >
+                                  <span>✓ Approve</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => openAssignDoctorModal(apt)}
+                                className="px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 text-[11px] font-bold border border-teal-500/30 transition"
+                              >
+                                Assign Doctor
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

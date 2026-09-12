@@ -11,6 +11,7 @@ import { useAppMode } from '../../context/AppModeContext';
 import { useTheme } from '../../context/ThemeContext';
 import { locationService } from '../../services/locationService';
 import useRealtimeSync from '../../hooks/useRealtimeSync';
+import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -400,74 +401,98 @@ const CareNetworkDashboard = () => {
         </div>
       </motion.div>
 
-      {/* DYNAMIC ACTIVE TOKEN QUEUE WIDGET (ONLY SHOWN IF USER HAS MADE AN APPOINTMENT) */}
-      {userAppointments && userAppointments.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-xl transition-all duration-300"
-        >
-          {/* Glowing background ambient lights */}
-          <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/10 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* DYNAMIC ACTIVE TOKEN QUEUE WIDGET */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-xl transition-all duration-300"
+      >
+        {/* Glowing background ambient lights */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/10 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-black uppercase tracking-wider border border-emerald-500/30">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span>Live Token & Queue Tracker</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-                <Ticket className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-                <span>Active Appointment Tokens ({userAppointments.length})</span>
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-300">
-                Real-time OPD queue status, active doctor token & your position in line
-              </p>
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-black uppercase tracking-wider border border-emerald-500/30">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span>Live Smart OPD Wait-Time Monitor</span>
             </div>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+              <Ticket className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              <span>Active OPD Appointments & Token Queue {userAppointments.length > 0 ? `(${userAppointments.length})` : ''}</span>
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-300">
+              Real-time OPD queue tracker, hospital permission status & adaptive wait time calculations
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              onClick={() => navigate('/care-network/appointments')}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 active:scale-95"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>+ Book OPD Token</span>
+            </button>
 
             <button
               onClick={() => fetchUserAppointments()}
               disabled={loadingAppointments}
-              className="self-start sm:self-auto px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white text-xs font-bold border border-slate-300 dark:border-white/20 backdrop-blur-md transition-all flex items-center gap-2 active:scale-95 shadow-sm"
+              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white text-xs font-bold border border-slate-300 dark:border-white/20 backdrop-blur-md transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+              title="Refresh Live Token Data"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loadingAppointments ? 'animate-spin' : ''}`} />
-              <span>Refresh Token Live</span>
+              <span>Refresh</span>
             </button>
           </div>
+        </div>
 
-          {/* TOKEN CARDS GRID */}
+        {/* TOKEN CARDS OR EMPTY STATE */}
+        {userAppointments && userAppointments.length > 0 ? (
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {userAppointments.map((apt, index) => {
-              const qData = queueDataMap[apt.appointmentId || apt._id] || {};
+              const aptKey = apt.appointmentId || apt._id;
+              const qData = queueDataMap[aptKey] || {};
               const currentServing = qData.currentToken || 1;
               const userTokenNum = apt.tokenNumber || qData.userToken || 1;
-              const peopleAhead = Math.max(0, userTokenNum - currentServing);
-              const estWait = peopleAhead * 5;
+              const peopleAhead = qData.positionInLine !== undefined 
+                ? qData.positionInLine 
+                : Math.max(0, userTokenNum - currentServing);
+              const estWaitMinutes = qData.estimatedWaitMinutes !== undefined 
+                ? qData.estimatedWaitMinutes 
+                : (peopleAhead * (qData.averageConsultationMinutes || 7));
               const isNowServing = peopleAhead === 0 && apt.status !== 'COMPLETED';
+              const isPendingApproval = apt.status === 'PENDING_APPROVAL';
 
               return (
                 <div
-                  key={apt.appointmentId || apt._id || index}
+                  key={aptKey || index}
                   className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-4 backdrop-blur-md hover:border-emerald-500/50 transition-all duration-300 shadow-md relative overflow-hidden"
                 >
                   {/* Status indicator bar */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[11px] font-black tracking-wider uppercase px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
                       {apt.department || 'General OPD'}
                     </span>
 
-                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
-                      isNowServing 
-                        ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 animate-pulse' 
-                        : 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40'
-                    }`}>
-                      <Clock className="w-3 h-3" />
-                      <span>{isNowServing ? 'NOW SERVING YOU' : `${peopleAhead} LEFT IN QUEUE`}</span>
-                    </span>
+                    {isPendingApproval ? (
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-500 animate-spin" />
+                        <span>⏳ Awaiting Hospital Permission</span>
+                      </span>
+                    ) : (
+                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+                        isNowServing 
+                          ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 animate-pulse' 
+                          : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                      }`}>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                        <span>{isNowServing ? 'NOW SERVING YOU' : '✓ Confirmed by Hospital'}</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Facility Name & Time */}
@@ -484,24 +509,32 @@ const CareNetworkDashboard = () => {
                   </div>
 
                   {/* Main Token & Queue Comparison Stats */}
-                  <div className="grid grid-cols-3 gap-2 bg-white dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 text-center shadow-inner">
+                  <div className="grid grid-cols-4 gap-1.5 bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 text-center shadow-inner">
                     {/* PATIENT TOKEN */}
                     <div className="space-y-0.5">
-                      <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Your Token</div>
-                      <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">#{userTokenNum}</div>
+                      <div className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400">Token #</div>
+                      <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">#{userTokenNum}</div>
                     </div>
 
                     {/* CURRENTLY SERVING TOKEN */}
-                    <div className="space-y-0.5 border-x border-slate-200 dark:border-slate-700/80">
-                      <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Active Token</div>
-                      <div className="text-xl font-black text-blue-600 dark:text-blue-400">#{currentServing}</div>
+                    <div className="space-y-0.5 border-l border-slate-200 dark:border-slate-700/80">
+                      <div className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400">Now Serving</div>
+                      <div className="text-lg font-black text-blue-600 dark:text-blue-400">#{currentServing}</div>
                     </div>
 
-                    {/* PEOPLE LEFT IN QUEUE */}
-                    <div className="space-y-0.5">
-                      <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">People Left</div>
-                      <div className={`text-xl font-black ${peopleAhead === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {/* PEOPLE AHEAD IN QUEUE */}
+                    <div className="space-y-0.5 border-l border-slate-200 dark:border-slate-700/80">
+                      <div className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400">Ahead</div>
+                      <div className={`text-lg font-black ${peopleAhead === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                         {peopleAhead}
+                      </div>
+                    </div>
+
+                    {/* ESTIMATED WAIT TIME */}
+                    <div className="space-y-0.5 border-l border-slate-200 dark:border-slate-700/80">
+                      <div className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400">Est. Time</div>
+                      <div className="text-base font-black text-amber-600 dark:text-amber-400 truncate">
+                        {peopleAhead === 0 ? 'Next' : `~${estWaitMinutes}m`}
                       </div>
                     </div>
                   </div>
@@ -510,7 +543,7 @@ const CareNetworkDashboard = () => {
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs">
                     <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
                       <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                      <span>Est. Wait: <strong className="text-slate-900 dark:text-white">{peopleAhead === 0 ? 'Direct Entry' : `~${estWait} mins`}</strong></span>
+                      <span>Estimated Wait: <strong className="text-slate-900 dark:text-white">{peopleAhead === 0 ? 'Direct Entry' : `~${estWaitMinutes} Mins`}</strong></span>
                     </span>
 
                     <button
@@ -525,142 +558,31 @@ const CareNetworkDashboard = () => {
               );
             })}
           </div>
-        </motion.div>
-      )}
+        ) : (
+          <div className="relative z-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-3">
+            <div className="inline-flex p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Ticket className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Active OPD Appointment Tokens</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Reserve your live consultation token to track real-time queue position, doctor progress, and adaptive estimated wait times.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={() => navigate('/care-network/appointments')}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md transition-all inline-flex items-center gap-2 active:scale-95"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Book Live OPD Token Now</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
 
-      {/* DASHBOARD LIVE NETWORK STATS GRID */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        
-        {/* STAT CARD 1 */}
-        <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-4 min-w-0">
-          <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
-            <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div className="min-w-0 flex-1 w-full">
-            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
-              {nearbyFacilities.length > 0 ? `${nearbyFacilities.length} Facilities` : '12+ Facilities'}
-            </div>
-            <div className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
-              Local Healthcare
-            </div>
-          </div>
-        </div>
 
-        {/* STAT CARD 2 */}
-        <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-4 min-w-0">
-          <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div className="min-w-0 flex-1 w-full">
-            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
-              {userAppointments.length > 0 ? `Token #${userAppointments[0].tokenNumber}` : 'No Tokens'}
-            </div>
-            <div className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
-              Live OPD Queue
-            </div>
-          </div>
-        </div>
-
-        {/* STAT CARD 3 */}
-        <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-4 min-w-0">
-          <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 shrink-0">
-            <Activity className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div className="min-w-0 flex-1 w-full">
-            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
-              7 Diagnostics
-            </div>
-            <div className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
-              ECG, X-Ray, CT, MRI
-            </div>
-          </div>
-        </div>
-
-        {/* STAT CARD 4 */}
-        <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/60 dark:border-slate-800/70 backdrop-blur-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-4 min-w-0">
-          <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
-            <Bed className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div className="min-w-0 flex-1 w-full">
-            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
-              62 Open Beds
-            </div>
-            <div className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
-              OPD / ICU Available
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* HEALTHCARE TIERS CAPACITY TRACKER */}
-      <div className="bg-white/40 dark:bg-slate-900/40 rounded-3xl p-6 border border-white/50 dark:border-slate-800/60 backdrop-blur-xl shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-500" />
-              <span>Public Healthcare Tier Infrastructure</span>
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Connected tiers from grass-roots PHCs to District Super Specialty Trauma Centers
-            </p>
-          </div>
-
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-            Live Capacity Feed
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* TIER 1: PHC */}
-          <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-            <div className="flex items-center justify-between text-xs font-black text-slate-900 dark:text-white">
-              <span className="text-emerald-600 dark:text-emerald-400 uppercase">PHC (Primary)</span>
-              <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded-full text-[10px]">7 Beds Open</span>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">General OPD, Immunization, ECG</div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-full rounded-full" style={{ width: '65%' }}></div>
-            </div>
-          </div>
-
-          {/* TIER 2: CHC */}
-          <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-            <div className="flex items-center justify-between text-xs font-black text-slate-900 dark:text-white">
-              <span className="text-blue-600 dark:text-blue-400 uppercase">CHC (Community)</span>
-              <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-0.5 rounded-full text-[10px]">22 Beds Open</span>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">Surgery, Pediatrics, X-Ray, Blood</div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-blue-500 h-full rounded-full" style={{ width: '40%' }}></div>
-            </div>
-          </div>
-
-          {/* TIER 3: RURAL HOSPITAL */}
-          <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-            <div className="flex items-center justify-between text-xs font-black text-slate-900 dark:text-white">
-              <span className="text-teal-600 dark:text-teal-400 uppercase">Rural Hospital</span>
-              <span className="bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 px-2 py-0.5 rounded-full text-[10px]">16 Beds Open</span>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">Maternity Care, Emergency Trauma</div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-teal-500 h-full rounded-full" style={{ width: '55%' }}></div>
-            </div>
-          </div>
-
-          {/* TIER 4: DISTRICT HOSPITAL */}
-          <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-            <div className="flex items-center justify-between text-xs font-black text-slate-900 dark:text-white">
-              <span className="text-purple-600 dark:text-purple-400 uppercase">District Hospital</span>
-              <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2 py-0.5 rounded-full text-[10px]">62 ICU Beds Open</span>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">Apex Cardiology, MRI, CT Scan</div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-purple-500 h-full rounded-full" style={{ width: '80%' }}></div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* NEARBY PUBLIC FACILITIES SHOWCASE */}
       <div className="space-y-4">
