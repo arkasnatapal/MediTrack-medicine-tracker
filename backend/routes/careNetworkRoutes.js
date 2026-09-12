@@ -1438,6 +1438,9 @@ router.get('/appointments/my', authMiddleware, async (req, res) => {
         const key = `${apt.facilityName || ''}-${apt.department || 'General OPD'}-${apt.tokenNumber}`;
         const careInfo = careAppMap.get(key);
         if (careInfo) {
+          const hasDoc = Boolean(careInfo.doctorName || apt.doctorName || apt.doctorId);
+          const rawStatus = careInfo.status || apt.status;
+          const status = (hasDoc && (rawStatus === 'PENDING_APPROVAL' || rawStatus === 'REQUESTED' || rawStatus === 'BOOKED')) ? 'CONFIRMED' : rawStatus;
           return {
             ...apt,
             doctorName: careInfo.doctorName || apt.doctorName || 'Duty Medical Officer',
@@ -1445,7 +1448,7 @@ router.get('/appointments/my', authMiddleware, async (req, res) => {
             date: careInfo.appointmentDate ? new Date(careInfo.appointmentDate).toISOString().split('T')[0] : apt.date,
             time: careInfo.timeSlot || apt.time,
             notes: careInfo.notes || apt.notes,
-            status: careInfo.status || apt.status,
+            status: status,
             isDelayed: careInfo.status === 'RESCHEDULED' || apt.isDelayed || false,
             delayReason: careInfo.notes || apt.delayReason
           };

@@ -1523,22 +1523,20 @@ export default function FacilityDashboard() {
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono uppercase inline-flex items-center gap-1 ${
                               apt.status === 'COMPLETED' 
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                                : apt.status === 'CONFIRMED'
+                                : apt.status === 'CONFIRMED' || (apt.status === 'PENDING_APPROVAL' && apt.doctorId)
                                 ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
                                 : apt.status === 'CHECKED_IN'
                                 ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
                                 : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
                             }`} title={`Status: ${apt.status}`}>
-                              {apt.status === 'PENDING_APPROVAL' || apt.status === 'REQUESTED' || apt.status === 'BOOKED'
+                              {(apt.status === 'PENDING_APPROVAL' || apt.status === 'REQUESTED' || apt.status === 'BOOKED') && !apt.doctorId
                                 ? '⏳ PENDING PERMISSION'
-                                : apt.status === 'CONFIRMED'
-                                ? '✓ CONFIRMED'
-                                : apt.status}
+                                : '✓ CONFIRMED'}
                             </span>
                           </td>
                           <td className="py-3 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {(apt.status === 'PENDING_APPROVAL' || apt.status === 'REQUESTED' || apt.status === 'BOOKED') && (
+                              {(apt.status === 'PENDING_APPROVAL' || apt.status === 'REQUESTED' || apt.status === 'BOOKED') && !apt.doctorId && (
                                 <button
                                   onClick={() => handleApproveAppointment(apt._id)}
                                   className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-500/40 transition flex items-center gap-1 shadow-sm"
@@ -2428,9 +2426,10 @@ export default function FacilityDashboard() {
                             <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${
                               apt.status === 'IN_CONSULTATION' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
                               apt.status === 'RESCHEDULED' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                              (apt.status === 'PENDING_APPROVAL' && !docName) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse' :
                               'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                             }`}>
-                              {apt.status || 'CONFIRMED'}
+                              {(apt.status === 'PENDING_APPROVAL' && !docName) ? 'PENDING_APPROVAL' : (apt.status === 'PENDING_APPROVAL' && docName ? 'CONFIRMED' : (apt.status || 'CONFIRMED'))}
                             </span>
                           </td>
                           <td className="p-3 text-right">

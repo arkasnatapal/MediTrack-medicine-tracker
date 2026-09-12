@@ -12,9 +12,12 @@ const appointmentSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        'BOOKED',
+        'PENDING_APPROVAL',
         'REQUESTED',
         'PENDING_CONFIRMATION',
         'CONFIRMED',
+        'APPROVED',
         'CHECKED_IN',
         'WAITING',
         'IN_CONSULTATION',

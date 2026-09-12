@@ -12,6 +12,7 @@
     "@livekit/components-react": "^2.9.24",
     "axios": "^1.6.8",
     "date-fns": "^4.1.0",
+    "gsap": "^3.15.0",
     "leaflet": "^1.9.4",
     "livekit-client": "^2.22.1",
     "lucide-react": "^0.378.0",

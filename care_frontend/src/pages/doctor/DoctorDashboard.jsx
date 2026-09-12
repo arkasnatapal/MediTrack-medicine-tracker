@@ -11,6 +11,7 @@ import {
 import LiveKitCallModal from '../../components/calling/LiveKitCallModal';
 import FhirProviderDashboard from '../../components/fhir/FhirProviderDashboard';
 import useRealtimeSync from '../../hooks/useRealtimeSync';
+import gsap from 'gsap';
 
 
 export default function DoctorDashboard() {
@@ -49,12 +50,232 @@ export default function DoctorDashboard() {
   const [micOn, setMicOn] = useState(true);
   const [videoOn, setVideoOn] = useState(true);
 
+  // Helper to read active hospital session from localStorage
+  const getSavedDoctorSession = () => {
+    try {
+      const saved = localStorage.getItem('meditrack_active_hospital_session');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse saved doctor session:', e);
+    }
+    return null;
+  };
+
+  const savedSession = getSavedDoctorSession();
+
   // Doctor Entry Check-in Modal & Shift Status State
   const [showDoctorCheckinModal, setShowDoctorCheckinModal] = useState(false);
-  const [checkinFacilityId, setCheckinFacilityId] = useState('');
-  const [checkinDepartment, setCheckinDepartment] = useState('General Medicine');
-  const [checkinInTime, setCheckinInTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [checkinFacilityId, setCheckinFacilityId] = useState(savedSession?.facilityId || '');
+  const [checkinDepartment, setCheckinDepartment] = useState(savedSession?.department || 'General Medicine');
+  const [checkinInTime, setCheckinInTime] = useState(savedSession?.inTime || new Date().toTimeString().slice(0, 5));
   const [doctorShiftAttendance, setDoctorShiftAttendance] = useState(null);
+
+  // Doctor Hospital Entrance Gate & Cinematic Full-Screen Welcome Animation States
+  // Do NOT show entrance gate if doctor already has an active hospital session saved!
+  const [showHospitalEntranceGate, setShowHospitalEntranceGate] = useState(!savedSession);
+  const [isCinematicGreetingActive, setIsCinematicGreetingActive] = useState(false);
+  const [cinematicStep, setCinematicStep] = useState(1);
+  const [isSlidingUp, setIsSlidingUp] = useState(false);
+
+  const [greetingData, setGreetingData] = useState({
+    greetingText: 'Good Day',
+    subText: 'Welcome to MediTrack Hospital Portal',
+    emojiIcon: '✨',
+    glowColor: 'from-teal-500/30 via-cyan-500/20 to-blue-500/30',
+    badgeBg: 'bg-teal-500/20 text-teal-300 border-teal-500/40'
+  });
+  const [showInlineHospitalSignUp, setShowInlineHospitalSignUp] = useState(false);
+  const [inlineFacilityId, setInlineFacilityId] = useState('');
+  const [inlineDept, setInlineDept] = useState('General Medicine');
+  const [inlineDesignation, setInlineDesignation] = useState('Consultant Specialist');
+
+  const calculateTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        greetingText: 'Good Morning',
+        subText: 'Wishing you an inspiring & effective clinical session today.',
+        emojiIcon: '🌅',
+        glowColor: 'from-amber-500/40 via-orange-500/30 to-yellow-500/20',
+        badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        greetingText: 'Good Afternoon',
+        subText: 'Ready for your afternoon clinical OPD queue & patient consultations.',
+        emojiIcon: '☀️',
+        glowColor: 'from-cyan-500/40 via-teal-500/30 to-emerald-500/20',
+        badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+      };
+    } else if (hour >= 17 && hour < 22) {
+      return {
+        greetingText: 'Good Evening',
+        subText: 'Managing evening rounds, emergency transfers & patient care.',
+        emojiIcon: '🌆',
+        glowColor: 'from-indigo-500/40 via-purple-500/30 to-pink-500/20',
+        badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+      };
+    } else {
+      return {
+        greetingText: 'Good Night',
+        subText: 'Overnight clinical standby & urgent hospital response.',
+        emojiIcon: '🌙',
+        glowColor: 'from-blue-600/40 via-indigo-600/30 to-violet-600/20',
+        badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+      };
+    }
+  };
+
+  const cinematicOverlayRef = useRef(null);
+  const line1Ref = useRef(null);
+  const line2Ref = useRef(null);
+  const line3Ref = useRef(null);
+
+  // GSAP Masked Text Reveal Animation Timeline
+  useEffect(() => {
+    if (isCinematicGreetingActive) {
+      const tl = gsap.timeline();
+
+      // Line 1: Time of Day Tag & Doctor Name
+      if (line1Ref.current) {
+        tl.fromTo(
+          line1Ref.current,
+          { yPercent: 120, opacity: 0, rotateX: -15, filter: 'blur(10px)' },
+          { yPercent: 0, opacity: 1, rotateX: 0, filter: 'blur(0px)', duration: 1.1, ease: 'power4.out' }
+        );
+      }
+
+      // Line 2: Welcome to MediTrack Care Doctor Section (emerges smoothly right after Line 1)
+      if (line2Ref.current) {
+        tl.fromTo(
+          line2Ref.current,
+          { yPercent: 120, opacity: 0, rotateX: -10, filter: 'blur(8px)' },
+          { yPercent: 0, opacity: 1, rotateX: 0, filter: 'blur(0px)', duration: 1.0, ease: 'power4.out' },
+          '-=0.5'
+        );
+      }
+
+      // Line 3: Connected Hospital Tagline
+      if (line3Ref.current) {
+        tl.fromTo(
+          line3Ref.current,
+          { yPercent: 100, opacity: 0 },
+          { yPercent: 0, opacity: 1, duration: 0.8, ease: 'power3.out' },
+          '-=0.4'
+        );
+      }
+    }
+  }, [isCinematicGreetingActive]);
+
+  useEffect(() => {
+    if (isSlidingUp && cinematicOverlayRef.current) {
+      gsap.to(cinematicOverlayRef.current, {
+        yPercent: -100,
+        duration: 0.9,
+        ease: 'power4.inOut'
+      });
+    }
+  }, [isSlidingUp]);
+
+  const handleSelectHospitalAndLogin = async (facId, facName, defaultDept = 'General Medicine') => {
+    try {
+      setCheckinFacilityId(facId);
+      setCheckinDepartment(defaultDept);
+
+      const res = await api.post('/doctors/checkin', {
+        doctorId: user?.doctorId || user?._id,
+        facilityId: facId,
+        department: defaultDept,
+        inTime: new Date().toISOString(),
+      });
+
+      // Save active session to localStorage so page refresh remembers session
+      localStorage.setItem('meditrack_active_hospital_session', JSON.stringify({
+        facilityId: facId,
+        facilityName: facName || 'Care Network Facility',
+        department: defaultDept,
+        inTime: new Date().toTimeString().slice(0, 5),
+        loginDate: new Date().toISOString(),
+      }));
+
+      setDoctorShiftAttendance(res.data.attendance);
+      setShowDoctorCheckinModal(false);
+      setShowHospitalEntranceGate(false);
+
+      // Start Minimalist GSAP Full-Screen Welcome Animation
+      const timeInfo = calculateTimeGreeting();
+      setGreetingData({
+        ...timeInfo,
+        activeHospitalName: facName || 'Care Network Facility',
+      });
+      
+      setIsSlidingUp(false);
+      setIsCinematicGreetingActive(true);
+
+      // Slide up curtain after ~2.9 seconds
+      setTimeout(() => {
+        setIsSlidingUp(true);
+      }, 2900);
+
+      // Dismiss overlay completely after curtain animation finishes (3.8s)
+      setTimeout(() => {
+        setIsCinematicGreetingActive(false);
+        setIsSlidingUp(false);
+      }, 3800);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to check into hospital');
+    }
+  };
+
+  const getFacilityDetails = (assoc) => {
+    if (!assoc) return { id: '', name: 'Care Hospital Facility', location: 'Local Region' };
+    
+    // Check if assoc itself is a facility object from facilities array
+    if (assoc.name && (assoc.facilityId || assoc._id) && !assoc.doctorId) {
+      return {
+        id: assoc._id || assoc.facilityId,
+        name: assoc.name,
+        location: assoc.district || assoc.state || assoc.location || 'Local Region',
+      };
+    }
+
+    // Check assoc.facilityId object
+    if (assoc.facilityId && typeof assoc.facilityId === 'object' && assoc.facilityId.name) {
+      return {
+        id: assoc.facilityId._id || assoc.facilityId.facilityId,
+        name: assoc.facilityId.name,
+        location: assoc.facilityId.district || assoc.facilityId.state || assoc.facilityId.location || 'Local Region',
+      };
+    }
+
+    // Check assoc.facility object
+    if (assoc.facility && typeof assoc.facility === 'object' && assoc.facility.name) {
+      return {
+        id: assoc.facility._id || assoc.facility.facilityId,
+        name: assoc.facility.name,
+        location: assoc.facility.district || assoc.facility.state || assoc.facility.location || 'Local Region',
+      };
+    }
+
+    // Search facilities array by ID string
+    const rawId = typeof assoc.facilityId === 'string' ? assoc.facilityId : (typeof assoc.facility === 'string' ? assoc.facility : null);
+    if (rawId && facilities.length > 0) {
+      const match = facilities.find(f => f._id === rawId || f.facilityId === rawId);
+      if (match) {
+        return {
+          id: match._id || match.facilityId,
+          name: match.name,
+          location: match.district || match.state || match.location || 'Local Region',
+        };
+      }
+    }
+
+    return {
+      id: rawId || assoc._id || 'FAC-1',
+      name: assoc.facilityName || assoc.facility?.name || assoc.facilityId?.name || 'Care Hospital Facility',
+      location: assoc.facilityState || 'Local Region',
+    };
+  };
 
   const handleDoctorCheckinSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -67,11 +288,79 @@ export default function DoctorDashboard() {
         department: checkinDepartment,
         inTime: checkinInTime ? new Date(`${todayStr}T${checkinInTime}:00`).toISOString() : new Date().toISOString(),
       });
+      // Save active session to localStorage
+      localStorage.setItem('meditrack_active_hospital_session', JSON.stringify({
+        facilityId: targetFacId,
+        facilityName: associations.find(a => (a.facilityId?._id || a.facilityId || a.facility?._id) === targetFacId)?.facilityId?.name || 'Care Network Hospital',
+        department: checkinDepartment,
+        inTime: checkinInTime || new Date().toTimeString().slice(0, 5),
+        loginDate: new Date().toISOString(),
+      }));
+
       setDoctorShiftAttendance(res.data.attendance);
       setShowDoctorCheckinModal(false);
-      alert('✓ Hospital Entry Check-in logged! Status set to AVAILABLE.');
+      setShowHospitalEntranceGate(false);
+
+      // Start Minimalist GSAP Full-Screen Welcome Animation
+      const timeInfo = calculateTimeGreeting();
+      setGreetingData({
+        ...timeInfo,
+        activeHospitalName: associations.find(a => (a.facilityId?._id || a.facilityId || a.facility?._id) === targetFacId)?.facilityId?.name || 'Care Network Hospital',
+      });
+
+      setIsSlidingUp(false);
+      setIsCinematicGreetingActive(true);
+
+      setTimeout(() => setIsSlidingUp(true), 2900);
+      setTimeout(() => {
+        setIsCinematicGreetingActive(false);
+        setIsSlidingUp(false);
+      }, 3800);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to check in doctor');
+    }
+  };
+
+  const handleDownloadAttendanceCSV = async () => {
+    try {
+      const docId = user?.doctor?._id || user?.doctorId?._id || user?.doctorId || user?._id;
+      const res = await api.get('/doctors/attendance-csv', {
+        params: { doctorId: docId },
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `doctor_global_work_history_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert('Failed to download doctor global work history CSV log');
+    }
+  };
+
+  const handleInlineLinkHospital = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      if (!inlineFacilityId) {
+        alert('Please select a hospital facility to link with');
+        return;
+      }
+      await api.post('/associations', {
+        doctorId: doctorId || user?.doctorId || user?._id,
+        facilityId: inlineFacilityId,
+        department: inlineDept,
+        designation: inlineDesignation,
+        employmentType: 'FULL_TIME',
+      });
+      alert('✓ Successfully linked with hospital facility!');
+      await loadDoctorData();
+      setShowInlineHospitalSignUp(false);
+      setCheckinFacilityId(inlineFacilityId);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to link facility');
     }
   };
 
@@ -93,7 +382,7 @@ export default function DoctorDashboard() {
   };
 
   const handleDoctorTerminateShift = async () => {
-    if (!window.confirm('Are you sure you want to terminate your job shift for today? Out-time will be logged.')) return;
+    if (!window.confirm('Are you sure you want to terminate your job shift for today? Out-time will be logged and you will be returned to the hospital selection page.')) return;
     try {
       const targetFacId = checkinFacilityId || associations[0]?.facility?._id || user?.facilityId || user?.facility;
       const res = await api.post('/doctors/checkout', {
@@ -101,7 +390,15 @@ export default function DoctorDashboard() {
         facilityId: targetFacId,
       });
       setDoctorShiftAttendance(res.data.attendance);
-      alert('✓ Shift terminated for today. Out-time logged successfully.');
+
+      // Clear active hospital session from localStorage
+      localStorage.removeItem('meditrack_active_hospital_session');
+      setCheckinFacilityId('');
+
+      // Re-open hospital selection entrance gate page
+      setShowHospitalEntranceGate(true);
+
+      alert('✓ Shift terminated for today. Out-time logged successfully. Please select a hospital facility to enter a new session.');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to terminate shift');
     }
@@ -268,13 +565,16 @@ export default function DoctorDashboard() {
   const loadDoctorData = async () => {
     setLoading(true);
     try {
-      const results = await Promise.allSettled([
+      const currentSavedSession = getSavedDoctorSession();
+      const activeFacId = checkinFacilityId || currentSavedSession?.facilityId;
+      const activeDept = checkinDepartment || currentSavedSession?.department;
 
-        api.get('/appointments', { params: { doctorId } }),
+      const results = await Promise.allSettled([
+        api.get('/appointments', { params: { doctorId, facilityId: activeFacId } }),
         api.get('/referrals'),
         api.get('/facility-doctors', { params: { doctorId } }),
         api.get('/teleconsultations', { params: { doctorId } }),
-        api.get('/queues', { params: { doctorId } }),
+        api.get('/queues', { params: { doctorId, facilityId: activeFacId, department: activeDept } }),
         api.get('/facilities'),
         api.get('/transfers'),
         api.get('/doctors'),
@@ -1003,7 +1303,13 @@ export default function DoctorDashboard() {
             <span className="text-slate-400 block">Licence Reg:</span>
             <span className="font-mono text-cyan-400 font-bold block truncate">{doctorReg}</span>
           </div>
-          <button onClick={logout} className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition">
+          <button 
+            onClick={() => {
+              localStorage.removeItem('meditrack_active_hospital_session');
+              logout();
+            }} 
+            className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition"
+          >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
           </button>
@@ -1012,7 +1318,7 @@ export default function DoctorDashboard() {
 
       {/* Main Clinical Console */}
       <main className="flex-1 h-full overflow-y-auto pt-16 sm:pt-6 md:pt-8 p-3.5 sm:p-6 md:p-8 min-w-0 max-w-full overflow-x-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 pb-4 border-b border-slate-800 gap-4 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-4 border-b border-slate-800 gap-4 min-w-0">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-white capitalize">{activeTab.replace('-', ' ')} Console</h1>
             <div className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1023,11 +1329,12 @@ export default function DoctorDashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
             <button
-              onClick={() => setShowDoctorCheckinModal(true)}
-              className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow transition"
+              onClick={handleDownloadAttendanceCSV}
+              className="px-3 py-2 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs flex items-center gap-1.5 transition shadow"
+              title="Download Doctor Multi-Hospital Work History CSV Log"
             >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Hospital Check-in Modal</span>
+              <FileText className="w-3.5 h-3.5 text-emerald-400" />
+              <span>📥 Work History CSV</span>
             </button>
             <button
               onClick={() => handleDoctorStatusToggle('AVAILABLE')}
@@ -1065,6 +1372,237 @@ export default function DoctorDashboard() {
             </button>
           </div>
         </div>
+
+        {/* ACTIVE LINKED HOSPITAL BANNER */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 mb-6 shadow-lg">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 shrink-0 shadow-md">
+              <Building2 className="w-5 h-5 text-teal-400" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold text-teal-400 uppercase tracking-widest bg-teal-950 px-2 py-0.5 rounded-md border border-teal-800/50">
+                  Active Hospital Session
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              </div>
+              <h3 className="text-sm sm:text-base font-extrabold text-white truncate">
+                {getFacilityDetails(associations.find(a => (a.facilityId?._id || a.facilityId || a.facility?._id) === checkinFacilityId) || associations[0] || facilities[0]).name}
+              </h3>
+              <p className="text-xs text-slate-400 font-medium">Department: <strong className="text-cyan-300 font-mono">{checkinDepartment}</strong> • Shift In-Time: <strong className="text-emerald-400 font-mono">{checkinInTime}</strong></p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowHospitalEntranceGate(true)}
+              className="px-3.5 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 font-bold text-xs flex items-center gap-1.5 transition shadow"
+            >
+              <Building2 className="w-3.5 h-3.5 text-teal-400" />
+              <span>Switch / Sign-up Hospital</span>
+            </button>
+            <button
+              onClick={handleDownloadAttendanceCSV}
+              className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center gap-1.5 transition shadow"
+              title="Download Doctor Multi-Hospital Work History CSV Log"
+            >
+              <FileText className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Work History CSV</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ULTRA-MINIMALIST BLACK CANVAS GSAP TEXT REVEAL ENTRANCE OVERLAY */}
+        {isCinematicGreetingActive && (
+          <div
+            ref={cinematicOverlayRef}
+            className="fixed inset-0 z-[100] bg-[#000000] text-white flex flex-col items-center justify-center p-6 text-center overflow-hidden selection:bg-cyan-500 selection:text-slate-950 font-poppins"
+          >
+            <div className="max-w-5xl w-full flex flex-col items-center space-y-6 sm:space-y-8 relative z-10 px-4">
+              
+              {/* Line 1: Time of Day Tag + Doctor Name Masked Text Reveal */}
+              <div className="overflow-hidden py-2 px-4">
+                <div ref={line1Ref} className="space-y-3 opacity-0">
+                  <div className="inline-flex items-center gap-2.5 text-xs sm:text-sm font-inter font-bold uppercase tracking-[0.3em] text-teal-400">
+                    <span className="text-base sm:text-lg">{greetingData.emojiIcon}</span>
+                    <span>{greetingData.greetingText}</span>
+                  </div>
+                  <h1 className="text-4xl sm:text-7xl md:text-8xl lg:text-9xl font-black font-poppins text-white tracking-tight leading-none drop-shadow-2xl">
+                    {formatDoctorName(doctorName)}
+                  </h1>
+                </div>
+              </div>
+
+              {/* Line 2: Welcome to MediTrack Care Doctor Section Masked Text Reveal */}
+              <div className="overflow-hidden py-2 px-4">
+                <div ref={line2Ref} className="opacity-0 space-y-2">
+                  <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold font-poppins text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-400 tracking-tight leading-snug">
+                    Welcome to MediTrack Care Doctor Section
+                  </h2>
+                </div>
+              </div>
+
+              {/* Line 3: Connected Hospital Tagline Masked Reveal */}
+              <div className="overflow-hidden py-1 px-4">
+                <div ref={line3Ref} className="opacity-0 flex flex-col items-center gap-2.5 text-xs sm:text-base font-medium text-slate-400 font-inter">
+                  <div className="flex items-center justify-center gap-2.5 text-cyan-300">
+                    <Building2 className="w-4 h-4 text-teal-400 shrink-0 animate-pulse" />
+                    <span className="uppercase tracking-widest text-[11px] text-slate-400 font-bold">Connected Facility:</span>
+                    <strong className="text-white font-bold font-poppins underline decoration-teal-400 text-sm sm:text-base">{greetingData.activeHospitalName}</strong>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-mono tracking-wider">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    <span>In-Time Logged &amp; Synced to CSV</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* MANDATORY HOSPITAL SELECTION ENTRANCE GATE */}
+        {showHospitalEntranceGate && !isCinematicGreetingActive && (
+          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500/20 to-cyan-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300 shadow-md">
+                    <Building2 className="w-6 h-6 text-teal-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-extrabold text-white">Select Hospital to Enter Portal</h3>
+                    <p className="text-xs text-slate-400">Click on your hospital below to log in &amp; sync CSV record</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* LIST OF LINKED HOSPITALS */}
+              <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+                <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Select Hospital Facility ({associations.length || facilities.length})
+                </label>
+
+                {associations.length > 0 ? (
+                  associations.map((assoc, idx) => {
+                    const fac = getFacilityDetails(assoc);
+                    const facId = fac.id;
+
+                    return (
+                      <div
+                        key={assoc.associationId || assoc._id || idx}
+                        onClick={() => handleSelectHospitalAndLogin(facId, fac.name, assoc.department || 'General Medicine')}
+                        className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 hover:border-teal-500/60 hover:bg-slate-900/90 transition-all cursor-pointer flex items-center justify-between gap-4 group shadow-md"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-11 h-11 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-teal-400 shrink-0 group-hover:scale-105 transition-transform group-hover:border-teal-500/50">
+                            <Building2 className="w-5 h-5 text-teal-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm sm:text-base font-extrabold text-white truncate group-hover:text-teal-300 transition-colors">
+                              {fac.name}
+                            </h4>
+                            <p className="text-xs text-slate-400 truncate">
+                              📍 {fac.location} • <span className="text-cyan-400 font-semibold">{assoc.department || 'General Medicine'}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          <button
+                            type="button"
+                            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs tracking-wider uppercase shadow-md flex items-center gap-1.5 transition"
+                          >
+                            <span>Log In</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  facilities.map(facItem => {
+                    const fac = getFacilityDetails(facItem);
+
+                    return (
+                      <div
+                        key={fac.id}
+                        onClick={() => handleSelectHospitalAndLogin(fac.id, fac.name, 'General Medicine')}
+                        className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 hover:border-teal-500/60 hover:bg-slate-900/90 transition-all cursor-pointer flex items-center justify-between gap-4 group shadow-md"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-11 h-11 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-teal-400 shrink-0 group-hover:scale-105 transition-transform">
+                            <Building2 className="w-5 h-5 text-teal-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm sm:text-base font-extrabold text-white truncate group-hover:text-teal-300 transition-colors">
+                              {fac.name}
+                            </h4>
+                            <p className="text-xs text-slate-400 truncate">📍 {fac.location}</p>
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <button
+                            type="button"
+                            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs tracking-wider uppercase shadow-md flex items-center gap-1.5 transition"
+                          >
+                            <span>Log In</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Inline Toggle for Linking / Signing up to New Hospital */}
+              <div className="pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowInlineHospitalSignUp(!showInlineHospitalSignUp)}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {showInlineHospitalSignUp ? 'Hide Link Form' : '+ Sign Up / Link to a New Hospital'}
+                </button>
+              </div>
+
+              {showInlineHospitalSignUp && (
+                <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-500/30 space-y-3">
+                  <h4 className="text-xs font-bold text-cyan-300">Link Doctor Account to New Hospital Facility</h4>
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Select Hospital Facility</label>
+                    <select
+                      value={inlineFacilityId}
+                      onChange={(e) => setInlineFacilityId(e.target.value)}
+                      className="w-full p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs font-semibold"
+                    >
+                      <option value="">Choose Hospital / Facility</option>
+                      {facilities.map(f => (
+                        <option key={f._id} value={f._id}>
+                          🏥 {f.name} ({f.district || f.state || 'Local'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleInlineLinkHospital}
+                    className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-extrabold text-xs"
+                  >
+                    Confirm Hospital Linkage &amp; Add to List
+                  </button>
+                </div>
+              )}
+
+              <div className="p-3 rounded-xl bg-teal-950/40 border border-teal-500/30 text-[11px] text-teal-300 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 shrink-0 text-teal-400" />
+                <span>Selecting a hospital logs your check-in and safely appends details into the hospital CSV file.</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* DOCTOR ENTRY CHECK-IN MODAL */}
         {showDoctorCheckinModal && (
@@ -1155,14 +1693,14 @@ export default function DoctorDashboard() {
                     <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold font-mono uppercase">
                       CURRENT PATIENT IN CONSULTATION
                     </span>
-                    {Math.floor(elapsedSeconds / 60) >= (queue?.averageConsultationMinutes || 7) && (
+                    {queue?.servingToken > 0 && Math.floor(elapsedSeconds / 60) >= (queue?.averageConsultationMinutes || 7) && (
                       <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold font-mono uppercase flex items-center gap-1 animate-pulse">
                         <AlertTriangle className="w-3 h-3" /> Overtime
                       </span>
                     )}
                   </div>
                   <div className="text-3xl sm:text-4xl font-extrabold text-cyan-400 mt-1">
-                    {queue?.servingToken ? `Token #${queue.servingToken}` : 'No Active Consult'}
+                    {queue?.servingToken > 0 ? `Token #${queue.servingToken}` : 'No Active Patient'}
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
                     Department: <strong className="text-white">{queue?.department || 'General Medicine'}</strong>
@@ -1171,20 +1709,24 @@ export default function DoctorDashboard() {
 
                 {/* LIVE ELAPSED TIMER & ACTIONS */}
                 <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
-                  <div className="px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-center min-w-[120px]">
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase block tracking-wider">ELAPSED TIME</span>
-                    <span className={`text-xl font-mono font-black ${Math.floor(elapsedSeconds / 60) >= (queue?.averageConsultationMinutes || 7) ? 'text-amber-400' : 'text-emerald-400'}`}>
-                      {String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:{String(elapsedSeconds % 60).padStart(2, '0')}
-                    </span>
-                  </div>
+                  {queue?.servingToken > 0 && (
+                    <div className="px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-center min-w-[120px]">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase block tracking-wider">ELAPSED TIME</span>
+                      <span className={`text-xl font-mono font-black ${Math.floor(elapsedSeconds / 60) >= (queue?.averageConsultationMinutes || 7) ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:{String(elapsedSeconds % 60).padStart(2, '0')}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-2 flex-1 md:flex-none">
                     <button onClick={() => handleQueueAction('NEXT')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-cyan-500/20 transition active:scale-95">
                       Call Next Patient
                     </button>
-                    <button onClick={() => handleQueueAction('COMPLETE')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition active:scale-95">
-                      Complete
-                    </button>
+                    {queue?.servingToken > 0 && (
+                      <button onClick={() => handleQueueAction('COMPLETE')} className="flex-1 md:flex-none px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition active:scale-95">
+                        Complete
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

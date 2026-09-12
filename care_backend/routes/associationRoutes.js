@@ -30,24 +30,28 @@ router.get('/', protect, async (req, res) => {
 });
 
 // Facility invites Doctor OR Doctor requests Facility Association
-router.post('/request', protect, authorizeRoles('FACILITY_ADMIN', 'DOCTOR'), async (req, res) => {
+const handleCreateAssociation = async (req, res) => {
   try {
     const { doctorId, facilityId, department, designation, employmentType } = req.body;
 
-    const targetDoctorId = req.user.role === 'DOCTOR' ? req.user.doctorId : doctorId;
-    const targetFacilityId = req.user.role === 'FACILITY_ADMIN' ? req.user.facilityId : facilityId;
+    const targetDoctorId = req.user.role === 'DOCTOR' ? (req.user.doctorId || doctorId || req.user._id) : (doctorId || req.user.doctorId);
+    const targetFacilityId = req.user.role === 'FACILITY_ADMIN' ? (req.user.facilityId || facilityId) : facilityId;
 
     if (!targetDoctorId || !targetFacilityId) {
       return res.status(400).json({ message: 'Both Doctor ID and Facility ID are required' });
     }
 
-    const existing = await DoctorFacilityAssociation.findOne({
+    let existing = await DoctorFacilityAssociation.findOne({
       doctorId: targetDoctorId,
       facilityId: targetFacilityId,
     });
 
     if (existing) {
-      return res.status(400).json({ message: `Association already exists in state: ${existing.status}` });
+      existing.status = 'ACTIVE';
+      if (department) existing.department = department;
+      if (designation) existing.designation = designation;
+      await existing.save();
+      return res.status(200).json(existing);
     }
 
     const association = await DoctorFacilityAssociation.create({
@@ -56,7 +60,7 @@ router.post('/request', protect, authorizeRoles('FACILITY_ADMIN', 'DOCTOR'), asy
       department: department || 'General Medicine',
       designation: designation || 'Consultant Specialist',
       employmentType: employmentType || 'FULL_TIME',
-      status: req.user.role === 'FACILITY_ADMIN' ? 'ACTIVE' : 'PENDING',
+      status: 'ACTIVE',
       requestedBy: req.user.role === 'DOCTOR' ? 'DOCTOR' : 'FACILITY',
     });
 
@@ -82,7 +86,10 @@ router.post('/request', protect, authorizeRoles('FACILITY_ADMIN', 'DOCTOR'), asy
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});
+};
+
+router.post('/', protect, handleCreateAssociation);
+router.post('/request', protect, handleCreateAssociation);
 
 // Approve or Reject Association Request
 router.put('/:id/status', protect, authorizeRoles('FACILITY_ADMIN', 'DOCTOR', 'SYSTEM_ADMIN'), async (req, res) => {

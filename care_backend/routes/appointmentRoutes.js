@@ -40,13 +40,20 @@ router.get('/', protect, async (req, res) => {
     }
 
     // Format output so patient name and facility name are always available
-    const formatted = appointments.map(apt => ({
-      ...apt,
-      patientId: apt.patientId && apt.patientId.name ? apt.patientId : { _id: apt.patientId, name: apt.patientName || 'Patient' },
-      facilityId: apt.facilityId && apt.facilityId.name ? apt.facilityId : { _id: apt.facilityId, name: apt.facilityName || 'Public Healthcare Centre' },
-      patientName: apt.patientId?.name || apt.patientName || 'Patient',
-      facilityName: apt.facilityId?.name || apt.facilityName || 'Public Healthcare Centre'
-    }));
+    const formatted = appointments.map(apt => {
+      let status = apt.status;
+      if ((apt.doctorId || apt.doctorName) && (status === 'PENDING_APPROVAL' || status === 'REQUESTED' || status === 'BOOKED')) {
+        status = 'CONFIRMED';
+      }
+      return {
+        ...apt,
+        status,
+        patientId: apt.patientId && apt.patientId.name ? apt.patientId : { _id: apt.patientId, name: apt.patientName || 'Patient' },
+        facilityId: apt.facilityId && apt.facilityId.name ? apt.facilityId : { _id: apt.facilityId, name: apt.facilityName || 'Public Healthcare Centre' },
+        patientName: apt.patientId?.name || apt.patientName || 'Patient',
+        facilityName: apt.facilityId?.name || apt.facilityName || 'Public Healthcare Centre'
+      };
+    });
 
     res.json(formatted);
   } catch (error) {
@@ -308,6 +315,9 @@ router.put('/:id/assign-doctor', protect, async (req, res) => {
     }
 
     appointment.doctorId = doctorId || null;
+    if (doctorId) {
+      appointment.status = 'CONFIRMED';
+    }
     await appointment.save();
 
     const docName = doctor ? (doctor.fullName.startsWith('Dr.') ? doctor.fullName : `Dr. ${doctor.fullName}`) : 'Duty Medical Officer';
@@ -332,6 +342,7 @@ router.put('/:id/assign-doctor', protect, async (req, res) => {
             doctorId: doctorId ? doctorId.toString() : 'DUTY_DOC',
             doctorName: docName,
             doctorSpecialization: spec,
+            status: doctorId ? 'CONFIRMED' : appointment.status,
             updatedAt: new Date()
           }
         }

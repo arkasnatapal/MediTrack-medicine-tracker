@@ -1,11 +1,61 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 const Doctor = require('../models/Doctor');
 const DoctorFacilityAssociation = require('../models/DoctorFacilityAssociation');
 const DoctorAttendance = require('../models/DoctorAttendance');
+const Facility = require('../models/Facility');
 const { protect, authorizeRoles, logAudit } = require('../middleware/authMiddleware');
 const { emitDomainEvent } = require('../services/realtimeService');
+
+const appendDoctorCheckinToCSV = async (attendance, docId, facilityId) => {
+  try {
+    const dataDir = path.join(__dirname, '../data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const csvPath = path.join(dataDir, 'doctor_hospital_records.csv');
+    const fileExists = fs.existsSync(csvPath);
+
+    const headers = 'Timestamp,Doctor ID,Doctor Name,Registration Number,Specialization,Facility ID,Facility Name,Department,In Time,Status\n';
+
+    let doctor = null;
+    let facility = null;
+    try {
+      if (mongoose.Types.ObjectId.isValid(docId)) {
+        doctor = await Doctor.findById(docId).lean();
+      }
+    } catch (e) {}
+    try {
+      if (facilityId && mongoose.Types.ObjectId.isValid(facilityId)) {
+        facility = await Facility.findById(facilityId).lean();
+      }
+    } catch (e) {}
+
+    const timestamp = new Date().toISOString();
+    const docIdStr = docId?.toString() || 'N/A';
+    const docName = (doctor?.fullName || 'Dr. Specialist').replace(/,/g, ' ');
+    const regNo = (doctor?.medicalRegistrationNumber || 'N/A').replace(/,/g, ' ');
+    const spec = (doctor?.specialization || 'General Medicine').replace(/,/g, ' ');
+    const facIdStr = facilityId?.toString() || 'N/A';
+    const facName = (facility?.name || 'Care Network Hospital').replace(/,/g, ' ');
+    const dept = (attendance.department || 'General Medicine').replace(/,/g, ' ');
+    const inTimeStr = attendance.inTime ? new Date(attendance.inTime).toLocaleString('en-US') : new Date().toLocaleString('en-US');
+    const status = attendance.status || 'AVAILABLE';
+
+    const row = `"${timestamp}","${docIdStr}","${docName}","${regNo}","${spec}","${facIdStr}","${facName}","${dept}","${inTimeStr}","${status}"\n`;
+
+    if (!fileExists) {
+      fs.writeFileSync(csvPath, headers + row, 'utf8');
+    } else {
+      fs.appendFileSync(csvPath, row, 'utf8');
+    }
+  } catch (err) {
+    console.error('Error appending doctor check-in to CSV:', err);
+  }
+};
 
 // Search registered doctors
 router.get('/', async (req, res) => {
@@ -130,9 +180,10 @@ router.post('/checkin', protect, authorizeRoles('DOCTOR', 'FACILITY_STAFF', 'FAC
   try {
     const { doctorId, facilityId, department, inTime, notes } = req.body;
     const docId = doctorId || req.user.doctorId || req.user._id;
+    const targetDept = department || 'General Medicine';
 
-    if (!facilityId || !department) {
-      return res.status(400).json({ message: 'facilityId and department are required' });
+    if (!facilityId) {
+      return res.status(400).json({ message: 'facilityId is required' });
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -148,13 +199,14 @@ router.post('/checkin', protect, authorizeRoles('DOCTOR', 'FACILITY_STAFF', 'FAC
       attendance = new DoctorAttendance({
         doctorId: docId,
         facilityId,
-        department,
+        department: targetDept,
         date: todayStr,
         inTime: checkInDate,
         status: 'AVAILABLE',
         notes,
       });
     } else {
+      attendance.department = targetDept;
       attendance.inTime = checkInDate;
       attendance.status = 'AVAILABLE';
       attendance.outTime = null;
@@ -163,23 +215,36 @@ router.post('/checkin', protect, authorizeRoles('DOCTOR', 'FACILITY_STAFF', 'FAC
 
     await attendance.save();
 
-    await logAudit(req.user._id, req.user.name, req.user.role, 'DOCTOR_CHECKIN', 'DoctorAttendance', attendance._id, `Doctor checkin recorded at ${checkInDate.toISOString()}`);
+    // Log & append checkin to physical CSV file safely
+    try {
+      await appendDoctorCheckinToCSV(attendance, docId, facilityId);
+    } catch (csvErr) {
+      console.warn('CSV append warning:', csvErr.message);
+    }
 
-    emitDomainEvent({
-      type: 'doctor.checkin',
-      resourceType: 'DoctorAttendance',
-      resourceId: attendance._id,
-      doctorId: docId,
-      facilityId,
-      version: Date.now(),
-      data: {
+    try {
+      await logAudit(req.user._id, req.user.name, req.user.role, 'DOCTOR_CHECKIN', 'DoctorAttendance', attendance._id, `Doctor checkin recorded at ${checkInDate.toISOString()}`);
+    } catch (auditErr) {
+      console.warn('Audit log warning:', auditErr.message);
+    }
+
+    try {
+      emitDomainEvent({
+        type: 'doctor.checkin',
+        resourceType: 'DoctorAttendance',
+        resourceId: attendance._id,
         doctorId: docId,
         facilityId,
-        department,
-        status: 'AVAILABLE',
-        inTime: checkInDate,
-      },
-    });
+        version: Date.now(),
+        data: {
+          doctorId: docId,
+          facilityId,
+          department: targetDept,
+          status: 'AVAILABLE',
+          inTime: checkInDate,
+        },
+      });
+    } catch (e) {}
 
     res.json({
       message: 'Hospital entry check-in recorded successfully',
@@ -336,38 +401,91 @@ router.get('/attendance', async (req, res) => {
 /**
  * Export Printable/Downloadable CSV Datasheet of Doctor Attendance for Hospital
  */
+/**
+ * Export Printable/Downloadable CSV Datasheet of Doctor Attendance
+ * - If doctorId is provided: Exports Doctor's Global Multi-Hospital Work History CSV across all linked hospitals.
+ * - If facilityId is provided: Exports Hospital Facility Attendance CSV for all doctors.
+ */
 router.get('/attendance-csv', async (req, res) => {
   try {
-    const { facilityId, date } = req.query;
+    const { facilityId, doctorId, date } = req.query;
     const todayStr = date || new Date().toISOString().split('T')[0];
 
-    const query = { date: todayStr };
-    if (facilityId && mongoose.Types.ObjectId.isValid(facilityId)) query.facilityId = facilityId;
+    const query = {};
+    if (facilityId && mongoose.Types.ObjectId.isValid(facilityId)) {
+      query.facilityId = facilityId;
+      if (date) query.date = date;
+    }
+    if (doctorId && mongoose.Types.ObjectId.isValid(doctorId)) {
+      query.doctorId = doctorId;
+    }
 
     const attendances = await DoctorAttendance.find(query)
       .populate('doctorId')
+      .populate('facilityId')
       .sort({ createdAt: -1 });
 
-    // Build CSV Content
-    let csv = 'Doctor Name,Medical Reg No,Specialization,Department,Facility ID,Date,In Time,Out Time,Status,Notes\n';
+    // Also read appended rows from doctor_hospital_records.csv if available for doctor global log
+    const dataDir = path.join(__dirname, '../data');
+    const csvPath = path.join(dataDir, 'doctor_hospital_records.csv');
 
+    let csvLines = [];
+    let headers = 'Timestamp,Doctor Name,Registration Number,Specialization,Hospital Facility Name,Department,In Time,Out Time,Status,Logged Date\n';
+
+    if (doctorId && fs.existsSync(csvPath)) {
+      try {
+        const fileData = fs.readFileSync(csvPath, 'utf8');
+        const lines = fileData.split('\n').filter(Boolean);
+        // Skip header line
+        lines.slice(1).forEach(line => {
+          if (line.includes(doctorId.toString())) {
+            // Re-format row if needed or include directly
+            const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/);
+            if (cols.length >= 10) {
+              const ts = cols[0].replace(/"/g, '');
+              const dName = cols[2].replace(/"/g, '');
+              const reg = cols[3].replace(/"/g, '');
+              const spec = cols[4].replace(/"/g, '');
+              const facName = cols[6].replace(/"/g, '');
+              const dept = cols[7].replace(/"/g, '');
+              const inTime = cols[8].replace(/"/g, '');
+              const status = cols[9].replace(/"/g, '');
+              const logDate = ts.split('T')[0] || todayStr;
+
+              csvLines.push(`"${ts}","${dName}","${reg}","${spec}","${facName}","${dept}","${inTime}","Present / Logged","${status}","${logDate}"`);
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Error reading appended CSV records:', e);
+      }
+    }
+
+    // Populate DB attendance records into CSV
     attendances.forEach(a => {
       const docName = (a.doctorId?.fullName || 'Doctor').replace(/,/g, ' ');
       const regNo = (a.doctorId?.medicalRegistrationNumber || 'N/A').replace(/,/g, ' ');
       const spec = (a.doctorId?.specialization || 'General').replace(/,/g, ' ');
-      const dept = (a.department || 'General').replace(/,/g, ' ');
-      const fac = (a.facilityId?.toString() || 'N/A').replace(/,/g, ' ');
-      const inStr = a.inTime ? new Date(a.inTime).toLocaleTimeString('en-US', { hour12: true }) : 'N/A';
-      const outStr = a.outTime ? new Date(a.outTime).toLocaleTimeString('en-US', { hour12: true }) : 'Active / Present';
+      const dept = (a.department || 'General Medicine').replace(/,/g, ' ');
+      const facName = (a.facilityId?.name || 'Care Network Facility').replace(/,/g, ' ');
+      const inStr = a.inTime ? new Date(a.inTime).toLocaleString('en-US') : 'N/A';
+      const outStr = a.outTime ? new Date(a.outTime).toLocaleString('en-US') : 'Active / Present';
       const statusStr = a.status || 'PRESENT';
-      const notesStr = (a.notes || '').replace(/,/g, ' ');
+      const logDate = a.date || (a.createdAt ? new Date(a.createdAt).toISOString().split('T')[0] : todayStr);
+      const ts = a.createdAt ? new Date(a.createdAt).toISOString() : new Date().toISOString();
 
-      csv += `"${docName}","${regNo}","${spec}","${dept}","${fac}","${a.date}","${inStr}","${outStr}","${statusStr}","${notesStr}"\n`;
+      csvLines.push(`"${ts}","${docName}","${regNo}","${spec}","${facName}","${dept}","${inStr}","${outStr}","${statusStr}","${logDate}"`);
     });
 
+    // Deduplicate csvLines if needed
+    const uniqueLines = Array.from(new Set(csvLines));
+    const csvOutput = headers + (uniqueLines.length > 0 ? uniqueLines.join('\n') + '\n' : '"No attendance records logged for this query"\n');
+
+    const filename = doctorId ? `doctor_global_work_history_${todayStr}.csv` : `hospital_doctor_attendance_${todayStr}.csv`;
+
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=doctor_attendance_${todayStr}.csv`);
-    res.status(200).send(csv);
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.status(200).send(csvOutput);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

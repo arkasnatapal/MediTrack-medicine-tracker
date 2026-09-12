@@ -63,20 +63,28 @@ router.get('/', async (req, res) => {
 
     const facilityId = await resolveFacilityId(rawFacilityId, req.user) || rawFacilityId;
 
-    const query = {};
+    const deptRegex = (department === 'General OPD' || department === 'General Medicine')
+      ? { $in: ['General OPD', 'General Medicine'] }
+      : (department || { $in: ['General OPD', 'General Medicine'] });
+
+    let query = {};
     if (facilityId && mongoose.Types.ObjectId.isValid(facilityId)) {
       query.facilityId = facilityId;
     }
-    if (department) query.department = department;
-    if (doctorId && mongoose.Types.ObjectId.isValid(doctorId)) query.doctorId = doctorId;
+    if (department) {
+      query.department = deptRegex;
+    }
+    if (doctorId && mongoose.Types.ObjectId.isValid(doctorId)) {
+      query.$or = [{ doctorId }, { doctorId: null }, { doctorId: { $exists: false } }];
+    }
 
     let queue = await Queue.findOne(query)
       .populate('entries.patientId')
       .populate('entries.appointmentId')
       .sort({ updatedAt: -1 });
 
-    if (!queue && department) {
-      queue = await Queue.findOne({ department })
+    if (!queue) {
+      queue = await Queue.findOne({ department: deptRegex })
         .populate('entries.patientId')
         .populate('entries.appointmentId')
         .sort({ updatedAt: -1 });
@@ -98,6 +106,13 @@ router.get('/', async (req, res) => {
     }
 
     if (!queue) {
+      queue = await Queue.findOne({})
+        .populate('entries.patientId')
+        .populate('entries.appointmentId')
+        .sort({ updatedAt: -1 });
+    }
+
+    if (!queue) {
       return res.json({
         servingToken: 1,
         currentToken: 0,
@@ -107,6 +122,58 @@ router.get('/', async (req, res) => {
         opdStatusObj: { opdStatus: 'OPEN', registrationOpen: true, queueActive: true },
         waitEstimate: { estimatedWaitMinutes: 0, displayText: '~0 mins' },
       });
+    }
+
+    // --- AUTO-SYNC QUEUE ENTRIES FROM CAREAPPOINTMENTS ---
+    try {
+      const appQuery = { status: { $nin: ['CANCELLED', 'NO_SHOW'] } };
+      if (queue.facilityId) {
+        appQuery.facilityId = queue.facilityId;
+      }
+
+      const activeAppointments = await Appointment.find(appQuery)
+        .populate('patientId')
+        .sort({ tokenNumber: 1, createdAt: 1 })
+        .lean();
+
+      if (activeAppointments.length > 0) {
+        let modified = false;
+        const existingTokenSet = new Set(queue.entries.map(e => e.tokenNumber));
+
+        for (const apt of activeAppointments) {
+          const tNum = apt.tokenNumber || 1;
+          if (!existingTokenSet.has(tNum)) {
+            const pId = apt.patientId?._id || apt.patientId;
+            const pName = apt.patientId?.name || apt.patientName || 'Patient';
+            queue.entries.push({
+              tokenNumber: tNum,
+              appointmentId: apt._id,
+              patientId: pId,
+              patientName: pName,
+              status: apt.status === 'IN_CONSULTATION' ? 'IN_CONSULTATION' : (apt.status === 'COMPLETED' ? 'COMPLETED' : 'WAITING'),
+              checkInTime: apt.createdAt || new Date(),
+              estimatedWaitMinutes: 10
+            });
+            existingTokenSet.add(tNum);
+            modified = true;
+          }
+        }
+
+        const maxToken = Math.max(...activeAppointments.map(a => a.tokenNumber || 1), queue.currentToken || 0);
+        if (maxToken > queue.currentToken) {
+          queue.currentToken = maxToken;
+          modified = true;
+        }
+
+        if (modified) {
+          await queue.save();
+          queue = await Queue.findById(queue._id)
+            .populate('entries.patientId')
+            .populate('entries.appointmentId');
+        }
+      }
+    } catch (syncErr) {
+      console.warn('Queue auto-sync from appointments warning:', syncErr.message);
     }
 
     // Fetch OPD Schedule & evaluate authoritative OPD status

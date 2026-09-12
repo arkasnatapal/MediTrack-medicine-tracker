@@ -146,6 +146,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/facility-doctors', associationRoutes);
+app.use('/api/associations', associationRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/queues', queueRoutes);
 app.use('/api/referrals', referralRoutes);
